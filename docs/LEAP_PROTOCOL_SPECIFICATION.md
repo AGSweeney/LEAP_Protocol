@@ -848,6 +848,20 @@ missed-cycle counter MUST reset to zero on every accepted sequence-valid frame.
 
 Category B applies when device and controller share a synchronized time basis.
 
+LEAP v1.0 does not define or mandate a specific time synchronization mechanism.
+A "shared time basis" means any deployment-provided arrangement under which
+both the device and its owner controller maintain a common microsecond-resolution
+clock that advances at the same rate. Acceptable sources include IEEE 1588
+Precision Time Protocol (PTP), a vendor-defined master timestamp broadcast, or
+any other mechanism that bounds clock offset to within a small fraction of the
+minimum `max_frame_age_us` value in use. Implementations MUST document the
+synchronization source used and MUST report it through directory capabilities
+or the `SWITCH_SAFE_CAPABILITY` TLV.
+
+If a device loses its time synchronization source at runtime, it MUST
+immediately revert to Category A behavior and MUST NOT continue applying
+Category B age checks until synchronization is re-established and verified.
+
 Required behavior:
 
 - The device computes frame age from `controller_timestamp_us` and local arrival
@@ -1368,3 +1382,12 @@ completed and archived with test artifacts:
 - [ ] **Profile mapping consistency**: verify profile IDs and field layouts match
   across `leap_protocol.h`, `LEAP_GOLDEN_FRAME_VECTORS.md`, and
   `leap-manifest-schema.json`.
+- [ ] **Zero-payload CRC boundary**: verify that `header_crc16` is computed
+  correctly when `payload_length == 0` and that the transmit path pads the
+  remaining Ethernet floor bytes with explicit zeros without leaking adjacent
+  stack or heap content onto the wire.
+- [ ] **Malformed-frame watchdog isolation**: confirm that frames rejected at
+  header CRC, payload CRC, length, magic, or version checks do not reset,
+  reload, or extend any active owner lease or process watchdog timer. Invalid
+  frames must be silently discarded at the protocol boundary; the watchdog must
+  advance toward expiry as if no frame had arrived.
