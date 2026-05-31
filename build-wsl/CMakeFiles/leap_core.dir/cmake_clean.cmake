@@ -1,0 +1,25 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/leap_core.dir/src/crc/leap_crc.c.o"
+  "CMakeFiles/leap_core.dir/src/crc/leap_crc.c.o.d"
+  "CMakeFiles/leap_core.dir/src/frame/leap_frame.c.o"
+  "CMakeFiles/leap_core.dir/src/frame/leap_frame.c.o.d"
+  "CMakeFiles/leap_core.dir/src/leap_device_stack.c.o"
+  "CMakeFiles/leap_core.dir/src/leap_device_stack.c.o.d"
+  "CMakeFiles/leap_core.dir/src/services/disc/leap_disc_device.c.o"
+  "CMakeFiles/leap_core.dir/src/services/disc/leap_disc_device.c.o.d"
+  "CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_device.c.o"
+  "CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_device.c.o.d"
+  "CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.o"
+  "CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.o.d"
+  "CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o"
+  "CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o.d"
+  "CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o"
+  "CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o.d"
+  "libleap_core.a"
+  "libleap_core.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang C)
+  include(CMakeFiles/leap_core.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

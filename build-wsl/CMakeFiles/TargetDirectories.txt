@@ -1,0 +1,8 @@
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/leap_core.dir
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/leap_tests.dir
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/device_minimal.dir
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/leap_linux_device.dir
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/leap_linux_controller.dir
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/test.dir
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/edit_cache.dir
+/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles/rebuild_cache.dir
