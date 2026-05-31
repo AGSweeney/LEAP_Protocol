@@ -14,6 +14,7 @@ endif()
 add_library(leap_core STATIC
   src/crc/leap_crc.c
   src/frame/leap_frame.c
+  src/services/mgmt/leap_mgmt_device.c
 )
 
 target_include_directories(leap_core PUBLIC
@@ -25,6 +26,7 @@ add_executable(leap_tests
   tests/test_harness.c
   tests/test_crc.c
   tests/test_frame_vectors.c
+  tests/test_mgmt_device.c
   tests/test_util.c
 )
 
