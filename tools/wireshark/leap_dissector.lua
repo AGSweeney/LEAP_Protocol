@@ -18,6 +18,15 @@ local f_payload_len   = ProtoField.uint16("leap.payload_length", "Payload Length
 local f_header_crc16  = ProtoField.uint16("leap.header_crc16", "Header CRC-16/XMODEM", BASE_HEX)
 local f_payload_crc32 = ProtoField.uint32("leap.payload_crc32c", "Payload CRC-32C", BASE_HEX)
 
+-- LeapFragmentHeader fields (present when LEAP_FLAG_FRAGMENTED is set, offset 32 in payload)
+-- Wire layout: fragment_group_id(4) | fragment_index(2) | fragment_count(2) |
+--              total_length(4) | total_crc32c(4)  — 16 bytes, no padding
+local f_frag_group_id    = ProtoField.uint32("leap.frag.group_id",     "Fragment Group ID",   BASE_HEX)
+local f_frag_index       = ProtoField.uint16("leap.frag.index",        "Fragment Index",      BASE_DEC)
+local f_frag_count       = ProtoField.uint16("leap.frag.count",        "Fragment Count",      BASE_DEC)
+local f_frag_total_len   = ProtoField.uint32("leap.frag.total_length", "Total Length",        BASE_DEC)
+local f_frag_total_crc   = ProtoField.uint32("leap.frag.total_crc32c", "Total CRC-32C",       BASE_HEX)
+
 -- LEAP-PD LeapEndpointDataHeader fields
 local f_ep_id         = ProtoField.uint16("leap.pd.endpoint_id", "Endpoint ID", BASE_HEX)
 local f_ep_offset     = ProtoField.uint16("leap.pd.endpoint_offset", "Endpoint Offset", BASE_DEC)
@@ -42,13 +51,19 @@ local f_padding       = ProtoField.bytes("leap.padding", "Ethernet Padding")
 leap_proto.fields = {
     f_magic, f_ver_major, f_ver_minor, f_header_len, f_flags, f_service_id, f_message_type,
     f_session_id, f_sequence, f_ack_sequence, f_payload_len, f_header_crc16, f_payload_crc32,
+    f_frag_group_id, f_frag_index, f_frag_count, f_frag_total_len, f_frag_total_crc,
     f_ep_id, f_ep_offset, f_data_len, f_ep_flags, f_proc_seq, f_cycle_us, f_ts_us, f_max_age_us, f_profile_id,
     f_dio_inputs, f_dio_outputs, f_dio_status, f_dio_vsupply, f_dio_reserved,
     f_raw_payload, f_padding
 }
 
 local LEAP_HEADER_LEN                = 32
+local LEAP_FRAGMENT_HEADER_LEN       = 16
 local LEAP_EP_DATA_HEADER_LEN        = 32
+
+-- Flag bits (byte 7 of LeapHeader)
+local LEAP_FLAG_FRAGMENTED           = 0x20  -- bit 5
+
 local LEAP_SERVICE_PD                = 0x0010
 local LEAP_PD_WRITE_ENDPOINT         = 0x0001
 local LEAP_PD_ENDPOINT_DATA          = 0x0003
@@ -79,9 +94,11 @@ function leap_proto.dissector(buffer, pinfo, tree)
     subtree:add_le(f_header_crc16,  buffer(26, 2))
     subtree:add_le(f_payload_crc32, buffer(28, 4))
 
+    local flags        = buffer(7,  1):uint()
     local service_id   = buffer(8,  2):le_uint()
     local message_type = buffer(10, 2):le_uint()
     local payload_len  = buffer(24, 2):le_uint()
+    local is_fragmented = bit.band(flags, LEAP_FLAG_FRAGMENTED) ~= 0
 
     pinfo.cols.info = string.format(
         "Svc=0x%04X Msg=0x%04X Seq=%u Len=%u",
@@ -108,6 +125,48 @@ function leap_proto.dissector(buffer, pinfo, tree)
     local payload_tree = subtree:add(buffer(payload_offset, payload_len), "LEAP Payload")
     payload_tree:add(f_raw_payload, buffer(payload_offset, payload_len))
 
+    -- Decode LeapFragmentHeader when FRAGMENTED flag (bit 5 = 0x20) is set.
+    -- Layout: fragment_group_id(4) | fragment_index(2) | fragment_count(2) |
+    --          total_length(4)     | total_crc32c(4)   — 16 bytes, no padding
+    if is_fragmented then
+        if payload_len < LEAP_FRAGMENT_HEADER_LEN then
+            payload_tree:add_expert_info(PI_MALFORMED, PI_ERROR,
+                "FRAGMENTED flag set but payload is too short for LeapFragmentHeader (need 16 bytes)")
+            return
+        end
+        local frag_tree = payload_tree:add(
+            buffer(payload_offset, LEAP_FRAGMENT_HEADER_LEN),
+            "LEAP Fragment Header (LeapFragmentHeader)")
+        frag_tree:add_le(f_frag_group_id,  buffer(payload_offset +  0, 4))
+        frag_tree:add_le(f_frag_index,     buffer(payload_offset +  4, 2))
+        frag_tree:add_le(f_frag_count,     buffer(payload_offset +  6, 2))
+        frag_tree:add_le(f_frag_total_len, buffer(payload_offset +  8, 4))
+        frag_tree:add_le(f_frag_total_crc, buffer(payload_offset + 12, 4))
+
+        local frag_index = buffer(payload_offset + 4, 2):le_uint()
+        local frag_count = buffer(payload_offset + 6, 2):le_uint()
+        pinfo.cols.info = string.format(
+            "Svc=0x%04X Msg=0x%04X Seq=%u [FRAG %u/%u]",
+            service_id, message_type, buffer(16, 4):le_uint(),
+            frag_index, frag_count)
+
+        -- Advance past the fragment header. The remaining bytes are a raw
+        -- fragment slice of a larger reassembled payload and are not decoded
+        -- further by this dissector (full reassembly is out of scope here).
+        payload_offset = payload_offset + LEAP_FRAGMENT_HEADER_LEN
+        local remaining = payload_len - LEAP_FRAGMENT_HEADER_LEN
+        if remaining > 0 then
+            payload_tree:add(f_raw_payload, buffer(payload_offset, remaining)):set_text(
+                string.format("Fragment Data (%u bytes, not decoded until reassembled)", remaining))
+        end
+
+        local consumed = LEAP_HEADER_LEN + payload_len
+        if length > consumed then
+            subtree:add(f_padding, buffer(consumed, length - consumed))
+        end
+        return
+    end
+
     -- Decode LEAP-PD single-endpoint messages.
     if service_id == LEAP_SERVICE_PD
        and (message_type == LEAP_PD_WRITE_ENDPOINT or message_type == LEAP_PD_ENDPOINT_DATA)
@@ -125,8 +184,8 @@ function leap_proto.dissector(buffer, pinfo, tree)
         pd:add_le(f_max_age_us, buffer(payload_offset + 24, 4))
         pd:add_le(f_profile_id, buffer(payload_offset + 28, 4))
 
-        local profile_id    = buffer(payload_offset + 28, 4):le_uint()
-        local pd_data_len   = buffer(payload_offset +  4, 2):le_uint()
+        local profile_id     = buffer(payload_offset + 28, 4):le_uint()
+        local pd_data_len    = buffer(payload_offset +  4, 2):le_uint()
         local pd_data_offset = payload_offset + LEAP_EP_DATA_HEADER_LEN
 
         -- Guard: profile data must fit within the declared payload.
