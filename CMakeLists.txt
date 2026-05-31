@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(LEAP_Protocol C)
 
-set(CMAKE_C_STANDARD 99)
+if(MSVC)
+  set(CMAKE_C_STANDARD 11)
+else()
+  set(CMAKE_C_STANDARD 99)
+endif()
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 

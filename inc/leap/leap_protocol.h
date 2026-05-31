@@ -29,9 +29,11 @@
 
 #if defined(__cplusplus)
   #define LEAP_STATIC_ASSERT static_assert
+#elif defined(_MSC_VER)
+  #define LEAP_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
 #elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
   #define LEAP_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
-#elif defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+#elif defined(__GNUC__) || defined(__clang__)
   #define LEAP_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
 #else
   #define LEAP_STATIC_ASSERT_LINE(line, cond, msg) \
