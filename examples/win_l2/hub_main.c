@@ -97,6 +97,7 @@ static void hub_print_usage(const char* prog)
         "  --no-pacing          Full-speed (round-robin: per peer; parallel: per lap)\n"
         "  --parallel           Send to all peers, then recv (default: round-robin)\n"
         "  --round-robin        Visit one peer at a time (default)\n"
+        "  --random-peer        One random OP peer per cycle; random output bit\n"
         "  --stats-interval N   Per-peer PD stats every N cycles (default 500)\n"
         "  --run-sec N          Stop automatically after N seconds (0 = run until Ctrl+C)\n"
         "  --no-stats           Disable periodic PD stats\n"
@@ -106,6 +107,7 @@ static void hub_print_usage(const char* prog)
         "Parallel sends to all peers before waiting for replies; with --pacing,\n"
         "each device sees roughly cyclic-ms between its own cycles. Finish order\n"
         "follows slot assignment (--peer-mac order or --peer-slot N:MAC).\n"
+        "Random-peer picks one OP peer and one output bit per paced cycle.\n"
         "\n"
         "Example (two ClearCores on bench NIC):\n"
         "  %s --min-peers 2 --exchange --promisc "
@@ -397,6 +399,7 @@ static void hub_apply_pd_runtime_config(
         stack->pd.config.hub_parallel_finish =
             (options->parallel != 0) ? 1 : 0;
         stack->pd.config.hub_finish_slot = i;
+        stack->pd.config.random_output   = (options->random_peer != 0) ? 1 : 0;
     }
 }
 
@@ -485,7 +488,9 @@ int main(int argc, char** argv)
         options.min_peers,
         options.cyclic_period_ms,
         options.exchange != 0 ? ", exchange" : "",
-        options.parallel != 0 ? ", parallel" : ", round-robin",
+        options.parallel != 0
+            ? ", parallel"
+            : (options.random_peer != 0 ? ", random-peer" : ", round-robin"),
         options.pacing != 0 ? ", paced" : ", no-pacing");
     if (options.peer_mac_count > 0u)
     {
@@ -611,6 +616,24 @@ int main(int argc, char** argv)
                 options.pacing != 0 ? 1 : 0) != LEAP_PD_CTRL_OK)
         {
             leap_log_eprintf("parallel PD stopped with error\n");
+        }
+    }
+    else if (options.random_peer != 0)
+    {
+        if (pd_io.monotonic_us != NULL)
+        {
+            leap_pd_controller_seed_rand(
+                (uint32_t)pd_io.monotonic_us(pd_io.user_ctx));
+        }
+
+        if (leap_win_hub_run_random_peer_with_link_watch(
+                &hub,
+                &pd_io,
+                &transport.sock,
+                &g_hub_stop,
+                options.pacing != 0 ? 1 : 0) != LEAP_PD_CTRL_OK)
+        {
+            leap_log_eprintf("random-peer PD stopped with error\n");
         }
     }
     else if (leap_win_hub_run_round_robin_with_link_watch(

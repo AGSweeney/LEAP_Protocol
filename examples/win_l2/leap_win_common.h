@@ -40,6 +40,7 @@ typedef struct LeapWinHubOptions
     int         exchange;
     int         pacing;
     int         parallel;
+    int         random_peer;
     int         stats;
     unsigned    stats_interval;
     unsigned    run_sec;
@@ -80,6 +81,13 @@ LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
     int                       sleep_for_period);
 
 LeapPdControllerStatus leap_win_hub_run_parallel_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawWinpcapSocket*     transport,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
+
+LeapPdControllerStatus leap_win_hub_run_random_peer_with_link_watch(
     LeapControllerSessionHub* hub,
     const LeapPdControllerIo* pd_io,
     LeapRawWinpcapSocket*     transport,

@@ -48,6 +48,47 @@ static void leap_pd_ctrl_sleep_us(uint64_t sleep_us)
 #endif
 }
 
+static uint32_t leap_pd_ctrl_rng_state;
+
+uint32_t leap_pd_controller_rand_u32(void)
+{
+    uint32_t x = leap_pd_ctrl_rng_state;
+
+    if (x == 0u)
+    {
+        x = 0xA341316Cu;
+    }
+
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    leap_pd_ctrl_rng_state = x;
+    return x;
+}
+
+void leap_pd_controller_seed_rand(uint32_t seed)
+{
+    leap_pd_ctrl_rng_state = (seed != 0u) ? seed : 0xA341316Cu;
+}
+
+static uint16_t leap_pd_ctrl_pick_outputs(const LeapPdControllerContext* pd)
+{
+    uint32_t bit;
+
+    if (pd == NULL)
+    {
+        return 0u;
+    }
+
+    if (pd->config.random_output != 0)
+    {
+        bit = leap_pd_controller_rand_u32() % 16u;
+        return (uint16_t)(1u << bit);
+    }
+
+    return (uint16_t)(0x0001u << (pd->cycle_index % 6u));
+}
+
 void leap_pd_controller_sleep_us(uint64_t sleep_us)
 {
     leap_pd_ctrl_sleep_us(sleep_us);
@@ -865,7 +906,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
 
     profile        = leap_pd_ctrl_profile(pd);
     cycle_start_us = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : 0u;
-    outputs        = (uint16_t)(0x0001u << (pd->cycle_index % 6u));
+    outputs        = leap_pd_ctrl_pick_outputs(pd);
     session_id     = leap_mgmt_controller_session_id(mgmt);
 
     leap_pd_ctrl_clear_pending(pd);

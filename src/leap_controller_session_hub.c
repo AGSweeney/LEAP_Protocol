@@ -744,3 +744,130 @@ LeapPdControllerStatus leap_controller_session_hub_run_parallel(
 
     return LEAP_PD_CTRL_OK;
 }
+
+unsigned leap_controller_session_hub_count_op_peers(
+    const LeapControllerSessionHub* hub)
+{
+    unsigned count = 0u;
+    unsigned i;
+
+    if (hub == NULL)
+    {
+        return 0u;
+    }
+
+    for (i = 0u; i < LEAP_CTRL_MAX_PEERS; i++)
+    {
+        if (leap_controller_session_hub_is_op(hub, (int)i) != 0)
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+int leap_controller_session_hub_op_peer_at_index(
+    const LeapControllerSessionHub* hub,
+    unsigned                        index)
+{
+    unsigned seen = 0u;
+    unsigned i;
+
+    if (hub == NULL)
+    {
+        return -1;
+    }
+
+    for (i = 0u; i < LEAP_CTRL_MAX_PEERS; i++)
+    {
+        if (leap_controller_session_hub_is_op(hub, (int)i) == 0)
+        {
+            continue;
+        }
+
+        if (seen == index)
+        {
+            return (int)i;
+        }
+
+        seen++;
+    }
+
+    return -1;
+}
+
+LeapPdControllerStatus leap_controller_session_hub_run_one_cycle_paced(
+    LeapControllerSessionHub* hub,
+    int                       slot,
+    const LeapPdControllerIo* io,
+    volatile int*             stop_flag,
+    int                       sleep_for_period)
+{
+    LeapControllerStack* stack;
+
+    if (hub == NULL || io == NULL || stop_flag == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    stack = leap_controller_session_hub_stack(hub, slot);
+    if (stack == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (leap_controller_stack_get_phase(stack) != LEAP_CTRL_STACK_OP)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    return leap_pd_controller_run_one_cycle(
+        &stack->pd,
+        &stack->mgmt,
+        io,
+        hub->slots[slot].peer_mac,
+        stop_flag,
+        sleep_for_period);
+}
+
+LeapPdControllerStatus leap_controller_session_hub_run_random_peer_lap(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* io,
+    volatile int*             stop_flag,
+    int                       sleep_for_period)
+{
+    unsigned op_count;
+    unsigned pick;
+    int      slot;
+
+    if (hub == NULL || io == NULL || stop_flag == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (*stop_flag != 0)
+    {
+        return LEAP_PD_CTRL_STOPPED;
+    }
+
+    op_count = leap_controller_session_hub_count_op_peers(hub);
+    if (op_count == 0u)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    pick = leap_pd_controller_rand_u32() % op_count;
+    slot = leap_controller_session_hub_op_peer_at_index(hub, pick);
+    if (slot < 0)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    return leap_controller_session_hub_run_one_cycle_paced(
+        hub,
+        slot,
+        io,
+        stop_flag,
+        sleep_for_period);
+}

@@ -164,6 +164,29 @@ LeapPdControllerStatus leap_controller_session_hub_run_parallel(
     volatile int*             stop_flag,
     int                       sleep_for_period);
 
+unsigned leap_controller_session_hub_count_op_peers(
+    const LeapControllerSessionHub* hub);
+
+int leap_controller_session_hub_op_peer_at_index(
+    const LeapControllerSessionHub* hub,
+    unsigned                        index);
+
+LeapPdControllerStatus leap_controller_session_hub_run_one_cycle_paced(
+    LeapControllerSessionHub* hub,
+    int                       slot,
+    const LeapPdControllerIo* io,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
+
+/*
+ * Pick one OP peer at random, run one PD cycle, optional pacing sleep.
+ */
+LeapPdControllerStatus leap_controller_session_hub_run_random_peer_lap(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* io,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
+
 #ifdef __cplusplus
 }
 #endif

@@ -267,6 +267,55 @@ LeapPdControllerStatus leap_win_hub_run_parallel_with_link_watch(
     return LEAP_PD_CTRL_OK;
 }
 
+LeapPdControllerStatus leap_win_hub_run_random_peer_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawWinpcapSocket*     transport,
+    volatile int*             stop_flag,
+    int                       sleep_for_period)
+{
+    LeapPdControllerStatus status;
+
+    if (hub == NULL || pd_io == NULL || transport == NULL || stop_flag == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (hub->active_count == 0u)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    leap_log_printf(
+        "hub random-peer PD%s - Ctrl+C or link-down to stop\n",
+        sleep_for_period != 0 ? " (paced)" : "");
+
+    while (*stop_flag == 0)
+    {
+        (void)leap_win_link_stop_on_down(transport, stop_flag);
+        if (*stop_flag != 0)
+        {
+            break;
+        }
+
+        status = leap_controller_session_hub_run_random_peer_lap(
+            hub,
+            pd_io,
+            stop_flag,
+            sleep_for_period);
+        if (status == LEAP_PD_CTRL_STOPPED)
+        {
+            return LEAP_PD_CTRL_OK;
+        }
+        if (status != LEAP_PD_CTRL_OK)
+        {
+            return status;
+        }
+    }
+
+    return LEAP_PD_CTRL_OK;
+}
+
 void leap_win_print_transport_error(const char* action)
 {
     const char* err = leap_raw_winpcap_last_error();
@@ -490,6 +539,7 @@ void leap_win_hub_parse_args(
     options->exchange          = 0;
     options->pacing            = 1;
     options->parallel          = 0;
+    options->random_peer       = 0;
     options->stats             = 1;
     options->stats_interval    = 500u;
     options->run_sec           = 0u;
@@ -552,11 +602,18 @@ void leap_win_hub_parse_args(
         }
         else if (strcmp(argv[i], "--parallel") == 0)
         {
-            options->parallel = 1;
+            options->parallel    = 1;
+            options->random_peer = 0;
         }
         else if (strcmp(argv[i], "--round-robin") == 0)
         {
-            options->parallel = 0;
+            options->parallel    = 0;
+            options->random_peer = 0;
+        }
+        else if (strcmp(argv[i], "--random-peer") == 0)
+        {
+            options->random_peer = 1;
+            options->parallel    = 0;
         }
         else if (strcmp(argv[i], "--no-pacing") == 0)
         {

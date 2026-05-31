@@ -234,10 +234,43 @@ TEST(test_pd_controller_send_failure_status)
         LEAP_PD_CTRL_IO_MISSING);
 }
 
+TEST(test_pd_controller_random_output_single_bit)
+{
+    LeapMgmtControllerContext mgmt;
+    LeapMgmtControllerConfig  mgmt_config;
+    LeapPdControllerContext   pd;
+    LeapPdControllerIo        io;
+    PdCtrlMockIo              mock;
+    volatile int              stop = 0;
+    int                       i;
+
+    memset(&mgmt_config, 0, sizeof(mgmt_config));
+    leap_mgmt_controller_init(&mgmt, &mgmt_config);
+    pd_ctrl_setup_session(&mgmt, &pd);
+    pd.config.random_output = 1;
+    leap_pd_controller_seed_rand(0x12345678u);
+
+    memset(&mock, 0, sizeof(mock));
+    memset(&io, 0, sizeof(io));
+    io.user_ctx     = &mock;
+    io.send_pd      = mock_send_pd;
+    io.monotonic_us = mock_monotonic_us;
+
+    for (i = 0; i < 24; i++)
+    {
+        ASSERT_EQ_INT(
+            leap_pd_controller_run_one_cycle(&pd, &mgmt, &io, k_peer_mac, &stop, 0),
+            LEAP_PD_CTRL_OK);
+        ASSERT_TRUE(mock.last_outputs != 0u);
+        ASSERT_TRUE((mock.last_outputs & (mock.last_outputs - 1u)) == 0u);
+    }
+}
+
 void leap_run_pd_controller_tests(void)
 {
     printf("pd controller\n");
     RUN_TEST(test_pd_controller_single_write_ok);
     RUN_TEST(test_pd_controller_cycle_metrics_and_heartbeat);
     RUN_TEST(test_pd_controller_send_failure_status);
+    RUN_TEST(test_pd_controller_random_output_single_bit);
 }

@@ -82,6 +82,11 @@ typedef struct LeapPdControllerConfig
      */
     int              hub_parallel_finish;
     unsigned         hub_finish_slot;
+    /*
+     * When non-zero, each cycle drives a single random output bit (0..15)
+     * instead of walking bits 0..5 via cycle_index.
+     */
+    int              random_output;
 } LeapPdControllerConfig;
 
 typedef enum LeapPdControllerStatus
@@ -199,6 +204,10 @@ void leap_pd_controller_log_stats(
     const uint8_t*                 peer_mac);
 
 void leap_pd_controller_sleep_us(uint64_t sleep_us);
+
+uint32_t leap_pd_controller_rand_u32(void);
+
+void leap_pd_controller_seed_rand(uint32_t seed);
 
 #ifdef __cplusplus
 }

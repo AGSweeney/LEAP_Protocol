@@ -510,6 +510,30 @@ static void hub_bootstrap_two_peers(
         LEAP_CTRL_STACK_OK);
 }
 
+TEST(test_session_hub_op_peer_index)
+{
+    LeapControllerSessionHub hub;
+    LeapControllerStackIo    stack_io;
+    HubMockStackIo           stack_mock;
+    int                      slot_a = -1;
+    int                      slot_b = -1;
+
+    leap_controller_session_hub_init(&hub, NULL);
+
+    memset(&stack_mock, 0, sizeof(stack_mock));
+    memset(&stack_io, 0, sizeof(stack_io));
+    stack_io.user_ctx   = &stack_mock;
+    stack_io.send_frame = hub_mock_send;
+    stack_io.recv_frame = hub_mock_recv;
+
+    hub_bootstrap_two_peers(&hub, &stack_io, &stack_mock, &slot_a, &slot_b);
+
+    ASSERT_EQ_U32(leap_controller_session_hub_count_op_peers(&hub), 2u);
+    ASSERT_EQ_INT(leap_controller_session_hub_op_peer_at_index(&hub, 0u), slot_a);
+    ASSERT_EQ_INT(leap_controller_session_hub_op_peer_at_index(&hub, 1u), slot_b);
+    ASSERT_EQ_INT(leap_controller_session_hub_op_peer_at_index(&hub, 2u), -1);
+}
+
 TEST(test_session_hub_bootstrap_table_skips_foreign_owner)
 {
     LeapControllerSessionHub       hub;
@@ -786,6 +810,7 @@ void leap_run_controller_session_hub_tests(void)
     RUN_TEST(test_session_hub_on_frame_routes_by_mac);
     RUN_TEST(test_session_hub_release_one_keeps_other);
     RUN_TEST(test_session_hub_bootstrap_table_skips_foreign_owner);
+    RUN_TEST(test_session_hub_op_peer_index);
     RUN_TEST(test_session_hub_run_round_robin_two_peers);
     RUN_TEST(test_session_hub_run_parallel_sends_before_recv);
     RUN_TEST(test_session_hub_table_bootstrap_round_robin);
