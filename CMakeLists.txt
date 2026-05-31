@@ -16,6 +16,8 @@ add_library(leap_core STATIC
   src/frame/leap_frame.c
   src/services/mgmt/leap_mgmt_device.c
   src/services/mgmt/leap_mgmt_process.c
+  src/services/pd/leap_pd_device.c
+  src/leap_device_stack.c
 )
 
 target_include_directories(leap_core PUBLIC
@@ -29,6 +31,8 @@ add_executable(leap_tests
   tests/test_frame_vectors.c
   tests/test_mgmt_device.c
   tests/test_mgmt_process.c
+  tests/test_pd_device.c
+  tests/test_device_stack.c
   tests/test_util.c
 )
 
@@ -40,3 +44,6 @@ target_link_libraries(leap_tests PRIVATE leap_core)
 
 enable_testing()
 add_test(NAME leap_tests COMMAND leap_tests)
+
+add_executable(device_minimal examples/device_minimal/main.c)
+target_link_libraries(device_minimal PRIVATE leap_core)

@@ -6,6 +6,6 @@ Reference implementations for controller and device bring-up.
 
 | Example | Description |
 | --- | --- |
+| `device_minimal/` | Simulated MGMT session, OP transition, LEAP-PD write, spoof + tick demo |
 | `controller_minimal/` | Discovery, session open, cyclic EXCHANGE_ENDPOINTS loop |
-| `device_minimal/` | HELLO_REPLY, session/state handling, process-data response |
 | `vector_replay/` | Packet replay utility driven by `LEAP_GOLDEN_FRAME_VECTORS.md` |

@@ -21,6 +21,7 @@
 #define TEST_MGMT_FRAME_BUF_SIZE 256u
 
 static const uint8_t k_mac_a[6] = { 0x02, 0x11, 0x22, 0x33, 0x44, 0x55 };
+static const uint8_t k_mac_b[6] = { 0x02, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE };
 
 static void mgmt_process_setup_ready(LeapMgmtDeviceContext* ctx)
 {
@@ -329,6 +330,73 @@ TEST(test_mgmt_process_tick_reports_lease_expiry_flags)
     ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
 }
 
+TEST(test_mgmt_process_spoof_during_op_forces_safe)
+{
+    LeapOpenSessionRequest open_req;
+    LeapSetStateRequest    set_req;
+    LeapMgmtDeviceContext  ctx;
+    LeapMgmtProcessResult  open_result;
+    LeapMgmtProcessResult  spoof_result;
+    uint8_t                open_frame[TEST_MGMT_FRAME_BUF_SIZE];
+    uint8_t                spoof_frame[TEST_MGMT_FRAME_BUF_SIZE];
+    size_t                 open_frame_length  = 0u;
+    size_t                 spoof_frame_length = 0u;
+    uint32_t               session_id;
+
+    mgmt_process_setup_ready(&ctx);
+
+    memset(&open_req, 0, sizeof(open_req));
+    memcpy(open_req.controller_mac, k_mac_a, 6);
+    open_req.open_flags              = LEAP_OPEN_FLAG_REQUEST_OWNER;
+    open_req.requested_lease_time_us = 1000000u;
+
+    ASSERT_TRUE(
+        mgmt_process_build_frame(
+            open_frame,
+            TEST_MGMT_FRAME_BUF_SIZE,
+            &open_frame_length,
+            LEAP_MGMT_OPEN_SESSION,
+            0u,
+            1u,
+            (const uint8_t*)&open_req,
+            sizeof(open_req)) == 0);
+    ASSERT_EQ_INT(
+        leap_mgmt_process_frame(&ctx, k_mac_a, 0u, open_frame, open_frame_length, &open_result),
+        LEAP_MGMT_PROCESS_OK);
+
+    session_id = ((const LeapOpenSessionReply*)open_result.reply.payload)->assigned_session_id;
+
+    memset(&set_req, 0, sizeof(set_req));
+    set_req.requested_state = (uint16_t)LEAP_STATE_OP;
+    ASSERT_TRUE(
+        mgmt_process_build_frame(
+            spoof_frame,
+            TEST_MGMT_FRAME_BUF_SIZE,
+            &spoof_frame_length,
+            LEAP_MGMT_SET_STATE,
+            session_id,
+            2u,
+            (const uint8_t*)&set_req,
+            sizeof(set_req)) == 0);
+    ASSERT_EQ_INT(
+        leap_mgmt_process_frame(&ctx, k_mac_a, 0u, spoof_frame, spoof_frame_length, &open_result),
+        LEAP_MGMT_PROCESS_OK);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_OP);
+
+    ASSERT_EQ_INT(
+        leap_mgmt_process_frame(
+            &ctx,
+            k_mac_b,
+            0u,
+            spoof_frame,
+            spoof_frame_length,
+            &spoof_result),
+        LEAP_MGMT_PROCESS_HANDLER_ERROR);
+    ASSERT_EQ_U16(spoof_result.error_code, LEAP_STATUS_NOT_OWNER);
+    ASSERT_TRUE((spoof_result.flags & LEAP_MGMT_PROCESS_FLAG_SAFE_STATE_ENTERED) != 0u);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+}
+
 void leap_run_mgmt_process_tests(void)
 {
     printf("mgmt process\n");
@@ -338,4 +406,5 @@ void leap_run_mgmt_process_tests(void)
     RUN_TEST(test_mgmt_process_open_session_sets_side_effect_flags);
     RUN_TEST(test_mgmt_process_vector6_set_state_to_op);
     RUN_TEST(test_mgmt_process_tick_reports_lease_expiry_flags);
+    RUN_TEST(test_mgmt_process_spoof_during_op_forces_safe);
 }

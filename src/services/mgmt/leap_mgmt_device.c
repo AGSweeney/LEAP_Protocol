@@ -69,6 +69,56 @@ static void leap_mgmt_transition_to_safe(LeapMgmtDeviceContext* ctx)
     }
 }
 
+static void leap_mgmt_fill_error(LeapMgmtDeviceReply* reply, LeapStatusCode_u16 code)
+{
+    reply->status         = LEAP_MGMT_DEVICE_HANDLE_ERROR;
+    reply->error_code     = code;
+    reply->message_type   = 0u;
+    reply->payload_length = 0u;
+}
+
+static void leap_mgmt_abort_owner_control(LeapMgmtDeviceContext* ctx)
+{
+    leap_mgmt_clear_owner(ctx);
+    leap_mgmt_transition_to_safe(ctx);
+}
+
+static int leap_mgmt_owner_violation(
+    const LeapMgmtDeviceContext* ctx,
+    uint32_t                     session_id,
+    const uint8_t*               source_mac)
+{
+    if (ctx->owner_active == 0u)
+    {
+        return 0;
+    }
+
+    if (session_id != ctx->owner_session_id)
+    {
+        return 1;
+    }
+
+    if (source_mac != NULL && !leap_mac_equal(source_mac, ctx->owner_mac))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+static LeapMgmtDeviceHandleStatus leap_mgmt_reject_not_owner(
+    LeapMgmtDeviceContext* ctx,
+    LeapMgmtDeviceReply*   reply)
+{
+    if (ctx->device_state == LEAP_STATE_OP)
+    {
+        leap_mgmt_abort_owner_control(ctx);
+    }
+
+    leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
+    return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+}
+
 static uint32_t leap_mgmt_clamp_lease(const LeapMgmtDeviceContext* ctx, uint32_t requested_us)
 {
     uint32_t granted = requested_us;
@@ -144,14 +194,6 @@ static int leap_mgmt_state_transition_allowed(LeapState_u16 current, LeapState_u
     default:
         return 0;
     }
-}
-
-static void leap_mgmt_fill_error(LeapMgmtDeviceReply* reply, LeapStatusCode_u16 code)
-{
-    reply->status      = LEAP_MGMT_DEVICE_HANDLE_ERROR;
-    reply->error_code  = code;
-    reply->message_type = 0u;
-    reply->payload_length = 0u;
 }
 
 static void leap_mgmt_fill_open_session_reply(
@@ -255,6 +297,10 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
             }
             else if (!leap_mgmt_owner_lease_expired(ctx, request->now_us))
             {
+                if (ctx->device_state == LEAP_STATE_OP)
+                {
+                    leap_mgmt_abort_owner_control(ctx);
+                }
                 leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
                 return LEAP_MGMT_DEVICE_HANDLE_ERROR;
             }
@@ -357,14 +403,12 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_heartbeat(
 
     if (ctx->owner_active == 0u || request->session_id != ctx->owner_session_id)
     {
-        leap_mgmt_fill_error(reply, LEAP_STATUS_INVALID_STATE);
-        return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+        return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
     if (request->source_mac == NULL || !leap_mac_equal(request->source_mac, ctx->owner_mac))
     {
-        leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
-        return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+        return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
     leap_mgmt_device_refresh_owner_lease(ctx, request->now_us);
@@ -387,14 +431,12 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_set_state(
 
     if (ctx->owner_active == 0u || request->session_id != ctx->owner_session_id)
     {
-        leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
-        return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+        return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
     if (request->source_mac == NULL || !leap_mac_equal(request->source_mac, ctx->owner_mac))
     {
-        leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
-        return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+        return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
     set_req   = (const LeapSetStateRequest*)request->payload;
@@ -450,14 +492,12 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_owner_release(
 
     if (ctx->owner_active == 0u || request->session_id != ctx->owner_session_id)
     {
-        leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
-        return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+        return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
     if (request->source_mac == NULL || !leap_mac_equal(request->source_mac, ctx->owner_mac))
     {
-        leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
-        return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+        return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
     leap_mgmt_clear_owner(ctx);
@@ -577,15 +617,13 @@ void leap_mgmt_device_tick(LeapMgmtDeviceContext* ctx, uint64_t now_us)
 
     if (leap_mgmt_process_watchdog_expired(ctx, now_us))
     {
-        leap_mgmt_clear_owner(ctx);
-        ctx->device_state = LEAP_STATE_SAFE;
+        leap_mgmt_abort_owner_control(ctx);
         return;
     }
 
     if (leap_mgmt_owner_lease_expired(ctx, now_us))
     {
-        leap_mgmt_clear_owner(ctx);
-        leap_mgmt_transition_to_safe(ctx);
+        leap_mgmt_abort_owner_control(ctx);
     }
 }
 
@@ -609,11 +647,24 @@ LeapMgmtDeviceHandleStatus leap_mgmt_device_handle(
     }
 
     if (request->message_type != LEAP_MGMT_OPEN_SESSION &&
+        request->message_type != LEAP_MGMT_FAULT_RESET &&
         request->session_id != 0u &&
         !leap_mgmt_validate_session(ctx, request->session_id, request->source_mac))
     {
+        if (ctx->device_state == LEAP_STATE_OP &&
+            leap_mgmt_owner_violation(ctx, request->session_id, request->source_mac))
+        {
+            leap_mgmt_abort_owner_control(ctx);
+            leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
+            return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+        }
+
         if (ctx->owner_active != 0u && leap_mgmt_owner_lease_expired(ctx, request->now_us))
         {
+            if (ctx->device_state == LEAP_STATE_OP)
+            {
+                leap_mgmt_abort_owner_control(ctx);
+            }
             leap_mgmt_fill_error(reply, LEAP_STATUS_LEASE_EXPIRED);
         }
         else
@@ -669,6 +720,16 @@ int leap_mgmt_device_session_allows_owner_pd(
     }
 
     return 1;
+}
+
+void leap_mgmt_device_force_safe(LeapMgmtDeviceContext* ctx)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    leap_mgmt_abort_owner_control(ctx);
 }
 
 void leap_mgmt_device_refresh_owner_lease(LeapMgmtDeviceContext* ctx, uint64_t now_us)

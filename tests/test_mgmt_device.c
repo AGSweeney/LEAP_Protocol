@@ -30,11 +30,12 @@ static void mgmt_setup_ready(LeapMgmtDeviceContext* ctx)
     leap_mgmt_device_on_profile_selected(ctx);
 }
 
-static void mgmt_open_owner_session(
+static void mgmt_open_session_with_flags(
     LeapMgmtDeviceContext* ctx,
     const uint8_t*         mac,
     uint64_t               now_us,
     uint32_t               lease_us,
+    uint16_t               open_flags,
     uint32_t*              session_id_out)
 {
     LeapOpenSessionRequest open_req;
@@ -43,8 +44,8 @@ static void mgmt_open_owner_session(
 
     memset(&open_req, 0, sizeof(open_req));
     memcpy(open_req.controller_mac, mac, 6);
-    open_req.open_flags              = LEAP_OPEN_FLAG_REQUEST_OWNER;
-    open_req.requested_lease_time_us = lease_us;
+    open_req.open_flags                 = open_flags;
+    open_req.requested_lease_time_us    = lease_us;
     open_req.requested_watchdog_time_us = 200000u;
 
     memset(&request, 0, sizeof(request));
@@ -61,6 +62,22 @@ static void mgmt_open_owner_session(
     ASSERT_EQ_U16(reply.message_type, LEAP_MGMT_OPEN_SESSION_REPLY);
 
     *session_id_out = ((const LeapOpenSessionReply*)reply.payload)->assigned_session_id;
+}
+
+static void mgmt_open_owner_session(
+    LeapMgmtDeviceContext* ctx,
+    const uint8_t*         mac,
+    uint64_t               now_us,
+    uint32_t               lease_us,
+    uint32_t*              session_id_out)
+{
+    mgmt_open_session_with_flags(
+        ctx,
+        mac,
+        now_us,
+        lease_us,
+        LEAP_OPEN_FLAG_REQUEST_OWNER,
+        session_id_out);
 }
 
 static void mgmt_set_state(
@@ -283,6 +300,157 @@ TEST(test_mgmt_fault_reset_returns_to_init)
     ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_INIT);
 }
 
+TEST(test_mgmt_watchdog_expiry_forces_safe)
+{
+    LeapMgmtDeviceContext ctx;
+    uint32_t              session_id;
+
+    mgmt_setup_ready(&ctx);
+    mgmt_open_owner_session(&ctx, k_mac_a, 0u, 1000000u, &session_id);
+    mgmt_set_state(&ctx, k_mac_a, session_id, LEAP_STATE_OP, 0u);
+
+    leap_mgmt_device_tick(&ctx, 250000u);
+
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+    ASSERT_TRUE(!leap_mgmt_device_session_allows_owner_pd(&ctx, session_id, k_mac_a));
+}
+
+TEST(test_mgmt_steal_expired_grants_new_owner)
+{
+    LeapMgmtDeviceContext ctx;
+    uint32_t              session_a;
+    uint32_t              session_b;
+
+    mgmt_setup_ready(&ctx);
+    mgmt_open_owner_session(&ctx, k_mac_a, 0u, 100000u, &session_a);
+    mgmt_set_state(&ctx, k_mac_a, session_a, LEAP_STATE_OP, 0u);
+
+    mgmt_open_session_with_flags(
+        &ctx,
+        k_mac_b,
+        150000u,
+        1000000u,
+        (uint16_t)(LEAP_OPEN_FLAG_REQUEST_OWNER | LEAP_OPEN_FLAG_STEAL_EXPIRED),
+        &session_b);
+
+    ASSERT_TRUE(session_b != session_a);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+    ASSERT_TRUE(!leap_mgmt_device_session_allows_owner_pd(&ctx, session_a, k_mac_a));
+}
+
+TEST(test_mgmt_observer_session_and_timeout)
+{
+    LeapMgmtDeviceContext ctx;
+    uint32_t              observer_session;
+
+    mgmt_setup_ready(&ctx);
+    mgmt_open_session_with_flags(
+        &ctx,
+        k_mac_b,
+        0u,
+        100000u,
+        LEAP_OPEN_FLAG_OBSERVER_ONLY,
+        &observer_session);
+
+    ASSERT_TRUE(observer_session != 0u);
+    ASSERT_TRUE(!leap_mgmt_device_session_allows_owner_pd(&ctx, observer_session, k_mac_b));
+
+    leap_mgmt_device_tick(&ctx, 150000u);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_CONFIGURED);
+}
+
+TEST(test_mgmt_session_id_rollover)
+{
+    LeapMgmtDeviceContext ctx;
+    LeapOwnerReleaseRequest release;
+    LeapMgmtDeviceRequest   request;
+    LeapMgmtDeviceReply     reply;
+    uint32_t                session_first;
+    uint32_t                session_second;
+
+    mgmt_setup_ready(&ctx);
+    ctx.next_session_id = 0xFFFFFFFFu;
+
+    mgmt_open_owner_session(&ctx, k_mac_a, 0u, 1000000u, &session_first);
+    ASSERT_EQ_U32(session_first, 0xFFFFFFFFu);
+
+    memset(&release, 0, sizeof(release));
+    memset(&request, 0, sizeof(request));
+    request.source_mac     = k_mac_a;
+    request.session_id     = session_first;
+    request.message_type   = LEAP_MGMT_OWNER_RELEASE;
+    request.payload        = (const uint8_t*)&release;
+    request.payload_length = sizeof(release);
+    request.now_us         = 0u;
+    ASSERT_EQ_INT(
+        leap_mgmt_device_handle(&ctx, &request, &reply),
+        LEAP_MGMT_DEVICE_HANDLE_NO_REPLY);
+
+    mgmt_open_owner_session(&ctx, k_mac_a, 0u, 1000000u, &session_second);
+    ASSERT_EQ_U32(session_second, 1u);
+}
+
+TEST(test_mgmt_spoof_mac_during_op_forces_safe)
+{
+    LeapMgmtDeviceContext ctx;
+    LeapSetStateRequest   set_req;
+    LeapMgmtDeviceRequest request;
+    LeapMgmtDeviceReply   reply;
+    uint32_t              session_id;
+
+    mgmt_setup_ready(&ctx);
+    mgmt_open_owner_session(&ctx, k_mac_a, 0u, 1000000u, &session_id);
+    mgmt_set_state(&ctx, k_mac_a, session_id, LEAP_STATE_OP, 0u);
+
+    memset(&set_req, 0, sizeof(set_req));
+    set_req.requested_state = (uint16_t)LEAP_STATE_OP;
+
+    memset(&request, 0, sizeof(request));
+    request.source_mac     = k_mac_b;
+    request.session_id     = session_id;
+    request.message_type   = LEAP_MGMT_SET_STATE;
+    request.payload        = (const uint8_t*)&set_req;
+    request.payload_length = sizeof(set_req);
+    request.now_us         = 0u;
+
+    ASSERT_EQ_INT(
+        leap_mgmt_device_handle(&ctx, &request, &reply),
+        LEAP_MGMT_DEVICE_HANDLE_ERROR);
+    ASSERT_EQ_U16(reply.error_code, LEAP_STATUS_NOT_OWNER);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+    ASSERT_TRUE(!leap_mgmt_device_session_allows_owner_pd(&ctx, session_id, k_mac_a));
+}
+
+TEST(test_mgmt_wrong_session_during_op_forces_safe)
+{
+    LeapMgmtDeviceContext ctx;
+    LeapSetStateRequest   set_req;
+    LeapMgmtDeviceRequest request;
+    LeapMgmtDeviceReply   reply;
+    uint32_t              session_id;
+
+    mgmt_setup_ready(&ctx);
+    mgmt_open_owner_session(&ctx, k_mac_a, 0u, 1000000u, &session_id);
+    mgmt_set_state(&ctx, k_mac_a, session_id, LEAP_STATE_OP, 0u);
+
+    memset(&set_req, 0, sizeof(set_req));
+    set_req.requested_state = (uint16_t)LEAP_STATE_OP;
+
+    memset(&request, 0, sizeof(request));
+    request.source_mac     = k_mac_a;
+    request.session_id     = session_id + 1u;
+    request.message_type   = LEAP_MGMT_SET_STATE;
+    request.payload        = (const uint8_t*)&set_req;
+    request.payload_length = sizeof(set_req);
+    request.now_us         = 0u;
+
+    ASSERT_EQ_INT(
+        leap_mgmt_device_handle(&ctx, &request, &reply),
+        LEAP_MGMT_DEVICE_HANDLE_ERROR);
+    ASSERT_EQ_U16(reply.error_code, LEAP_STATUS_NOT_OWNER);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+}
+
 void leap_run_mgmt_device_tests(void)
 {
     printf("mgmt device\n");
@@ -295,4 +463,10 @@ void leap_run_mgmt_device_tests(void)
     RUN_TEST(test_mgmt_rejects_second_owner_while_lease_active);
     RUN_TEST(test_mgmt_reboot_recovery_drops_op_to_configured);
     RUN_TEST(test_mgmt_fault_reset_returns_to_init);
+    RUN_TEST(test_mgmt_watchdog_expiry_forces_safe);
+    RUN_TEST(test_mgmt_steal_expired_grants_new_owner);
+    RUN_TEST(test_mgmt_observer_session_and_timeout);
+    RUN_TEST(test_mgmt_session_id_rollover);
+    RUN_TEST(test_mgmt_spoof_mac_during_op_forces_safe);
+    RUN_TEST(test_mgmt_wrong_session_during_op_forces_safe);
 }

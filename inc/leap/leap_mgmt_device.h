@@ -3,6 +3,18 @@
  *
  * Device-side LEAP-MGMT session, ownership, and state machine logic.
  *
+ * State machine (device-side):
+ *
+ *   BOOT --transport ready--> INIT --profile selected--> CONFIGURED
+ *   CONFIGURED --owner OPEN_SESSION--> SAFE --SET_STATE--> OP
+ *   OP --owner release / lease expiry / watchdog expiry / owner violation--> SAFE
+ *   OP --heartbeat loss / comms loss (tick)--> SAFE
+ *   any --fault--> FAULT --FAULT_RESET--> INIT
+ *
+ * Lease refresh: HEARTBEAT or accepted LEAP-PD traffic extends the owner lease.
+ * Process watchdog: armed on SET_STATE->OP; refreshed by accepted LEAP-PD in OP.
+ * While in OP, wrong owner MAC or session on command frames forces SAFE immediately.
+ *
  * Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
  * SPDX-License-Identifier: MIT
  */
@@ -98,6 +110,12 @@ int leap_mgmt_device_session_allows_owner_pd(
 
 void leap_mgmt_device_refresh_owner_lease(LeapMgmtDeviceContext* ctx, uint64_t now_us);
 void leap_mgmt_device_refresh_process_watchdog(LeapMgmtDeviceContext* ctx, uint64_t now_us);
+
+/*
+ * Clear owner state and transition OP -> SAFE. Used on owner violations while
+ * outputs may be active and on lease/watchdog expiry paths.
+ */
+void leap_mgmt_device_force_safe(LeapMgmtDeviceContext* ctx);
 
 LeapState_u16 leap_mgmt_device_get_state(const LeapMgmtDeviceContext* ctx);
 
