@@ -16,6 +16,7 @@
 #include "leap_win_common.h"
 
 #include "leap/leap_controller_stack.h"
+#include "leap/leap_log.h"
 #include "leap/leap_protocol.h"
 
 #include <stdio.h>
@@ -91,6 +92,7 @@ int main(int argc, char** argv)
     return 1;
 #else
     leap_win_l2_unbuffer_stdout();
+    leap_log_reset_origin();
     leap_win_controller_parse_args(argc, argv, &options);
 
     if (options.list_adapters != 0)
@@ -142,55 +144,55 @@ int main(int argc, char** argv)
 
     adapter_label = (options.adapter != NULL) ? options.adapter : transport.device_name;
 
-    printf("LEAP controller on %s", adapter_label);
+    leap_log_printf("LEAP controller on %s", adapter_label);
     if (options.lease_demo != 0)
     {
-        printf(" (lease-demo)");
+        leap_log_printf(" (lease-demo)");
     }
     else if (options.cyclic != 0)
     {
-        printf(" (cyclic %u ms", options.cyclic_period_ms);
+        leap_log_printf(" (cyclic %u ms", options.cyclic_period_ms);
         if (options.exchange != 0)
         {
-            printf(", exchange");
+            leap_log_printf(", exchange");
         }
-        printf(")");
+        leap_log_printf(")");
     }
     else if (options.diag != 0)
     {
-        printf(" (diag)");
+        leap_log_printf(" (diag)");
     }
     if (options.promiscuous != 0)
     {
-        printf(" [promisc]");
+        leap_log_printf(" [promisc]");
     }
-    printf("\n");
-    leap_win_print_mac("  local MAC: ", transport.local_mac);
+    leap_log_printf("\n");
+    leap_log_printf("  local MAC: ");
+    leap_win_print_mac(NULL, transport.local_mac);
 
     if (leap_controller_stack_bootstrap(&stack, &stack_io, peer_mac) !=
         LEAP_CTRL_STACK_OK)
     {
-        fprintf(stderr, "bootstrap failed (phase=%u)\n",
-                (unsigned)leap_controller_stack_get_phase(&stack));
+        leap_log_eprintf(
+            "bootstrap failed (phase=%u)\n",
+            (unsigned)leap_controller_stack_get_phase(&stack));
         if (leap_controller_stack_get_phase(&stack) ==
             LEAP_CTRL_STACK_SELECT_PROFILE)
         {
-            fprintf(
-                stderr,
+            leap_log_eprintf(
                 "hint: device may be in SAFE/OP from a prior session; "
                 "rebuild controller or power-cycle ClearCore\n");
         }
         leap_win_print_transport_stats(&transport);
-        fprintf(
-            stderr,
+        leap_log_eprintf(
             "hint: disable IPv4/IPv6 on bench NIC; leave Npcap enabled only\n");
         leap_raw_winpcap_close(&transport);
         return 1;
     }
 
-    printf("bootstrap complete - peer ");
+    leap_log_printf("bootstrap complete - peer ");
     leap_win_print_mac(NULL, peer_mac);
-    printf("  session_id: 0x%08X  state: OP\n",
+    leap_log_printf("  session_id: 0x%08X  state: OP\n",
            leap_mgmt_controller_session_id(&stack.mgmt));
 
     if (options.lease_demo == 0)
@@ -217,7 +219,7 @@ int main(int argc, char** argv)
                 return 1;
             }
 
-            printf("sent PD WRITE (outputs=0x0015)\n");
+            leap_log_printf("sent PD WRITE (outputs=0x0015)\n");
         }
 
         if (options.diag != 0)
@@ -228,8 +230,7 @@ int main(int argc, char** argv)
                 &stack, &stack_io, &diag_result);
             if (diag_status != LEAP_CTRL_STACK_DIAG_OK)
             {
-                fprintf(
-                    stderr,
+                leap_log_eprintf(
                     "DIAG read failed (status=%d)\n",
                     (int)diag_status);
                 controller_shutdown(&stack, &stack_io, &transport);
@@ -242,11 +243,11 @@ int main(int argc, char** argv)
 
     if (options.lease_demo != 0)
     {
-        printf(
+        leap_log_printf(
             "lease-demo: idling %u s without heartbeat or PD...\n",
             LEAP_LEASE_DEMO_IDLE_S);
         Sleep(LEAP_LEASE_DEMO_IDLE_S * 1000u);
-        printf("lease-demo complete - device should show safe outputs\n");
+        leap_log_printf("lease-demo complete - device should show safe outputs\n");
         controller_shutdown(&stack, &stack_io, &transport);
         return 0;
     }

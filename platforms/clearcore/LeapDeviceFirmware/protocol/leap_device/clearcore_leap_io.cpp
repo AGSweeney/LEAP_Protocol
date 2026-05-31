@@ -162,14 +162,23 @@ extern "C" void clearcore_leap_io_apply_outputs(ClearcoreLeapIoShadow *io, uint1
             ((outputs >> bit) & 1U) != 0U ? 1 : 0);
     }
 
-    char line[64];
-    (void)snprintf(
-        line,
-        sizeof(line),
-        "LEAP I/O: outputs=0x%04X inputs=0x%04X",
-        io->digital_outputs,
-        io->digital_inputs);
-    clearcore_leap_trace_queue(line);
+    {
+        static uint16_t last_logged_outputs = 0xFFFFU;
+
+        if (outputs != last_logged_outputs)
+        {
+            char line[64];
+
+            last_logged_outputs = outputs;
+            (void)snprintf(
+                line,
+                sizeof(line),
+                "LEAP I/O: outputs=0x%04X inputs=0x%04X",
+                io->digital_outputs,
+                io->digital_inputs);
+            clearcore_leap_trace_queue(line);
+        }
+    }
 }
 
 extern "C" void clearcore_leap_io_enter_safe(ClearcoreLeapIoShadow *io)

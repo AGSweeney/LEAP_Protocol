@@ -194,6 +194,14 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{65BCFA31-A6BB-355E-AEF3-2027ED686D23}</Project>
       <Name>leap_win_device</Name>
     </ProjectReference>
+    <ProjectReference Include="D:\LEAP_Protocol\build-win\leap_win_discover.vcxproj">
+      <Project>{92C4930C-B6F6-3CFF-8AF0-C7A7DD16E447}</Project>
+      <Name>leap_win_discover</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\LEAP_Protocol\build-win\leap_win_hub.vcxproj">
+      <Project>{5D6BD043-99BD-341A-BE54-FF0145D2CD9C}</Project>
+      <Name>leap_win_hub</Name>
+    </ProjectReference>
     <ProjectReference Include="D:\LEAP_Protocol\build-win\leap_win_smoke.vcxproj">
       <Project>{BB12DE3E-439A-3990-BDF5-5B8E9AEABE15}</Project>
       <Name>leap_win_smoke</Name>

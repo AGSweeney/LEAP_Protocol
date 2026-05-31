@@ -8,8 +8,35 @@
 #include "leap/leap_device_stack.h"
 
 #include "leap/leap_disc_device.h"
+#include "leap/leap_mgmt_process.h"
 
 #include <string.h>
+
+static void leap_device_stack_on_mgmt_success(
+    LeapDeviceStack*             stack,
+    const LeapMgmtProcessResult* mgmt_result)
+{
+    if (stack == NULL || mgmt_result == NULL)
+    {
+        return;
+    }
+
+    if ((mgmt_result->flags & LEAP_MGMT_PROCESS_FLAG_OWNERSHIP_CHANGED) != 0u)
+    {
+        leap_pd_device_sync_profile_from_dir(&stack->pd, &stack->dir);
+        leap_pd_device_reset_sequence(
+            &stack->pd,
+            stack->mgmt.owner_session_id);
+    }
+
+    if ((mgmt_result->flags & LEAP_MGMT_PROCESS_FLAG_STATE_CHANGED) != 0u &&
+        stack->mgmt.device_state == LEAP_STATE_OP)
+    {
+        leap_pd_device_reset_sequence(
+            &stack->pd,
+            stack->mgmt.owner_session_id);
+    }
+}
 
 void leap_device_stack_init(LeapDeviceStack* stack, const LeapMgmtDeviceConfig* config)
 {
@@ -149,13 +176,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
                 mgmt_result.device_state,
                 now_us);
             leap_diag_device_on_frame_accepted(&stack->diag);
-            if (mgmt_result.reply.message_type == LEAP_MGMT_OPEN_SESSION_REPLY &&
-                mgmt_result.handle_status == LEAP_MGMT_DEVICE_HANDLE_OK)
-            {
-                leap_pd_device_reset_sequence(
-                    &stack->pd,
-                    stack->mgmt.owner_session_id);
-            }
+            leap_device_stack_on_mgmt_success(stack, &mgmt_result);
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
         }

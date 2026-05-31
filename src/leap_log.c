@@ -7,6 +7,20 @@
 
 #include "leap/leap_log.h"
 
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#if defined(_WIN32)
+#include "leap/leap_win_time.h"
+#elif defined(__linux__)
+#include "leap/leap_raw_linux.h"
+#endif
+
+static LeapLogMonotonicUsFn g_log_monotonic_us_fn = NULL;
+static uint64_t             g_log_origin_us       = 0u;
+static int                  g_log_origin_valid    = 0;
+
 const char* leap_log_security_event_name(LeapLogSecurityEvent event)
 {
     switch (event)
@@ -26,4 +40,112 @@ const char* leap_log_security_event_name(LeapLogSecurityEvent event)
     default:
         return "unknown";
     }
+}
+
+void leap_log_reset_origin(void)
+{
+    g_log_origin_us    = leap_log_monotonic_us();
+    g_log_origin_valid = (g_log_origin_us != 0u) ? 1 : 0;
+}
+
+void leap_log_set_monotonic_us_fn(LeapLogMonotonicUsFn fn)
+{
+    g_log_monotonic_us_fn = fn;
+}
+
+uint64_t leap_log_monotonic_us(void)
+{
+    if (g_log_monotonic_us_fn != NULL)
+    {
+        return g_log_monotonic_us_fn();
+    }
+
+#if defined(_WIN32)
+    return leap_win_monotonic_us();
+#elif defined(__linux__)
+    return leap_raw_linux_monotonic_us();
+#else
+    return 0u;
+#endif
+}
+
+int leap_log_format_timestamp(char* buf, size_t buf_len)
+{
+    uint64_t now_us;
+    uint64_t delta_us;
+    unsigned sec;
+    unsigned ms;
+
+    if (buf == NULL || buf_len == 0u)
+    {
+        return 0;
+    }
+
+    if (g_log_origin_valid == 0)
+    {
+        leap_log_reset_origin();
+    }
+
+    now_us = leap_log_monotonic_us();
+    if (now_us == 0u || g_log_origin_valid == 0)
+    {
+        return snprintf(buf, buf_len, "[       n/a] ");
+    }
+
+    if (now_us >= g_log_origin_us)
+    {
+        delta_us = now_us - g_log_origin_us;
+    }
+    else
+    {
+        delta_us = 0u;
+    }
+
+    sec = (unsigned)(delta_us / 1000000u);
+    ms  = (unsigned)((delta_us / 1000u) % 1000u);
+    return snprintf(buf, buf_len, "[+%7u.%03us] ", sec, ms);
+}
+
+void leap_log_vfprintf(FILE* stream, const char* fmt, va_list args)
+{
+    char ts[24];
+
+    if (stream == NULL)
+    {
+        return;
+    }
+
+    (void)leap_log_format_timestamp(ts, sizeof(ts));
+    fputs(ts, stream);
+    if (fmt != NULL)
+    {
+        vfprintf(stream, fmt, args);
+    }
+}
+
+void leap_log_fprintf(FILE* stream, const char* fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    leap_log_vfprintf(stream, fmt, args);
+    va_end(args);
+}
+
+void leap_log_printf(const char* fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    leap_log_vfprintf(stdout, fmt, args);
+    va_end(args);
+}
+
+void leap_log_eprintf(const char* fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    leap_log_vfprintf(stderr, fmt, args);
+    va_end(args);
 }

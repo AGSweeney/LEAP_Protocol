@@ -20,3 +20,4 @@ D:\LEAP_Protocol\src\services\diag\leap_diag_device.c;D:\LEAP_Protocol\build-win
 D:\LEAP_Protocol\src\services\diag\leap_diag_controller.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_diag_controller.obj
 D:\LEAP_Protocol\src\transport\leap_raw_winpcap.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_raw_winpcap.obj
 D:\LEAP_Protocol\src\transport\leap_raw_linux.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_raw_linux.obj
+D:\LEAP_Protocol\src\platform\leap_win_time.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_win_time.obj

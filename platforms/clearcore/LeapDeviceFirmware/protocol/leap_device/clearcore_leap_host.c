@@ -296,6 +296,52 @@ static void clearcore_leap_apply_result(const LeapDeviceStackResult *result)
 
 
 
+static void clearcore_leap_log_status(
+    LeapDeviceStackStatus        status,
+    const LeapDeviceStackResult* result)
+{
+    char line[96];
+
+    switch (status)
+    {
+    case LEAP_DEVICE_STACK_FRAME_ERROR:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: frame error parse=%d",
+            (int)result->frame_error);
+        clearcore_leap_trace_queue(line);
+        break;
+    case LEAP_DEVICE_STACK_PD_REJECTED:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: PD rejected msg=0x%04X status=0x%04X",
+            result->frame.header.message_type,
+            result->error_code);
+        clearcore_leap_trace_queue(line);
+        break;
+    case LEAP_DEVICE_STACK_UNSUPPORTED_SERVICE:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: unsupported service=0x%04X",
+            (unsigned)result->service_id);
+        clearcore_leap_trace_queue(line);
+        break;
+    default:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: stack status=%d svc=0x%04X msg=0x%04X",
+            (int)status,
+            (unsigned)result->service_id,
+            result->frame.header.message_type);
+        clearcore_leap_trace_queue(line);
+        break;
+    }
+}
+
 static void clearcore_leap_handle_result(
 
     struct netif *               netif,
@@ -394,8 +440,8 @@ static void clearcore_leap_handle_result(
 
         }
 
-        else if ((result->flags & LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY) != 0u ||
-                 result->pd_reply_payload_length > 0u)
+        if ((result->flags & LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY) != 0u ||
+            result->pd_reply_payload_length > 0u)
 
         {
 
@@ -429,25 +475,11 @@ static void clearcore_leap_handle_result(
 
     }
 
-    else if (status == LEAP_DEVICE_STACK_PD_REJECTED)
+    else
 
     {
 
-        char line[64];
-
-        (void)snprintf(
-
-            line,
-
-            sizeof(line),
-
-            "LEAP: PD rejected msg=0x%04X status=0x%04X",
-
-            result->frame.header.message_type,
-
-            result->error_code);
-
-        clearcore_leap_trace_queue(line);
+        clearcore_leap_log_status(status, result);
 
     }
 

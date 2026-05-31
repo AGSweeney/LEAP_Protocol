@@ -40,7 +40,8 @@ add_library(leap_core STATIC
 if(WIN32)
   target_sources(leap_core PRIVATE src/transport/leap_raw_winpcap.c)
   target_sources(leap_core PRIVATE src/transport/leap_raw_linux.c)
-  target_link_libraries(leap_core PUBLIC iphlpapi ws2_32)
+  target_sources(leap_core PRIVATE src/platform/leap_win_time.c)
+  target_link_libraries(leap_core PUBLIC iphlpapi ws2_32 winmm)
 else()
   target_sources(leap_core PRIVATE src/transport/leap_raw_linux.c)
 endif()
@@ -76,6 +77,8 @@ add_executable(leap_tests
   tests/test_device_stack.c
   tests/test_comms_loss.c
   tests/test_raw_linux_stats.c
+  tests/test_win_time.c
+  tests/test_log.c
   tests/test_util.c
   tests/leap_test_frame.c
 )
@@ -161,6 +164,16 @@ if(WIN32 AND LEAP_BUILD_WIN_L2)
     examples/win_l2/leap_win_device_io.c
     examples/win_smoke/leap_win_io.c
   )
+  add_executable(leap_win_discover
+    examples/win_l2/discover_main.c
+    examples/win_l2/leap_win_common.c
+    examples/win_smoke/leap_win_io.c
+  )
+  add_executable(leap_win_hub
+    examples/win_l2/hub_main.c
+    examples/win_l2/leap_win_common.c
+    examples/win_smoke/leap_win_io.c
+  )
   target_include_directories(leap_win_controller PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
@@ -169,10 +182,22 @@ if(WIN32 AND LEAP_BUILD_WIN_L2)
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
   )
+  target_include_directories(leap_win_discover PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
+  )
+  target_include_directories(leap_win_hub PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
+  )
   target_link_libraries(leap_win_controller PRIVATE leap_core ws2_32)
   target_link_libraries(leap_win_device PRIVATE leap_core ws2_32)
+  target_link_libraries(leap_win_discover PRIVATE leap_core ws2_32)
+  target_link_libraries(leap_win_hub PRIVATE leap_core ws2_32)
   if(MSVC)
     target_compile_options(leap_win_controller PRIVATE /utf-8)
     target_compile_options(leap_win_device PRIVATE /utf-8)
+    target_compile_options(leap_win_discover PRIVATE /utf-8)
+    target_compile_options(leap_win_hub PRIVATE /utf-8)
   endif()
 endif()

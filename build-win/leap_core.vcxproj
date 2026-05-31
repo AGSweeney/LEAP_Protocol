@@ -302,6 +302,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="D:\LEAP_Protocol\src\services\diag\leap_diag_controller.c" />
     <ClCompile Include="D:\LEAP_Protocol\src\transport\leap_raw_winpcap.c" />
     <ClCompile Include="D:\LEAP_Protocol\src\transport\leap_raw_linux.c" />
+    <ClCompile Include="D:\LEAP_Protocol\src\platform\leap_win_time.c" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

@@ -20,6 +20,7 @@
 
 #include "leap/leap_controller_peer.h"
 #include "leap/leap_controller_session_hub.h"
+#include "leap/leap_log.h"
 #include "leap/leap_mgmt_controller.h"
 #include "leap/leap_protocol.h"
 
@@ -28,13 +29,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LEAP_HUB_DEFAULT_SCAN_MS   3000
+#define LEAP_HUB_DEFAULT_SCAN_MS   LEAP_CTRL_PEER_DISCOVER_DEFAULT_SCAN_MS
 #define LEAP_HUB_DEFAULT_CYCLIC_MS 100u
 
 typedef struct LeapLinuxHubOptions
 {
     const char* ifname;
     int         scan_ms;
+    unsigned    min_peers;
     unsigned    cyclic_period_ms;
     int         exchange;
     int         promiscuous;
@@ -59,6 +61,7 @@ static void hub_parse_args(int argc, char** argv, LeapLinuxHubOptions* options)
 
     options->ifname           = "lo";
     options->scan_ms          = LEAP_HUB_DEFAULT_SCAN_MS;
+    options->min_peers        = 1u;
     options->cyclic_period_ms = LEAP_HUB_DEFAULT_CYCLIC_MS;
     options->exchange         = 0;
     options->promiscuous      = 1;
@@ -71,9 +74,17 @@ static void hub_parse_args(int argc, char** argv, LeapLinuxHubOptions* options)
             {
                 i++;
                 options->scan_ms = atoi(argv[i]);
-                if (options->scan_ms <= 0)
+            }
+        }
+        else if (strcmp(argv[i], "--min-peers") == 0)
+        {
+            if (i + 1 < argc && argv[i + 1][0] != '-')
+            {
+                i++;
+                options->min_peers = (unsigned)strtoul(argv[i], NULL, 10);
+                if (options->min_peers == 0u)
                 {
-                    options->scan_ms = LEAP_HUB_DEFAULT_SCAN_MS;
+                    options->min_peers = 1u;
                 }
             }
         }
@@ -125,6 +136,7 @@ int main(int argc, char** argv)
     return 1;
 #else
     hub_parse_args(argc, argv, &options);
+    leap_log_reset_origin();
 
     memset(&open_options, 0, sizeof(open_options));
     open_options.promiscuous     = options.promiscuous;
@@ -144,19 +156,28 @@ int main(int argc, char** argv)
     leap_linux_controller_io_init(&stack_io, &transport);
 
     printf(
-        "LEAP session hub on %s (scan %d ms, cyclic %u ms%s)\n",
+        "LEAP session hub on %s (scan %d ms, min-peers %u, cyclic %u ms%s)\n",
         options.ifname,
         options.scan_ms,
+        options.min_peers,
         options.cyclic_period_ms,
         options.exchange != 0 ? ", exchange" : "");
     leap_linux_print_mac("  local MAC: ", transport.local_mac);
 
-    if (leap_controller_peer_table_discover(
-            &table, &stack_io, options.scan_ms) != LEAP_CTRL_PEER_OK)
     {
-        fprintf(stderr, "discovery failed\n");
-        leap_raw_linux_close(&transport);
-        return 1;
+        LeapControllerPeerDiscoverConfig disc_config;
+
+        memset(&disc_config, 0, sizeof(disc_config));
+        disc_config.scan_duration_ms = options.scan_ms;
+        disc_config.min_peers        = options.min_peers;
+
+        if (leap_controller_peer_table_discover_ex(
+                &table, &stack_io, &disc_config) != LEAP_CTRL_PEER_OK)
+        {
+            fprintf(stderr, "discovery failed\n");
+            leap_raw_linux_close(&transport);
+            return 1;
+        }
     }
 
     printf("discovered %u peer(s)\n", table.count);
@@ -190,7 +211,8 @@ int main(int argc, char** argv)
     hub_config.default_peer.pd.cycle_period_ms = options.cyclic_period_ms;
     hub_config.default_peer.pd.use_exchange    = options.exchange;
     hub_config.default_peer.pd.heartbeat_every_n_cycles = 10u;
-    hub_config.skip_foreign_owned_peers        = 1;
+    hub_config.default_peer.recv_timeout_ms             = LEAP_CTRL_HUB_BOOTSTRAP_RECV_MS;
+    hub_config.skip_foreign_owned_peers                 = 1;
     leap_controller_session_hub_init(&hub, &hub_config);
 
     pd_transport.sock = &transport;

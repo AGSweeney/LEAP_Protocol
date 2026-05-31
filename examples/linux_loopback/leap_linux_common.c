@@ -9,6 +9,7 @@
 
 #include "leap/leap_controller_peer.h"
 #include "leap/leap_frame.h"
+#include "leap/leap_log.h"
 #include "leap/leap_protocol.h"
 
 #include <errno.h>
@@ -51,7 +52,7 @@ int leap_linux_link_stop_on_down(
 
     if (changed != 0)
     {
-        printf(
+        leap_log_printf(
             "transport: link %s (iface_up=%d carrier_up=%d transitions=%llu)\n",
             state.link_up != 0 ? "UP" : "DOWN",
             state.interface_up,
@@ -63,7 +64,7 @@ int leap_linux_link_stop_on_down(
     {
         if (*stop_flag == 0)
         {
-            printf("transport: link down — stopping PD\n");
+            leap_log_printf("transport: link down - stopping PD\n");
             *stop_flag = 1;
         }
         return 1;
@@ -90,8 +91,8 @@ LeapPdControllerStatus leap_linux_controller_run_cyclic_pd_with_link_watch(
         return LEAP_PD_CTRL_INVALID_ARG;
     }
 
-    printf(
-        "cyclic PD (%u ms%s) — Ctrl+C or link-down to stop\n",
+    leap_log_printf(
+        "cyclic PD (%u ms%s) - Ctrl+C or link-down to stop\n",
         stack->pd.config.cycle_period_ms,
         stack->pd.config.use_exchange != 0 ? ", exchange" : "");
 
@@ -120,7 +121,7 @@ LeapPdControllerStatus leap_linux_controller_run_cyclic_pd_with_link_watch(
         }
     }
 
-    printf("cyclic PD stopped\n");
+    leap_log_printf("cyclic PD stopped\n");
     leap_pd_controller_log_stats(&stack->pd);
     return LEAP_PD_CTRL_OK;
 }
@@ -145,7 +146,7 @@ LeapPdControllerStatus leap_linux_hub_run_round_robin_with_link_watch(
         return LEAP_PD_CTRL_INVALID_ARG;
     }
 
-    printf("hub round-robin PD — Ctrl+C or link-down to stop\n");
+    leap_log_printf("hub round-robin PD - Ctrl+C or link-down to stop\n");
 
     while (*stop_flag == 0)
     {

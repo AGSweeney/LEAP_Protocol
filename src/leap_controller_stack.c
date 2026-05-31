@@ -10,6 +10,7 @@
 #include "leap/leap_controller_sequence.h"
 #include "leap/leap_diag_controller.h"
 #include "leap/leap_disc_controller.h"
+#include "leap/leap_pd_common.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +22,8 @@
 #define LEAP_CTRL_STACK_PAYLOAD_BUF          256u
 
 static const uint8_t k_bcast[6] = LEAP_CTRL_STACK_BROADCAST_MAC;
+
+static uint64_t leap_ctrl_stack_now_us(const LeapControllerStackIo* io);
 
 static void leap_ctrl_stack_clear_event(LeapControllerStackEvent* event)
 {
@@ -136,6 +139,77 @@ static int leap_ctrl_stack_peer_matches(
     }
 
     return (memcmp(stack->peer_mac, src_mac, 6) == 0) ? 1 : 0;
+}
+
+static LeapControllerStackStatus leap_ctrl_stack_recv_from_peer(
+    LeapControllerStack*         stack,
+    const LeapControllerStackIo* io,
+    int                          timeout_ms,
+    uint8_t*                     src_mac,
+    LeapFrameView*               view,
+    uint8_t*                     rx_buf,
+    size_t                       rx_capacity,
+    size_t*                      rx_length)
+{
+    uint64_t deadline_us = 0u;
+    uint64_t start_us;
+
+    if (stack == NULL || io == NULL)
+    {
+        return LEAP_CTRL_STACK_INVALID_ARG;
+    }
+
+    start_us = leap_ctrl_stack_now_us(io);
+    if (start_us != 0u && timeout_ms > 0)
+    {
+        deadline_us = start_us + ((uint64_t)timeout_ms * 1000u);
+    }
+
+    for (;;)
+    {
+        int                       slice_ms = timeout_ms;
+        LeapControllerStackStatus status;
+
+        if (deadline_us != 0u)
+        {
+            uint64_t now_us = leap_ctrl_stack_now_us(io);
+
+            if (now_us >= deadline_us)
+            {
+                return LEAP_CTRL_STACK_RECV_TIMEOUT;
+            }
+
+            slice_ms = (int)((deadline_us - now_us) / 1000u);
+            if (slice_ms <= 0)
+            {
+                slice_ms = 1;
+            }
+            if (slice_ms > 100)
+            {
+                slice_ms = 100;
+            }
+        }
+
+        status = leap_ctrl_stack_recv(
+            io,
+            slice_ms,
+            src_mac,
+            view,
+            rx_buf,
+            rx_capacity,
+            rx_length);
+        if (status != LEAP_CTRL_STACK_OK)
+        {
+            return status;
+        }
+
+        if (leap_ctrl_stack_peer_matches(stack, src_mac) != 0)
+        {
+            return LEAP_CTRL_STACK_OK;
+        }
+
+        /* Drop frames from other peers during multi-device bootstrap. */
+    }
 }
 
 static void leap_ctrl_stack_on_op_entered(LeapControllerStack* stack)
@@ -546,6 +620,18 @@ static LeapControllerStackStatus leap_ctrl_stack_on_hello_reply(
     memcpy(stack->peer_mac, src_mac, 6);
     stack->peer_bound = 1;
 
+    if (view->payload_length >= sizeof(LeapHelloReply))
+    {
+        const LeapHelloReply* hello = (const LeapHelloReply*)view->payload;
+
+        if (hello->active_profile_id != 0u)
+        {
+            (void)leap_pd_profile_map_from_profile_id(
+                hello->active_profile_id,
+                &stack->pd.config.profile);
+        }
+    }
+
     if (view->payload_length < sizeof(LeapHelloReply))
     {
         return leap_ctrl_stack_send_select_profile(stack, io, event);
@@ -901,7 +987,8 @@ LeapControllerStackStatus leap_controller_stack_step(
     break;
 
     case LEAP_CTRL_STACK_SELECT_PROFILE:
-        status = leap_ctrl_stack_recv(
+        status = leap_ctrl_stack_recv_from_peer(
+            stack,
             io,
             stack->config.recv_timeout_ms,
             src_mac,
@@ -951,7 +1038,8 @@ LeapControllerStackStatus leap_controller_stack_step(
         return leap_ctrl_stack_send_open_session(stack, io, event, 0u);
 
     case LEAP_CTRL_STACK_OPEN_SESSION:
-        status = leap_ctrl_stack_recv(
+        status = leap_ctrl_stack_recv_from_peer(
+            stack,
             io,
             stack->config.recv_timeout_ms,
             src_mac,
@@ -1045,7 +1133,8 @@ LeapControllerStackStatus leap_controller_stack_step(
         return LEAP_CTRL_STACK_OK;
 
     case LEAP_CTRL_STACK_SET_STATE:
-        status = leap_ctrl_stack_recv(
+        status = leap_ctrl_stack_recv_from_peer(
+            stack,
             io,
             stack->config.recv_timeout_ms,
             src_mac,

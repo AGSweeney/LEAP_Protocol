@@ -22,6 +22,21 @@ extern "C" {
 
 #define LEAP_CTRL_MAX_PEERS 16u
 
+#define LEAP_CTRL_PEER_DISCOVER_DEFAULT_SCAN_MS 1000
+#define LEAP_CTRL_PEER_DISCOVER_MIN_SCAN_MS      250
+#define LEAP_CTRL_PEER_PROBE_TIMEOUT_MS          500
+#define LEAP_CTRL_HUB_BOOTSTRAP_RECV_MS          1000
+
+typedef struct LeapControllerPeerDiscoverConfig
+{
+    /*
+     * Broadcast HELLO listen window in ms. Use LEAP_CTRL_PEER_DISCOVER_MIN_SCAN_MS
+     * when zero. Negative values skip the broadcast phase (probe-only bring-up).
+     */
+    int      scan_duration_ms;
+    unsigned min_peers;
+} LeapControllerPeerDiscoverConfig;
+
 typedef struct LeapControllerPeerEntry
 {
     uint8_t  mac[6];
@@ -50,13 +65,36 @@ typedef enum LeapControllerPeerStatus
 void leap_controller_peer_table_init(LeapControllerPeerTable* table);
 
 /*
+ * Parse "aa:bb:cc:dd:ee:ff" or "aa-bb-cc-dd-ee-ff". Returns 1 on success.
+ */
+int leap_controller_peer_parse_mac(const char* text, uint8_t mac_out[6]);
+
+/*
  * Broadcast HELLO and collect HELLO_REPLY frames until scan_duration_ms elapses.
- * Duplicate MACs update the existing entry.
+ * Duplicate MACs update the existing entry. Equivalent to discover_ex with
+ * min_peers = 0.
  */
 LeapControllerPeerStatus leap_controller_peer_table_discover(
     LeapControllerPeerTable*     table,
     const LeapControllerStackIo* io,
     int                          scan_duration_ms);
+
+/*
+ * Broadcast discovery with optional early exit once min_peers are in the table.
+ */
+LeapControllerPeerStatus leap_controller_peer_table_discover_ex(
+    LeapControllerPeerTable*                  table,
+    const LeapControllerStackIo*              io,
+    const LeapControllerPeerDiscoverConfig*   config);
+
+/*
+ * Unicast HELLO to one peer and wait up to timeout_ms for HELLO_REPLY.
+ */
+LeapControllerPeerStatus leap_controller_peer_table_probe_peer(
+    LeapControllerPeerTable*     table,
+    const LeapControllerStackIo* io,
+    const uint8_t*               peer_mac,
+    int                          timeout_ms);
 
 int leap_controller_peer_table_find(
     const LeapControllerPeerTable* table,

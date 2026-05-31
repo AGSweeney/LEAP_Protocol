@@ -4,6 +4,8 @@ D:/LEAP_Protocol/build-win/CMakeFiles/device_minimal.dir
 D:/LEAP_Protocol/build-win/CMakeFiles/leap_win_smoke.dir
 D:/LEAP_Protocol/build-win/CMakeFiles/leap_win_controller.dir
 D:/LEAP_Protocol/build-win/CMakeFiles/leap_win_device.dir
+D:/LEAP_Protocol/build-win/CMakeFiles/leap_win_discover.dir
+D:/LEAP_Protocol/build-win/CMakeFiles/leap_win_hub.dir
 D:/LEAP_Protocol/build-win/CMakeFiles/RUN_TESTS.dir
 D:/LEAP_Protocol/build-win/CMakeFiles/ALL_BUILD.dir
 D:/LEAP_Protocol/build-win/CMakeFiles/ZERO_CHECK.dir

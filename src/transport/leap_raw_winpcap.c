@@ -21,6 +21,7 @@
      GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_ALL_INTERFACES)
 
 #include "leap/leap_raw_winpcap.h"
+#include "leap/leap_win_time.h"
 
 #if defined(_WIN32)
 
@@ -454,7 +455,7 @@ static int leap_winpcap_load_api(void)
         (void)snprintf(
             g_winpcap_last_errbuf,
             sizeof(g_winpcap_last_errbuf),
-            "wpcap.dll not found (win32 err=%lu) — install Npcap from https://npcap.com/",
+            "wpcap.dll not found (win32 err=%lu) - install Npcap from https://npcap.com/",
             (unsigned long)GetLastError());
         leap_winpcap_set_errno((int)GetLastError());
         return -1;
@@ -505,16 +506,11 @@ loaded:
 
 uint64_t leap_raw_winpcap_monotonic_us(void)
 {
-    static LARGE_INTEGER frequency = { 0 };
-    LARGE_INTEGER        counter;
-
-    if (frequency.QuadPart == 0)
-    {
-        QueryPerformanceFrequency(&frequency);
-    }
-
-    QueryPerformanceCounter(&counter);
-    return (uint64_t)((counter.QuadPart * 1000000) / frequency.QuadPart);
+#if defined(_WIN32) && !defined(LEAP_RAW_WINPCAP_STUB)
+    return leap_win_monotonic_us();
+#else
+    return 0u;
+#endif
 }
 
 static int leap_winpcap_pick_loopback(char* out, size_t out_capacity)

@@ -79,6 +79,12 @@
     <ClCompile Include="D:\LEAP_Protocol\tests\test_raw_linux_stats.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\LEAP_Protocol\tests\test_win_time.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\LEAP_Protocol\tests\test_log.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\LEAP_Protocol\tests\test_util.c">
       <Filter>Source Files</Filter>
     </ClCompile>

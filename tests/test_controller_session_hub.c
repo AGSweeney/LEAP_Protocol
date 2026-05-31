@@ -149,6 +149,41 @@ static void hub_mock_add_reply(
     mock->recv_count++;
 }
 
+static void hub_mock_add_bootstrap_replies_safe(
+    HubMockStackIo* mock,
+    const uint8_t*  peer_mac,
+    uint32_t        session_id)
+{
+    LeapOpenSessionReply open_reply;
+    LeapStateReply       state_reply;
+
+    memset(&open_reply, 0, sizeof(open_reply));
+    open_reply.assigned_session_id      = session_id;
+    open_reply.granted_lease_time_us    = 1000000u;
+    open_reply.granted_watchdog_time_us = 200000u;
+    open_reply.current_state            = (uint16_t)LEAP_STATE_SAFE;
+    hub_mock_add_reply(
+        mock,
+        peer_mac,
+        (uint16_t)LEAP_SERVICE_MGMT,
+        LEAP_MGMT_OPEN_SESSION_REPLY,
+        0u,
+        (const uint8_t*)&open_reply,
+        sizeof(open_reply));
+
+    memset(&state_reply, 0, sizeof(state_reply));
+    state_reply.accepted_state = (uint16_t)LEAP_STATE_OP;
+    state_reply.current_state  = (uint16_t)LEAP_STATE_OP;
+    hub_mock_add_reply(
+        mock,
+        peer_mac,
+        (uint16_t)LEAP_SERVICE_MGMT,
+        LEAP_MGMT_STATE_REPLY,
+        session_id,
+        (const uint8_t*)&state_reply,
+        sizeof(state_reply));
+}
+
 static void hub_mock_add_bootstrap_replies(
     HubMockStackIo* mock,
     const uint8_t*  peer_mac,
@@ -601,6 +636,62 @@ TEST(test_session_hub_table_bootstrap_round_robin)
     ASSERT_EQ_INT((int)pd_mock.pd_send_b, 2);
 }
 
+TEST(test_session_hub_bootstrap_ignores_other_peer_frames)
+{
+    LeapControllerSessionHub hub;
+    LeapControllerStackIo    io;
+    HubMockStackIo           mock;
+    LeapHelloReply           hello_a;
+    LeapHelloReply           hello_b;
+    LeapOpenSessionReply     noise_open;
+    int                      slot_a;
+    int                      slot_b;
+
+    memset(&hello_a, 0, sizeof(hello_a));
+    hello_a.current_state      = (uint16_t)LEAP_STATE_SAFE;
+    hello_a.active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    hello_a.default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+
+    memset(&hello_b, 0, sizeof(hello_b));
+    hello_b.current_state      = (uint16_t)LEAP_STATE_CONFIGURED;
+    hello_b.active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    hello_b.default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+
+    leap_controller_session_hub_init(&hub, NULL);
+
+    memset(&mock, 0, sizeof(mock));
+    memset(&io, 0, sizeof(io));
+    io.user_ctx   = &mock;
+    io.send_frame = hub_mock_send;
+    io.recv_frame = hub_mock_recv;
+
+    hub_mock_add_bootstrap_replies_safe(&mock, k_peer_a, 101u);
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_bootstrap_peer(
+            &hub, &io, k_peer_a, &hello_a, &slot_a),
+        LEAP_CTRL_STACK_OK);
+
+    hub_mock_reset_recv(&mock);
+
+    memset(&noise_open, 0, sizeof(noise_open));
+    noise_open.assigned_session_id = 101u;
+    hub_mock_add_reply(
+        &mock,
+        k_peer_a,
+        (uint16_t)LEAP_SERVICE_MGMT,
+        LEAP_MGMT_OPEN_SESSION_REPLY,
+        0u,
+        (const uint8_t*)&noise_open,
+        sizeof(noise_open));
+    hub_mock_add_bootstrap_replies(&mock, k_peer_b, 102u);
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_bootstrap_peer(
+            &hub, &io, k_peer_b, &hello_b, &slot_b),
+        LEAP_CTRL_STACK_OK);
+    ASSERT_EQ_INT((int)leap_controller_session_hub_active_count(&hub), 2);
+}
+
 void leap_run_controller_session_hub_tests(void)
 {
     printf("controller session hub\n");
@@ -610,4 +701,5 @@ void leap_run_controller_session_hub_tests(void)
     RUN_TEST(test_session_hub_bootstrap_table_skips_foreign_owner);
     RUN_TEST(test_session_hub_run_round_robin_two_peers);
     RUN_TEST(test_session_hub_table_bootstrap_round_robin);
+    RUN_TEST(test_session_hub_bootstrap_ignores_other_peer_frames);
 }

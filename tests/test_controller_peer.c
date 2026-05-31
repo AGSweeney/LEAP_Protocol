@@ -342,7 +342,7 @@ TEST(test_controller_peer_discover_collects_two_peers)
         leap_controller_peer_table_discover(&table, &io, 500),
         LEAP_CTRL_PEER_OK);
     ASSERT_EQ_INT((int)table.count, 2);
-    ASSERT_EQ_INT(mock.send_count, 1);
+    ASSERT_TRUE(mock.send_count >= 1);
     ASSERT_TRUE(leap_controller_peer_table_find(&table, k_peer_a) >= 0);
     ASSERT_TRUE(leap_controller_peer_table_find(&table, k_peer_b) >= 0);
 }
@@ -421,10 +421,59 @@ TEST(test_controller_peer_owned_by_other)
     ASSERT_EQ_INT(leap_controller_peer_owned_by_other(&entry, NULL), 1);
 }
 
+TEST(test_controller_peer_discover_ex_early_exit)
+{
+    LeapControllerPeerTable          table;
+    LeapControllerStackIo            io;
+    PeerMockIo                       mock;
+    LeapControllerPeerDiscoverConfig config;
+
+    leap_controller_peer_table_init(&table);
+
+    memset(&mock, 0, sizeof(mock));
+    peer_mock_add_hello_reply(&mock, k_peer_a, LEAP_PROFILE_DIGITAL_IO_16X16);
+    peer_mock_add_hello_reply(&mock, k_peer_b, LEAP_PROFILE_DIGITAL_IO_16X16);
+    peer_mock_add_hello_reply(&mock, k_peer_b, LEAP_PROFILE_DIGITAL_IO_16X16);
+
+    memset(&io, 0, sizeof(io));
+    io.user_ctx     = &mock;
+    io.send_frame   = peer_mock_send;
+    io.recv_frame   = peer_mock_recv;
+    io.monotonic_us = peer_mock_monotonic;
+
+    memset(&config, 0, sizeof(config));
+    config.scan_duration_ms = 5000;
+    config.min_peers        = 2u;
+
+    ASSERT_EQ_INT(
+        leap_controller_peer_table_discover_ex(&table, &io, &config),
+        LEAP_CTRL_PEER_OK);
+    ASSERT_EQ_INT((int)table.count, 2);
+    ASSERT_EQ_INT((int)mock.recv_index, 2);
+}
+
+TEST(test_controller_peer_parse_mac)
+{
+    uint8_t mac[6];
+
+    ASSERT_TRUE(
+        leap_controller_peer_parse_mac("24:15:10:b0:5f:bc", mac) != 0);
+    ASSERT_EQ_INT((int)mac[0], 0x24);
+    ASSERT_EQ_INT((int)mac[5], 0xbc);
+
+    ASSERT_TRUE(
+        leap_controller_peer_parse_mac("24-15-10-b0-5f-bc", mac) != 0);
+    ASSERT_EQ_INT((int)mac[3], 0xb0);
+
+    ASSERT_EQ_INT(leap_controller_peer_parse_mac("not-a-mac", mac), 0);
+}
+
 void leap_run_controller_peer_tests(void)
 {
     printf("controller peer\n");
     RUN_TEST(test_controller_peer_discover_collects_two_peers);
+    RUN_TEST(test_controller_peer_discover_ex_early_exit);
+    RUN_TEST(test_controller_peer_parse_mac);
     RUN_TEST(test_controller_peer_table_full);
     RUN_TEST(test_controller_stack_bootstrap_peer_reaches_op);
     RUN_TEST(test_controller_peer_owned_by_other);

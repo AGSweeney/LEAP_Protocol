@@ -9,17 +9,34 @@
 
 #include "leap/leap_pd_common.h"
 
-#include <stdio.h>
-#include <string.h>
+#include "leap/leap_log.h"
 
 #if defined(__linux__)
 #include <unistd.h>
+#endif
+
+#if defined(_WIN32)
+#include "leap/leap_win_time.h"
 #endif
 
 #define LEAP_PD_CTRL_DEFAULT_PERIOD_MS 100u
 #define LEAP_PD_CTRL_DEFAULT_STATS_LOG 100u
 #define LEAP_PD_CTRL_DEFAULT_HB_CYCLES 10u
 #define LEAP_PD_CTRL_RX_BUF            256u
+
+static void leap_pd_ctrl_sleep_us(uint64_t sleep_us)
+{
+    if (sleep_us == 0u)
+    {
+        return;
+    }
+
+#if defined(__linux__)
+    usleep((useconds_t)sleep_us);
+#elif defined(_WIN32)
+    leap_win_sleep_us(sleep_us);
+#endif
+}
 
 static void leap_pd_ctrl_update_latency(
     LeapPdControllerContext* ctx,
@@ -326,7 +343,7 @@ void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
         }
     }
 
-    printf(
+    leap_log_printf(
         "PD stats: cycles=%llu ok=%llu fail=%llu hb=%llu lost=%llu timeouts=%llu "
         "replies=%llu reject=%llu stale=%llu seq_mismatch=%llu "
         "latency last=%llu avg=%llu max=%llu us "
@@ -472,7 +489,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
     }
 
     cycle_start_us = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : 0u;
-    outputs        = (uint16_t)(0x0001u << (pd->cycle_index % 5u));
+    outputs        = (uint16_t)(0x0001u << (pd->cycle_index % 6u));
     session_id     = leap_mgmt_controller_session_id(mgmt);
     period_us      = (uint64_t)pd->config.cycle_period_ms * 1000u;
 
@@ -678,7 +695,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
         leap_pd_controller_log_stats(pd);
     }
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(_WIN32)
     if (sleep_for_period != 0 && period_us > 0u)
     {
         uint64_t work_us = (now_us > cycle_start_us) ? (now_us - cycle_start_us) : 0u;
@@ -693,10 +710,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
             sleep_us = period_us - work_us;
         }
 
-        if (sleep_us > 0u)
-        {
-            usleep((unsigned int)sleep_us);
-        }
+        leap_pd_ctrl_sleep_us(sleep_us);
     }
 #else
     (void)sleep_for_period;
@@ -721,8 +735,8 @@ LeapPdControllerStatus leap_pd_controller_run_cyclic(
         return LEAP_PD_CTRL_INVALID_ARG;
     }
 
-    printf(
-        "cyclic PD (%u ms%s) — Ctrl+C to stop\n",
+    leap_log_printf(
+        "cyclic PD (%u ms%s) - Ctrl+C to stop\n",
         pd->config.cycle_period_ms,
         pd->config.use_exchange != 0 ? ", exchange" : "");
 
@@ -745,7 +759,7 @@ LeapPdControllerStatus leap_pd_controller_run_cyclic(
         }
     }
 
-    printf("cyclic PD stopped\n");
+    leap_log_printf("cyclic PD stopped\n");
     leap_pd_controller_log_stats(pd);
     return LEAP_PD_CTRL_OK;
 }

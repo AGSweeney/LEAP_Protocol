@@ -10,6 +10,7 @@
 
 #include "leap/leap_crc.h"
 #include "leap/leap_device_stack.h"
+#include "leap/leap_frame.h"
 #include "leap/leap_pd_common.h"
 #include "leap/leap_protocol.h"
 
@@ -250,9 +251,107 @@ TEST(test_stack_pd_exchange_sets_reply)
     ASSERT_TRUE((result.flags & LEAP_DEVICE_STACK_FLAG_PD_INPUTS_READ) != 0u);
 }
 
+TEST(test_stack_pd_exchange_via_leap_frame_write)
+{
+    LeapDeviceStack         stack;
+    LeapDeviceStackConfig   config;
+    LeapDeviceStackResult   result;
+    LeapOpenSessionRequest  open_req;
+    LeapSetStateRequest     set_req;
+    LeapPdDeviceIoBinding   pd_io;
+    uint16_t                digital_inputs = 0x0042u;
+    uint8_t                 frame[TEST_STACK_FRAME_BUF_SIZE];
+    uint8_t                 pd_payload[TEST_STACK_FRAME_BUF_SIZE];
+    size_t                  frame_length;
+    size_t                  pd_payload_length;
+    uint32_t                session_id;
+    LeapPdProfileMap        profile;
+
+    memset(&config, 0, sizeof(config));
+    config.mgmt.default_lease_us    = 1000000u;
+    config.mgmt.default_watchdog_us = 200000u;
+
+    leap_device_stack_init_full(&stack, &config);
+    leap_mgmt_device_on_transport_ready(&stack.mgmt);
+    leap_mgmt_device_on_profile_selected(&stack.mgmt);
+
+    memset(&pd_io, 0, sizeof(pd_io));
+    pd_io.digital_inputs = &digital_inputs;
+    leap_device_stack_bind_pd_io(&stack, &pd_io);
+
+    memset(&open_req, 0, sizeof(open_req));
+    memcpy(open_req.controller_mac, k_mac_a, 6);
+    open_req.open_flags              = LEAP_OPEN_FLAG_REQUEST_OWNER;
+    open_req.requested_lease_time_us = 1000000u;
+    ASSERT_TRUE(
+        stack_build_frame(
+            frame,
+            TEST_STACK_FRAME_BUF_SIZE,
+            &frame_length,
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_OPEN_SESSION,
+            0u,
+            (const uint8_t*)&open_req,
+            sizeof(open_req)) == 0);
+    ASSERT_EQ_INT(
+        leap_device_stack_process_frame(&stack, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_DEVICE_STACK_OK);
+    session_id = ((const LeapOpenSessionReply*)result.mgmt_reply.payload)->assigned_session_id;
+
+    memset(&set_req, 0, sizeof(set_req));
+    set_req.requested_state = (uint16_t)LEAP_STATE_OP;
+    ASSERT_TRUE(
+        stack_build_frame(
+            frame,
+            TEST_STACK_FRAME_BUF_SIZE,
+            &frame_length,
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_SET_STATE,
+            session_id,
+            (const uint8_t*)&set_req,
+            sizeof(set_req)) == 0);
+    ASSERT_EQ_INT(
+        leap_device_stack_process_frame(&stack, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_DEVICE_STACK_OK);
+    ASSERT_EQ_INT(result.device_state, LEAP_STATE_OP);
+
+    leap_pd_profile_map_init_default(&profile);
+    pd_payload_length = leap_pd_build_digital_exchange_mapped(
+        pd_payload,
+        sizeof(pd_payload),
+        1000u,
+        100000u,
+        &profile,
+        0x0005u,
+        1000u,
+        0u);
+    ASSERT_TRUE(pd_payload_length > 0u);
+    ASSERT_EQ_INT(
+        leap_frame_write(
+            frame,
+            sizeof(frame),
+            &frame_length,
+            0u,
+            (uint16_t)LEAP_SERVICE_PD,
+            LEAP_PD_EXCHANGE_ENDPOINTS,
+            session_id,
+            1u,
+            0u,
+            pd_payload,
+            pd_payload_length),
+        0);
+    ASSERT_EQ_INT(
+        leap_device_stack_process_frame(&stack, k_mac_a, 1000u, frame, frame_length, &result),
+        LEAP_DEVICE_STACK_OK);
+    ASSERT_EQ_U16(result.pd_reply_message_type, LEAP_PD_EXCHANGE_REPLY);
+    ASSERT_TRUE(result.pd_reply_payload_length > 0u);
+    ASSERT_TRUE((result.flags & LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY) != 0u);
+}
+
 void leap_run_device_stack_tests(void)
 {
     printf("device stack\n");
     RUN_TEST(test_stack_mgmt_open_set_state_and_pd_flow);
     RUN_TEST(test_stack_pd_exchange_sets_reply);
+    RUN_TEST(test_stack_pd_exchange_via_leap_frame_write);
 }

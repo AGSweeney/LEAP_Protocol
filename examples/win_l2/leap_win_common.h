@@ -10,7 +10,9 @@
 #ifndef LEAP_WIN_COMMON_H
 #define LEAP_WIN_COMMON_H
 
+#include "leap/leap_controller_session_hub.h"
 #include "leap/leap_controller_stack.h"
+#include "leap/leap_controller_peer.h"
 #include "leap/leap_pd_controller.h"
 #include "leap/leap_raw_winpcap.h"
 
@@ -28,6 +30,31 @@ typedef struct LeapWinControllerOptions
     int         list_adapters;
 } LeapWinControllerOptions;
 
+typedef struct LeapWinHubOptions
+{
+    const char* adapter;
+    int         scan_ms;
+    unsigned    cyclic_period_ms;
+    unsigned    min_peers;
+    int         promiscuous;
+    int         exchange;
+    int         pacing;
+    int         stats;
+    unsigned    stats_interval;
+    int         list_adapters;
+    unsigned    peer_mac_count;
+    uint8_t     peer_macs[LEAP_CTRL_MAX_PEERS][6];
+} LeapWinHubOptions;
+
+typedef struct LeapWinDiscoverOptions
+{
+    const char* adapter;
+    int         scan_ms;
+    unsigned    min_peers;
+    int         promiscuous;
+    int         list_adapters;
+} LeapWinDiscoverOptions;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +69,13 @@ LeapPdControllerStatus leap_win_controller_run_cyclic_pd_with_link_watch(
     LeapRawWinpcapSocket*     transport,
     volatile int*             stop_flag);
 
+LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawWinpcapSocket*     transport,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
+
 void leap_win_print_transport_error(const char* action);
 
 void leap_win_print_transport_stats(const LeapRawWinpcapSocket* sock);
@@ -52,6 +86,21 @@ void leap_win_controller_parse_args(
     int                        argc,
     char**                     argv,
     LeapWinControllerOptions*    options);
+
+void leap_win_hub_parse_args(
+    int               argc,
+    char**            argv,
+    LeapWinHubOptions* options);
+
+LeapControllerPeerStatus leap_win_hub_discover_peers(
+    LeapControllerPeerTable*     table,
+    const LeapControllerStackIo* io,
+    const LeapWinHubOptions*     options);
+
+void leap_win_discover_parse_args(
+    int                    argc,
+    char**                 argv,
+    LeapWinDiscoverOptions* options);
 
 void leap_win_device_parse_args(
     int         argc,

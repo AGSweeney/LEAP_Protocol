@@ -269,6 +269,7 @@ LeapControllerSessionHubStatus leap_controller_session_hub_bootstrap_table(
         hello.current_state      = entry->device_state;
         hello.active_profile_id  = entry->active_profile_id;
         hello.default_profile_id = entry->default_profile_id;
+        memcpy(hello.active_owner_mac, entry->active_owner_mac, 6);
 
         if (leap_controller_session_hub_bootstrap_peer(
                 hub,
