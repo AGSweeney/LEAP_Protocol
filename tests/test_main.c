@@ -10,6 +10,7 @@
 void leap_run_crc_tests(void);
 void leap_run_frame_vector_tests(void);
 void leap_run_mgmt_device_tests(void);
+void leap_run_mgmt_process_tests(void);
 
 int main(void)
 {
@@ -18,6 +19,7 @@ int main(void)
     leap_run_crc_tests();
     leap_run_frame_vector_tests();
     leap_run_mgmt_device_tests();
+    leap_run_mgmt_process_tests();
 
     return leap_test_summary();
 }
