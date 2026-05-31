@@ -186,7 +186,9 @@ static void ctrl_stack_put_op_state(LeapControllerStack* stack)
     leap_controller_frame_sequence_bind_session(&stack->frame_seq, 42u);
 }
 
-static void ctrl_stack_setup_replies(CtrlStackMockIo* mock)
+static void ctrl_stack_setup_replies_with_final_state(
+    CtrlStackMockIo* mock,
+    uint16_t         final_device_state)
 {
     LeapHelloReply        hello;
     LeapProfileReply      profile;
@@ -231,7 +233,7 @@ static void ctrl_stack_setup_replies(CtrlStackMockIo* mock)
 
     memset(&state_reply, 0, sizeof(state_reply));
     state_reply.accepted_state = (uint16_t)LEAP_STATE_OP;
-    state_reply.current_state  = (uint16_t)LEAP_STATE_OP;
+    state_reply.current_state  = final_device_state;
     ctrl_stack_mock_add_reply(
         mock,
         (uint16_t)LEAP_SERVICE_MGMT,
@@ -239,6 +241,12 @@ static void ctrl_stack_setup_replies(CtrlStackMockIo* mock)
         42u,
         (const uint8_t*)&state_reply,
         sizeof(state_reply));
+}
+
+static void ctrl_stack_setup_replies(CtrlStackMockIo* mock)
+{
+    ctrl_stack_setup_replies_with_final_state(
+        mock, (uint16_t)LEAP_STATE_OP);
 }
 
 TEST(test_controller_stack_bootstrap_reaches_op)
@@ -267,6 +275,33 @@ TEST(test_controller_stack_bootstrap_reaches_op)
     ASSERT_TRUE(mock.send_count >= 4u);
     ASSERT_EQ_INT(memcmp(peer_mac, k_device_mac, 6), 0);
     ASSERT_EQ_INT(leap_mgmt_controller_get_state(&stack.mgmt), LEAP_MGMT_CTRL_OP);
+}
+
+TEST(test_controller_stack_bootstrap_fails_if_peer_stays_safe)
+{
+    LeapControllerStack       stack;
+    LeapControllerStackConfig config;
+    LeapControllerStackIo     io;
+    CtrlStackMockIo           mock;
+    uint8_t                   peer_mac[6];
+
+    memset(&config, 0, sizeof(config));
+    leap_controller_stack_init(&stack, &config);
+
+    memset(&mock, 0, sizeof(mock));
+    ctrl_stack_setup_replies_with_final_state(
+        &mock, (uint16_t)LEAP_STATE_SAFE);
+
+    memset(&io, 0, sizeof(io));
+    io.user_ctx   = &mock;
+    io.send_frame = ctrl_stack_mock_send;
+    io.recv_frame = ctrl_stack_mock_recv;
+
+    ASSERT_EQ_INT(
+        leap_controller_stack_bootstrap(&stack, &io, peer_mac),
+        LEAP_CTRL_STACK_MGMT_ERROR);
+    ASSERT_EQ_INT(leap_controller_stack_get_phase(&stack), LEAP_CTRL_STACK_FAULT);
+    ASSERT_EQ_INT(leap_mgmt_controller_get_state(&stack.mgmt), LEAP_MGMT_CTRL_SESSION_OPEN);
 }
 
 TEST(test_controller_stack_step_idle_sends_hello)
@@ -577,6 +612,7 @@ void leap_run_controller_stack_tests(void)
     printf("controller stack\n");
     RUN_TEST(test_controller_stack_step_idle_sends_hello);
     RUN_TEST(test_controller_stack_bootstrap_reaches_op);
+    RUN_TEST(test_controller_stack_bootstrap_fails_if_peer_stays_safe);
     RUN_TEST(test_controller_stack_on_frame_mgmt_error_faults);
     RUN_TEST(test_controller_stack_on_frame_duplicate_ignored);
     RUN_TEST(test_controller_stack_rejects_replayed_old_sequence);

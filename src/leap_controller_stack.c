@@ -530,6 +530,21 @@ static uint16_t leap_ctrl_stack_reconnect_open_flags(
     return 0u;
 }
 
+static uint16_t leap_ctrl_stack_bootstrap_open_flags(
+    const LeapHelloReply* hello,
+    const uint8_t*        controller_mac)
+{
+    uint16_t flags;
+
+    flags = leap_ctrl_stack_reconnect_open_flags(hello, controller_mac);
+    if (hello != NULL && hello->current_state == (uint16_t)LEAP_STATE_SAFE)
+    {
+        flags |= (uint16_t)LEAP_OPEN_FLAG_STEAL_EXPIRED;
+    }
+
+    return flags;
+}
+
 static LeapControllerStackStatus leap_ctrl_stack_send_select_profile(
     LeapControllerStack*          stack,
     const LeapControllerStackIo*  io,
@@ -648,7 +663,7 @@ static LeapControllerStackStatus leap_ctrl_stack_on_hello_reply(
                 stack,
                 io,
                 event,
-                leap_ctrl_stack_reconnect_open_flags(
+                leap_ctrl_stack_bootstrap_open_flags(
                     hello,
                     stack->config.mgmt.controller_mac));
         }
@@ -1168,6 +1183,18 @@ LeapControllerStackStatus leap_controller_stack_step(
 
         if (leap_mgmt_controller_on_mgmt_reply(
                 &stack->mgmt, &view, &mgmt_event) != LEAP_MGMT_CTRL_OK)
+        {
+            stack->phase       = LEAP_CTRL_STACK_FAULT;
+            stack->last_status = LEAP_CTRL_STACK_MGMT_ERROR;
+            if (event != NULL)
+            {
+                event->status = LEAP_CTRL_STACK_MGMT_ERROR;
+                event->phase  = stack->phase;
+            }
+            return LEAP_CTRL_STACK_MGMT_ERROR;
+        }
+
+        if (leap_mgmt_controller_get_state(&stack->mgmt) != LEAP_MGMT_CTRL_OP)
         {
             stack->phase       = LEAP_CTRL_STACK_FAULT;
             stack->last_status = LEAP_CTRL_STACK_MGMT_ERROR;

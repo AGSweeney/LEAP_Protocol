@@ -387,7 +387,8 @@ static int win_smoke_pd_wait_exchange_reply(
     uint8_t*       reply_payload,
     size_t         reply_capacity,
     size_t*        reply_length,
-    int            timeout_ms)
+    int            timeout_ms,
+    uint64_t*      reply_recv_us_out)
 {
     WinSmokeCoopCtx* ctx = (WinSmokeCoopCtx*)user_ctx;
     LeapFrameView    view;
@@ -398,6 +399,11 @@ static int win_smoke_pd_wait_exchange_reply(
     if (ctx == NULL || reply_length == NULL || peer_mac == NULL)
     {
         return -1;
+    }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = 0u;
     }
 
     for (;;)
@@ -434,6 +440,10 @@ static int win_smoke_pd_wait_exchange_reply(
 
         *reply_length = view.payload_length;
         memcpy(reply_payload, view.payload, view.payload_length);
+        if (reply_recv_us_out != NULL)
+        {
+            *reply_recv_us_out = leap_raw_winpcap_monotonic_us();
+        }
         return 0;
     }
 }

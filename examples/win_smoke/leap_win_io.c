@@ -9,6 +9,7 @@
 
 #include "leap/leap_frame.h"
 #include "leap/leap_protocol.h"
+#include "leap/leap_raw_winpcap.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -18,6 +19,207 @@
 static const uint8_t k_leap_win_bcast_mac[6] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
+
+static int leap_win_pd_mailbox_take(
+    LeapWinSharedTransport* transport,
+    const uint8_t*          peer_mac,
+    uint8_t*                reply_payload,
+    size_t                  reply_capacity,
+    size_t*                 reply_length,
+    uint64_t*               reply_recv_us_out)
+{
+    unsigned i;
+
+    if (transport == NULL || peer_mac == NULL || reply_length == NULL)
+    {
+        return -1;
+    }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = 0u;
+    }
+
+    for (i = 0u; i < LEAP_WIN_PD_MAILBOX_SLOTS; i++)
+    {
+        LeapWinPdMailboxSlot* slot = &transport->pd_mailbox[i];
+
+        if (slot->valid == 0 ||
+            memcmp(slot->src_mac, peer_mac, 6) != 0)
+        {
+            continue;
+        }
+
+        if (slot->payload_length > reply_capacity)
+        {
+            return -1;
+        }
+
+        if (reply_payload != NULL && slot->payload_length > 0u)
+        {
+            memcpy(reply_payload, slot->payload, slot->payload_length);
+        }
+
+        *reply_length = slot->payload_length;
+        if (reply_recv_us_out != NULL)
+        {
+            *reply_recv_us_out = slot->recv_us;
+        }
+
+        slot->valid          = 0;
+        slot->payload_length = 0u;
+        slot->recv_us        = 0u;
+        return 0;
+    }
+
+    return -1;
+}
+
+static void leap_win_pd_mailbox_stash(
+    LeapWinSharedTransport* transport,
+    const uint8_t*          src_mac,
+    const uint8_t*          payload,
+    size_t                  payload_length,
+    uint64_t                recv_us)
+{
+    unsigned              i;
+    LeapWinPdMailboxSlot* free_slot = NULL;
+
+    if (transport == NULL || src_mac == NULL || payload == NULL ||
+        payload_length == 0u ||
+        payload_length > LEAP_WIN_PD_MAILBOX_PAYLOAD)
+    {
+        return;
+    }
+
+    if (recv_us == 0u)
+    {
+        recv_us = leap_raw_winpcap_monotonic_us();
+    }
+
+    for (i = 0u; i < LEAP_WIN_PD_MAILBOX_SLOTS; i++)
+    {
+        LeapWinPdMailboxSlot* slot = &transport->pd_mailbox[i];
+
+        if (slot->valid != 0 && memcmp(slot->src_mac, src_mac, 6) == 0)
+        {
+            memcpy(slot->payload, payload, payload_length);
+            slot->payload_length = payload_length;
+            if (recv_us > 0u &&
+                (slot->recv_us == 0u || recv_us < slot->recv_us))
+            {
+                slot->recv_us = recv_us;
+            }
+            return;
+        }
+
+        if (slot->valid == 0 && free_slot == NULL)
+        {
+            free_slot = slot;
+        }
+    }
+
+    if (free_slot == NULL)
+    {
+        return;
+    }
+
+    memcpy(free_slot->src_mac, src_mac, 6);
+    memcpy(free_slot->payload, payload, payload_length);
+    free_slot->payload_length = payload_length;
+    free_slot->recv_us        = recv_us;
+    free_slot->valid          = 1;
+}
+
+static int leap_win_pd_reply_matches(
+    const LeapFrameView* view,
+    int*                 is_error_out)
+{
+    if (view == NULL)
+    {
+        return 0;
+    }
+
+    if (view->header.service_id != (uint16_t)LEAP_SERVICE_PD)
+    {
+        return 0;
+    }
+
+    if ((view->header.flags & LEAP_FLAG_ERROR) != 0u)
+    {
+        if (is_error_out != NULL)
+        {
+            *is_error_out = 1;
+        }
+        return 1;
+    }
+
+    if (view->header.message_type == LEAP_PD_EXCHANGE_REPLY)
+    {
+        if (is_error_out != NULL)
+        {
+            *is_error_out = 0;
+        }
+        return 1;
+    }
+
+    return 0;
+}
+
+/*
+ * Pull any buffered PD exchange replies into the mailbox so later finish
+ * slots see wire recv_us from drain time, not from when their wait starts.
+ */
+static void leap_win_pd_mailbox_drain_pending(
+    LeapWinSharedTransport* transport)
+{
+    LeapFrameView view;
+    uint8_t       src_mac[6];
+    uint8_t       frame_buf[512];
+    size_t        frame_length;
+    int           is_error;
+    uint64_t      recv_us;
+
+    if (transport == NULL)
+    {
+        return;
+    }
+
+    for (;;)
+    {
+        if (leap_win_shared_recv_leap(
+                transport,
+                src_mac,
+                frame_buf,
+                sizeof(frame_buf),
+                &frame_length,
+                0) != 0)
+        {
+            break;
+        }
+
+        recv_us = leap_raw_winpcap_monotonic_us();
+
+        if (leap_frame_parse(frame_buf, frame_length, &view) != LEAP_FRAME_OK)
+        {
+            continue;
+        }
+
+        if (leap_win_pd_reply_matches(&view, &is_error) == 0 || is_error != 0)
+        {
+            continue;
+        }
+
+        EnterCriticalSection(&transport->lock);
+        leap_win_pd_mailbox_stash(
+            transport,
+            src_mac,
+            view.payload,
+            view.payload_length,
+            recv_us);
+        LeaveCriticalSection(&transport->lock);
+    }
+}
 
 typedef struct LeapWinIoCtx
 {
@@ -306,18 +508,40 @@ static int leap_win_pd_wait_exchange_reply(
     uint8_t*       reply_payload,
     size_t         reply_capacity,
     size_t*        reply_length,
-    int            timeout_ms)
+    int            timeout_ms,
+    uint64_t*      reply_recv_us_out)
 {
     LeapWinSharedTransport* transport = (LeapWinSharedTransport*)user_ctx;
     LeapFrameView           view;
     uint8_t                 src_mac[6];
     uint8_t                 frame_buf[512];
     size_t                  frame_length;
+    int                     is_error;
+    uint64_t                recv_us;
 
     if (transport == NULL || reply_length == NULL || peer_mac == NULL)
     {
         return -1;
     }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = 0u;
+    }
+
+    EnterCriticalSection(&transport->lock);
+    if (leap_win_pd_mailbox_take(
+            transport,
+            peer_mac,
+            reply_payload,
+            reply_capacity,
+            reply_length,
+            reply_recv_us_out) == 0)
+    {
+        LeaveCriticalSection(&transport->lock);
+        return 0;
+    }
+    LeaveCriticalSection(&transport->lock);
 
     for (;;)
     {
@@ -332,20 +556,34 @@ static int leap_win_pd_wait_exchange_reply(
             return -1;
         }
 
-        if (memcmp(src_mac, peer_mac, 6) != 0)
-        {
-            continue;
-        }
+        recv_us = leap_raw_winpcap_monotonic_us();
 
         if (leap_frame_parse(frame_buf, frame_length, &view) != LEAP_FRAME_OK)
         {
             continue;
         }
 
-        if (view.header.service_id != (uint16_t)LEAP_SERVICE_PD ||
-            view.header.message_type != LEAP_PD_EXCHANGE_REPLY)
+        if (leap_win_pd_reply_matches(&view, &is_error) == 0)
         {
             continue;
+        }
+
+        if (memcmp(src_mac, peer_mac, 6) != 0)
+        {
+            EnterCriticalSection(&transport->lock);
+            leap_win_pd_mailbox_stash(
+                transport,
+                src_mac,
+                view.payload,
+                view.payload_length,
+                recv_us);
+            LeaveCriticalSection(&transport->lock);
+            continue;
+        }
+
+        if (is_error != 0)
+        {
+            return -1;
         }
 
         if (view.payload_length > reply_capacity)
@@ -354,7 +592,16 @@ static int leap_win_pd_wait_exchange_reply(
         }
 
         *reply_length = view.payload_length;
-        memcpy(reply_payload, view.payload, view.payload_length);
+        if (reply_payload != NULL && view.payload_length > 0u)
+        {
+            memcpy(reply_payload, view.payload, view.payload_length);
+        }
+        if (reply_recv_us_out != NULL)
+        {
+            *reply_recv_us_out = recv_us;
+        }
+
+        leap_win_pd_mailbox_drain_pending(transport);
         return 0;
     }
 }
@@ -549,18 +796,25 @@ static int leap_win_plain_pd_wait_exchange_reply(
     uint8_t*       reply_payload,
     size_t         reply_capacity,
     size_t*        reply_length,
-    int            timeout_ms)
+    int            timeout_ms,
+    uint64_t*      reply_recv_us_out)
 {
     LeapWinIoCtx* ctx = (LeapWinIoCtx*)user_ctx;
     LeapFrameView view;
     uint8_t       src_mac[6];
     uint8_t       frame_buf[512];
     size_t        frame_length;
+    uint64_t      recv_us;
 
     if (ctx == NULL || ctx->sock == NULL || reply_length == NULL ||
         peer_mac == NULL)
     {
         return -1;
+    }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = 0u;
     }
 
     for (;;)
@@ -576,6 +830,8 @@ static int leap_win_plain_pd_wait_exchange_reply(
             return -1;
         }
 
+        recv_us = leap_raw_winpcap_monotonic_us();
+
         if (memcmp(src_mac, peer_mac, 6) != 0)
         {
             continue;
@@ -586,8 +842,17 @@ static int leap_win_plain_pd_wait_exchange_reply(
             continue;
         }
 
-        if (view.header.service_id != (uint16_t)LEAP_SERVICE_PD ||
-            view.header.message_type != LEAP_PD_EXCHANGE_REPLY)
+        if (view.header.service_id != (uint16_t)LEAP_SERVICE_PD)
+        {
+            continue;
+        }
+
+        if ((view.header.flags & LEAP_FLAG_ERROR) != 0u)
+        {
+            return -1;
+        }
+
+        if (view.header.message_type != LEAP_PD_EXCHANGE_REPLY)
         {
             continue;
         }
@@ -599,6 +864,10 @@ static int leap_win_plain_pd_wait_exchange_reply(
 
         *reply_length = view.payload_length;
         memcpy(reply_payload, view.payload, view.payload_length);
+        if (reply_recv_us_out != NULL)
+        {
+            *reply_recv_us_out = recv_us;
+        }
         return 0;
     }
 }

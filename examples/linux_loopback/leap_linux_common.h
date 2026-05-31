@@ -51,6 +51,13 @@ LeapPdControllerStatus leap_linux_hub_run_round_robin_with_link_watch(
     LeapRawLinuxSocket*       transport,
     volatile int*             stop_flag);
 
+LeapPdControllerStatus leap_linux_hub_run_parallel_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawLinuxSocket*       transport,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
+
 void leap_linux_print_mac(const char* label, const uint8_t* mac);
 
 void leap_linux_print_transport_error(const char* action);

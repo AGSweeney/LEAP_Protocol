@@ -1119,6 +1119,42 @@ static int leap_winpcap_next_ex_any(
     return g_winpcap.next_ex((pcap_t*)sock->pcap, header_out, packet_out);
 }
 
+/*
+ * Non-blocking pcap read for timeout_ms==0 polls. Without this, the 100 ms
+ * pcap_open_live read timeout makes "poll" calls block one full interval.
+ */
+static int leap_winpcap_try_next_ex(
+    LeapRawWinpcapSocket* sock,
+    struct pcap_pkthdr**  header_out,
+    const u_char**        packet_out)
+{
+    char errbuf[PCAP_ERRBUF_SIZE];
+    int  nonblock_set = 0;
+    int  result;
+
+    if (sock == NULL || sock->pcap == NULL)
+    {
+        return -1;
+    }
+
+    if (g_winpcap.setnonblock != NULL)
+    {
+        if (g_winpcap.setnonblock((pcap_t*)sock->pcap, 1, errbuf) == 0)
+        {
+            nonblock_set = 1;
+        }
+    }
+
+    result = g_winpcap.next_ex((pcap_t*)sock->pcap, header_out, packet_out);
+
+    if (nonblock_set != 0)
+    {
+        (void)g_winpcap.setnonblock((pcap_t*)sock->pcap, 0, errbuf);
+    }
+
+    return result;
+}
+
 int leap_raw_winpcap_recv(
     LeapRawWinpcapSocket* sock,
     uint8_t*              src_mac,
@@ -1148,6 +1184,62 @@ int leap_raw_winpcap_recv(
 
     now_ms      = (uint64_t)GetTickCount64();
     deadline_ms = now_ms + (uint64_t)timeout_ms;
+
+    if (timeout_ms == 0)
+    {
+        for (;;)
+        {
+            if (leap_winpcap_is_loopback_device(sock->device_name) != 0 &&
+                leap_winpcap_relay_pop(
+                    src_mac,
+                    payload,
+                    payload_capacity,
+                    payload_length) == 0)
+            {
+                sock->stats.rx_frames_ok++;
+                sock->stats.rx_bytes += *payload_length;
+                leap_winpcap_clear_errno();
+                return 0;
+            }
+
+            result = leap_winpcap_try_next_ex(sock, &header, &packet);
+            if (result == 0)
+            {
+                leap_winpcap_clear_errno();
+                return -1;
+            }
+
+            if (result < 0)
+            {
+                sock->stats.rx_errors++;
+                return -1;
+            }
+
+            if (header == NULL)
+            {
+                sock->stats.rx_errors++;
+                return -1;
+            }
+
+            result = leap_winpcap_process_packet(
+                sock,
+                header,
+                packet,
+                src_mac,
+                payload,
+                payload_capacity,
+                payload_length);
+            if (result == 1)
+            {
+                return 0;
+            }
+
+            if (result < 0)
+            {
+                return -1;
+            }
+        }
+    }
 
     for (;;)
     {

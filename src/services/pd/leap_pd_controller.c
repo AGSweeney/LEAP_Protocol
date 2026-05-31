@@ -48,6 +48,11 @@ static void leap_pd_ctrl_sleep_us(uint64_t sleep_us)
 #endif
 }
 
+void leap_pd_controller_sleep_us(uint64_t sleep_us)
+{
+    leap_pd_ctrl_sleep_us(sleep_us);
+}
+
 static void leap_pd_ctrl_update_latency(
     LeapPdControllerContext* ctx,
     uint64_t                 start_us,
@@ -66,6 +71,45 @@ static void leap_pd_ctrl_update_latency(
     if (latency > ctx->stats.max_latency_us)
     {
         ctx->stats.max_latency_us = latency;
+    }
+}
+
+static void leap_pd_ctrl_update_network_rtt(
+    LeapPdControllerContext* ctx,
+    uint64_t                 send_us,
+    uint64_t                 recv_us)
+{
+    uint64_t rtt;
+
+    if (ctx == NULL || recv_us == 0u || recv_us <= send_us)
+    {
+        return;
+    }
+
+    rtt = recv_us - send_us;
+    ctx->stats.last_network_rtt_us = rtt;
+    ctx->stats.total_network_rtt_us += rtt;
+    ctx->stats.network_rtt_samples++;
+    if (rtt > ctx->stats.max_network_rtt_us)
+    {
+        ctx->stats.max_network_rtt_us = rtt;
+    }
+}
+
+static void leap_pd_ctrl_update_queue_wait(
+    LeapPdControllerContext* ctx,
+    uint64_t                 queue_wait_us)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    ctx->stats.last_queue_wait_us = queue_wait_us;
+    ctx->stats.total_queue_wait_us += queue_wait_us;
+    if (queue_wait_us > ctx->stats.max_queue_wait_us)
+    {
+        ctx->stats.max_queue_wait_us = queue_wait_us;
     }
 }
 
@@ -252,6 +296,221 @@ static uint32_t leap_pd_ctrl_max_frame_age_us(
     return ctx->config.cycle_period_ms * 2000u;
 }
 
+static void leap_pd_ctrl_clear_pending(LeapPdControllerContext* pd)
+{
+    if (pd == NULL)
+    {
+        return;
+    }
+
+    pd->cycle_send_pending        = 0;
+    pd->pending_process_sequence  = 0u;
+    pd->pending_cycle_start_us    = 0u;
+}
+
+static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
+    LeapPdControllerContext*     pd,
+    const LeapPdControllerIo*    io,
+    const uint8_t*               peer_mac,
+    const LeapPdProfileMap*      profile,
+    size_t                       read_payload_size,
+    uint64_t                     cycle_start_us,
+    uint64_t                     finish_start_us,
+    uint32_t                     sent_process_sequence,
+    uint64_t*                    reply_recv_us_out)
+{
+    uint8_t  reply[LEAP_PD_CTRL_RX_BUF];
+    size_t   reply_length;
+    uint64_t reply_recv_us;
+
+    if (pd == NULL || io == NULL || peer_mac == NULL || profile == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = 0u;
+    }
+
+    if (io->wait_exchange_reply == NULL)
+    {
+        return LEAP_PD_CTRL_OK;
+    }
+
+    reply_length = 0u;
+    reply_recv_us = 0u;
+    if (io->wait_exchange_reply(
+            io->user_ctx,
+            peer_mac,
+            reply,
+            sizeof(reply),
+            &reply_length,
+            500,
+            &reply_recv_us) != 0)
+    {
+        pd->stats.recv_timeouts++;
+        pd->stats.lost_frames++;
+        return LEAP_PD_CTRL_OK;
+    }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = reply_recv_us;
+    }
+
+    if (reply_recv_us > cycle_start_us)
+    {
+        leap_pd_ctrl_update_network_rtt(pd, cycle_start_us, reply_recv_us);
+        if (finish_start_us > 0u && reply_recv_us < finish_start_us)
+        {
+            leap_pd_ctrl_update_queue_wait(
+                pd,
+                finish_start_us - reply_recv_us);
+        }
+        else
+        {
+            leap_pd_ctrl_update_queue_wait(pd, 0u);
+        }
+    }
+
+    {
+        LeapPdExchangeView             reply_view;
+        LeapExchangeStatus             reply_status;
+        LeapPdCommonStatus             validate_status;
+        const uint8_t*                 read_data;
+        const LeapProfileDigital16x16* inputs;
+        uint64_t                       recv_now_us;
+
+        if (pd->config.validate_exchange_reply != 0)
+        {
+            recv_now_us = (io->monotonic_us != NULL)
+                              ? io->monotonic_us(io->user_ctx)
+                              : 0u;
+            if (pd->config.enforce_reply_frame_age != 0 && recv_now_us == 0u)
+            {
+                recv_now_us = cycle_start_us;
+            }
+
+            validate_status = leap_pd_validate_exchange_reply_at(
+                reply,
+                reply_length,
+                profile,
+                sent_process_sequence,
+                (pd->config.enforce_reply_frame_age != 0) ? recv_now_us : 0u,
+                pd->config.reply_jitter_margin_us,
+                &reply_view,
+                &reply_status);
+        }
+        else
+        {
+            validate_status = leap_pd_exchange_view(
+                reply,
+                reply_length,
+                &reply_view);
+            if (validate_status == LEAP_PD_COMMON_OK)
+            {
+                memset(&reply_status, 0, sizeof(reply_status));
+            }
+        }
+
+        if (validate_status == LEAP_PD_COMMON_SEQUENCE_MISMATCH)
+        {
+            pd->stats.reply_sequence_mismatches++;
+            pd->stats.reply_rejects++;
+        }
+        else if (validate_status == LEAP_PD_COMMON_STALE_FRAME)
+        {
+            pd->stats.reply_stale_rejects++;
+            pd->stats.reply_rejects++;
+        }
+        else if (validate_status != LEAP_PD_COMMON_OK)
+        {
+            pd->stats.reply_rejects++;
+        }
+        else if (reply_length >=
+                 sizeof(LeapExchangeHeader) + read_payload_size + read_payload_size)
+        {
+            read_data = reply + sizeof(LeapExchangeHeader) + read_payload_size;
+            inputs    = (const LeapProfileDigital16x16*)read_data;
+
+            pd->stats.exchange_replies++;
+            pd->stats.last_digital_inputs = inputs->digital_inputs;
+        }
+    }
+
+    return LEAP_PD_CTRL_OK;
+}
+
+static LeapPdControllerStatus leap_pd_ctrl_post_cycle(
+    LeapPdControllerContext*     pd,
+    LeapMgmtControllerContext*   mgmt,
+    const LeapPdControllerIo*    io,
+    const uint8_t*               peer_mac,
+    uint64_t                     cycle_start_us,
+    int                          sleep_for_period)
+{
+    uint64_t               now_us;
+    uint64_t               period_us;
+    LeapPdControllerStatus status;
+
+    if (pd == NULL || mgmt == NULL || io == NULL || peer_mac == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    pd->stats.pd_sent_ok++;
+    pd->stats.cycles_completed++;
+
+    now_us   = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx)
+                                          : cycle_start_us;
+    period_us = (uint64_t)pd->config.cycle_period_ms * 1000u;
+    leap_pd_ctrl_record_cycle_timing(pd, cycle_start_us, now_us);
+
+    pd->cycle_index++;
+
+    if ((pd->cycle_index % pd->config.heartbeat_every_n_cycles) == 0u)
+    {
+        status = leap_pd_ctrl_maintain_lease(
+            pd, mgmt, io, peer_mac, now_us, 1);
+    }
+    else if (leap_mgmt_controller_should_send_heartbeat(mgmt, now_us) != 0)
+    {
+        status = leap_pd_ctrl_maintain_lease(
+            pd, mgmt, io, peer_mac, now_us, 0);
+    }
+    else
+    {
+        status = LEAP_PD_CTRL_OK;
+    }
+
+    if (status != LEAP_PD_CTRL_OK && status != LEAP_PD_CTRL_IO_MISSING)
+    {
+        return status;
+    }
+
+    if (pd->config.stats_log_interval > 0u &&
+        (pd->cycle_index % pd->config.stats_log_interval) == 0u)
+    {
+        leap_pd_controller_log_stats(pd, peer_mac);
+    }
+
+#if defined(__linux__) || defined(_WIN32)
+    if (sleep_for_period != 0 && period_us > 0u)
+    {
+        uint64_t work_us  = (now_us > cycle_start_us) ? (now_us - cycle_start_us) : 0u;
+        uint64_t sleep_us = (work_us >= period_us) ? 0u : (period_us - work_us);
+
+        leap_pd_ctrl_sleep_us(sleep_us);
+    }
+#else
+    (void)sleep_for_period;
+    (void)period_us;
+#endif
+
+    return LEAP_PD_CTRL_OK;
+}
+
 void leap_pd_controller_init(
     LeapPdControllerContext*       ctx,
     const LeapPdControllerConfig* config)
@@ -333,9 +592,11 @@ void leap_pd_controller_log_stats(
     const LeapPdControllerContext* ctx,
     const uint8_t*                 peer_mac)
 {
-    uint64_t avg_latency = 0u;
-    uint64_t avg_period  = 0u;
-    uint64_t avg_jitter  = 0u;
+    uint64_t avg_apparent = 0u;
+    uint64_t avg_period   = 0u;
+    uint64_t avg_jitter   = 0u;
+    uint64_t avg_rtt      = 0u;
+    uint64_t avg_queue    = 0u;
     char     peer_label[24];
 
     if (ctx == NULL)
@@ -345,7 +606,8 @@ void leap_pd_controller_log_stats(
 
     if (ctx->stats.cycles_completed > 0u)
     {
-        avg_latency = ctx->stats.total_latency_us / ctx->stats.cycles_completed;
+        avg_apparent = ctx->stats.total_latency_us / ctx->stats.cycles_completed;
+        avg_queue    = ctx->stats.total_queue_wait_us / ctx->stats.cycles_completed;
         if (ctx->stats.total_cycle_period_us > 0u)
         {
             avg_period = ctx->stats.total_cycle_period_us / ctx->stats.cycles_completed;
@@ -356,6 +618,11 @@ void leap_pd_controller_log_stats(
         }
     }
 
+    if (ctx->stats.network_rtt_samples > 0u)
+    {
+        avg_rtt = ctx->stats.total_network_rtt_us / ctx->stats.network_rtt_samples;
+    }
+
     peer_label[0] = '\0';
     if (peer_mac != NULL)
     {
@@ -363,14 +630,12 @@ void leap_pd_controller_log_stats(
     }
 
     leap_log_printf(
-        "PD stats%s%s: cycles=%llu ok=%llu fail=%llu hb=%llu lost=%llu timeouts=%llu "
-        "replies=%llu reject=%llu stale=%llu seq_mismatch=%llu "
-        "latency last=%llu avg=%llu max=%llu us "
-        "period last=%llu avg=%llu min=%llu max=%llu us "
-        "jitter last=%llu avg=%llu max=%llu us target=%u ms "
-        "work last=%llu max=%llu overruns=%llu inputs=0x%04X\n",
+        "PD stats%s%s%s: cycles=%llu ok=%llu fail=%llu hb=%llu lost=%llu timeouts=%llu "
+        "replies=%llu reject=%llu stale=%llu seq_mismatch=%llu\n",
         peer_mac != NULL ? " peer " : "",
         peer_mac != NULL ? peer_label : "",
+        ctx->config.hub_parallel_finish != 0
+            ? " slot finish-order (see latency breakdown)" : "",
         (unsigned long long)ctx->stats.cycles_completed,
         (unsigned long long)ctx->stats.pd_sent_ok,
         (unsigned long long)ctx->stats.pd_sent_fail,
@@ -380,10 +645,47 @@ void leap_pd_controller_log_stats(
         (unsigned long long)ctx->stats.exchange_replies,
         (unsigned long long)ctx->stats.reply_rejects,
         (unsigned long long)ctx->stats.reply_stale_rejects,
-        (unsigned long long)ctx->stats.reply_sequence_mismatches,
-        (unsigned long long)ctx->stats.last_latency_us,
-        (unsigned long long)avg_latency,
-        (unsigned long long)ctx->stats.max_latency_us,
+        (unsigned long long)ctx->stats.reply_sequence_mismatches);
+
+    if (ctx->config.hub_parallel_finish != 0)
+    {
+        leap_log_printf(
+            "  finish_slot=%u apparent_latency(last/avg/max)=%llu/%llu/%llu us "
+            "(send to post_cycle; includes queue wait)\n",
+            ctx->config.hub_finish_slot,
+            (unsigned long long)ctx->stats.last_latency_us,
+            (unsigned long long)avg_apparent,
+            (unsigned long long)ctx->stats.max_latency_us);
+    }
+    else
+    {
+        leap_log_printf(
+            "  latency(last/avg/max)=%llu/%llu/%llu us\n",
+            (unsigned long long)ctx->stats.last_latency_us,
+            (unsigned long long)avg_apparent,
+            (unsigned long long)ctx->stats.max_latency_us);
+    }
+
+    if (ctx->stats.network_rtt_samples > 0u)
+    {
+        leap_log_printf(
+            "  network_rtt(last/avg/max)=%llu/%llu/%llu us "
+            "(send to wire reply)\n",
+            (unsigned long long)ctx->stats.last_network_rtt_us,
+            (unsigned long long)avg_rtt,
+            (unsigned long long)ctx->stats.max_network_rtt_us);
+        leap_log_printf(
+            "  queue_wait(last/avg/max)=%llu/%llu/%llu us "
+            "(wire reply to finish start)\n",
+            (unsigned long long)ctx->stats.last_queue_wait_us,
+            (unsigned long long)avg_queue,
+            (unsigned long long)ctx->stats.max_queue_wait_us);
+    }
+
+    leap_log_printf(
+        "  period(last/avg/min/max)=%llu/%llu/%llu/%llu us "
+        "jitter(last/avg/max)=%llu/%llu/%llu us target=%u ms "
+        "work(last/max)=%llu/%llu overruns=%llu inputs=0x%04X\n",
         (unsigned long long)ctx->stats.last_cycle_period_us,
         (unsigned long long)avg_period,
         (unsigned long long)ctx->stats.min_cycle_period_us,
@@ -464,27 +766,20 @@ LeapPdControllerStatus leap_pd_controller_send_single_write(
     return LEAP_PD_CTRL_OK;
 }
 
-LeapPdControllerStatus leap_pd_controller_run_one_cycle(
+LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
     LeapPdControllerContext*     pd,
     LeapMgmtControllerContext*   mgmt,
     const LeapPdControllerIo*    io,
     const uint8_t*               peer_mac,
-    volatile int*                stop_flag,
-    int                          sleep_for_period)
+    volatile int*                stop_flag)
 {
     uint8_t                 payload[LEAP_PD_CTRL_RX_BUF];
-    uint8_t                 reply[LEAP_PD_CTRL_RX_BUF];
     size_t                  payload_length;
-    size_t                  reply_length;
-    size_t                  read_payload_size;
     uint16_t                outputs;
     uint64_t                cycle_start_us;
-    uint64_t                now_us;
-    uint64_t                period_us;
     uint32_t                session_id;
     uint32_t                sequence;
     const LeapPdProfileMap* profile;
-    LeapPdControllerStatus  status;
 
     if (pd == NULL || mgmt == NULL || io == NULL || peer_mac == NULL ||
         stop_flag == NULL)
@@ -502,25 +797,16 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
         return LEAP_PD_CTRL_IO_MISSING;
     }
 
-    profile         = leap_pd_ctrl_profile(pd);
-    read_payload_size = profile->endpoint_payload_size;
-    if (read_payload_size == 0u)
-    {
-        read_payload_size = sizeof(LeapProfileDigital16x16);
-    }
-
+    profile        = leap_pd_ctrl_profile(pd);
     cycle_start_us = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : 0u;
     outputs        = (uint16_t)(0x0001u << (pd->cycle_index % 6u));
     session_id     = leap_mgmt_controller_session_id(mgmt);
-    period_us      = (uint64_t)pd->config.cycle_period_ms * 1000u;
+
+    leap_pd_ctrl_clear_pending(pd);
 
     if (pd->config.use_exchange != 0)
     {
-        uint32_t sent_process_sequence;
-        uint32_t max_frame_age_us;
-        uint64_t recv_now_us;
-
-        max_frame_age_us = leap_pd_ctrl_max_frame_age_us(pd);
+        uint32_t max_frame_age_us = leap_pd_ctrl_max_frame_age_us(pd);
 
         payload_length = leap_pd_build_digital_exchange_mapped(
             payload,
@@ -538,9 +824,8 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
             return LEAP_PD_CTRL_BUILD_FAILED;
         }
 
-        sent_process_sequence = pd->pd_sequence - 1u;
-
-        sequence = leap_mgmt_controller_next_sequence(mgmt);
+        pd->pending_process_sequence = pd->pd_sequence - 1u;
+        sequence                     = leap_mgmt_controller_next_sequence(mgmt);
         if (io->send_pd(
                 io->user_ctx,
                 peer_mac,
@@ -551,92 +836,12 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
                 sequence) != 0)
         {
             pd->stats.pd_sent_fail++;
+            leap_pd_ctrl_clear_pending(pd);
             return LEAP_PD_CTRL_SEND_FAILED;
         }
 
-        if (io->wait_exchange_reply != NULL)
-        {
-            reply_length = 0u;
-            if (io->wait_exchange_reply(
-                    io->user_ctx,
-                    peer_mac,
-                    reply,
-                    sizeof(reply),
-                    &reply_length,
-                    500) != 0)
-            {
-                pd->stats.recv_timeouts++;
-                pd->stats.lost_frames++;
-            }
-            else
-            {
-                LeapPdExchangeView   reply_view;
-                LeapExchangeStatus   reply_status;
-                LeapPdCommonStatus   validate_status;
-                const uint8_t*       read_data;
-                const LeapProfileDigital16x16* inputs;
-
-                if (pd->config.validate_exchange_reply != 0)
-                {
-                    recv_now_us = (io->monotonic_us != NULL)
-                                      ? io->monotonic_us(io->user_ctx)
-                                      : 0u;
-                    if (pd->config.enforce_reply_frame_age != 0 && recv_now_us == 0u)
-                    {
-                        recv_now_us = cycle_start_us;
-                    }
-
-                    validate_status = leap_pd_validate_exchange_reply_at(
-                        reply,
-                        reply_length,
-                        profile,
-                        sent_process_sequence,
-                        (pd->config.enforce_reply_frame_age != 0) ? recv_now_us
-                                                                    : 0u,
-                        pd->config.reply_jitter_margin_us,
-                        &reply_view,
-                        &reply_status);
-                }
-                else
-                {
-                    validate_status = leap_pd_exchange_view(
-                        reply,
-                        reply_length,
-                        &reply_view);
-                    if (validate_status == LEAP_PD_COMMON_OK)
-                    {
-                        memset(&reply_status, 0, sizeof(reply_status));
-                    }
-                }
-
-                if (validate_status == LEAP_PD_COMMON_SEQUENCE_MISMATCH)
-                {
-                    pd->stats.reply_sequence_mismatches++;
-                    pd->stats.reply_rejects++;
-                }
-                else if (validate_status == LEAP_PD_COMMON_STALE_FRAME)
-                {
-                    pd->stats.reply_stale_rejects++;
-                    pd->stats.reply_rejects++;
-                }
-                else if (validate_status != LEAP_PD_COMMON_OK)
-                {
-                    pd->stats.reply_rejects++;
-                }
-                else if (reply_length >=
-                         sizeof(LeapExchangeHeader) + read_payload_size +
-                             read_payload_size)
-                {
-                    read_data = reply + sizeof(LeapExchangeHeader) +
-                                read_payload_size;
-                    inputs =
-                        (const LeapProfileDigital16x16*)read_data;
-
-                    pd->stats.exchange_replies++;
-                    pd->stats.last_digital_inputs = inputs->digital_inputs;
-                }
-            }
-        }
+        leap_mgmt_controller_on_pd_sent(
+            mgmt, pd->pending_process_sequence, cycle_start_us);
     }
     else
     {
@@ -651,7 +856,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
         if (pd->config.enforce_reply_frame_age != 0)
         {
             params.controller_timestamp_us = cycle_start_us;
-            params.max_frame_age_us          = leap_pd_ctrl_max_frame_age_us(pd);
+            params.max_frame_age_us        = leap_pd_ctrl_max_frame_age_us(pd);
         }
 
         payload_length = leap_pd_build_digital_write(
@@ -682,63 +887,98 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
         leap_mgmt_controller_on_pd_sent(mgmt, params.process_sequence, cycle_start_us);
     }
 
-    pd->stats.pd_sent_ok++;
-    pd->stats.cycles_completed++;
+    pd->pending_cycle_start_us = cycle_start_us;
+    pd->cycle_send_pending     = 1;
+    return LEAP_PD_CTRL_OK;
+}
 
-    now_us = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : cycle_start_us;
-    leap_pd_ctrl_record_cycle_timing(pd, cycle_start_us, now_us);
+LeapPdControllerStatus leap_pd_controller_run_one_cycle_finish(
+    LeapPdControllerContext*     pd,
+    LeapMgmtControllerContext*   mgmt,
+    const LeapPdControllerIo*    io,
+    const uint8_t*               peer_mac,
+    volatile int*                stop_flag,
+    int                          sleep_for_period)
+{
+    const LeapPdProfileMap* profile;
+    size_t                  read_payload_size;
+    LeapPdControllerStatus  status;
+    uint64_t                cycle_start_us;
+    uint64_t                finish_start_us;
+    uint64_t                reply_recv_us;
+    uint32_t                sent_process_sequence;
 
-    pd->cycle_index++;
-
-    if ((pd->cycle_index % pd->config.heartbeat_every_n_cycles) == 0u)
+    if (pd == NULL || mgmt == NULL || io == NULL || peer_mac == NULL ||
+        stop_flag == NULL)
     {
-        status = leap_pd_ctrl_maintain_lease(
-            pd, mgmt, io, peer_mac, now_us, 1);
-    }
-    else if (leap_mgmt_controller_should_send_heartbeat(mgmt, now_us) != 0)
-    {
-        status = leap_pd_ctrl_maintain_lease(
-            pd, mgmt, io, peer_mac, now_us, 0);
-    }
-    else
-    {
-        status = LEAP_PD_CTRL_OK;
+        return LEAP_PD_CTRL_INVALID_ARG;
     }
 
-    if (status != LEAP_PD_CTRL_OK && status != LEAP_PD_CTRL_IO_MISSING)
+    if (pd->cycle_send_pending == 0)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    profile               = leap_pd_ctrl_profile(pd);
+    read_payload_size     = profile->endpoint_payload_size;
+    cycle_start_us        = pd->pending_cycle_start_us;
+    sent_process_sequence = pd->pending_process_sequence;
+    if (read_payload_size == 0u)
+    {
+        read_payload_size = sizeof(LeapProfileDigital16x16);
+    }
+
+    leap_pd_ctrl_clear_pending(pd);
+
+    finish_start_us = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : 0u;
+    reply_recv_us   = 0u;
+
+    if (pd->config.use_exchange != 0)
+    {
+        status = leap_pd_ctrl_wait_exchange_reply(
+            pd,
+            io,
+            peer_mac,
+            profile,
+            read_payload_size,
+            cycle_start_us,
+            finish_start_us,
+            sent_process_sequence,
+            &reply_recv_us);
+        if (status != LEAP_PD_CTRL_OK)
+        {
+            return status;
+        }
+    }
+
+    return leap_pd_ctrl_post_cycle(
+        pd,
+        mgmt,
+        io,
+        peer_mac,
+        cycle_start_us,
+        sleep_for_period);
+}
+
+LeapPdControllerStatus leap_pd_controller_run_one_cycle(
+    LeapPdControllerContext*     pd,
+    LeapMgmtControllerContext*   mgmt,
+    const LeapPdControllerIo*    io,
+    const uint8_t*               peer_mac,
+    volatile int*                stop_flag,
+    int                          sleep_for_period)
+{
+    LeapPdControllerStatus status;
+
+    status = leap_pd_controller_run_one_cycle_send(
+        pd, mgmt, io, peer_mac, stop_flag);
+    if (status != LEAP_PD_CTRL_OK)
     {
         return status;
     }
 
-    if (pd->config.stats_log_interval > 0u &&
-        (pd->cycle_index % pd->config.stats_log_interval) == 0u)
-    {
-        leap_pd_controller_log_stats(pd, peer_mac);
-    }
-
-#if defined(__linux__) || defined(_WIN32)
-    if (sleep_for_period != 0 && period_us > 0u)
-    {
-        uint64_t work_us = (now_us > cycle_start_us) ? (now_us - cycle_start_us) : 0u;
-        uint64_t sleep_us;
-
-        if (work_us >= period_us)
-        {
-            sleep_us = 0u;
-        }
-        else
-        {
-            sleep_us = period_us - work_us;
-        }
-
-        leap_pd_ctrl_sleep_us(sleep_us);
-    }
-#else
-    (void)sleep_for_period;
-    (void)period_us;
-#endif
-
-    return LEAP_PD_CTRL_OK;
+    return leap_pd_controller_run_one_cycle_finish(
+        pd, mgmt, io, peer_mac, stop_flag, sleep_for_period);
 }
 
 LeapPdControllerStatus leap_pd_controller_run_cyclic(

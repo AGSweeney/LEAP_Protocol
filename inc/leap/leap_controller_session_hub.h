@@ -95,6 +95,13 @@ LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer(
     const LeapHelloReply*         hello_reply,
     int*                          slot_out);
 
+LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer_at_slot(
+    LeapControllerSessionHub*     hub,
+    const LeapControllerStackIo*  io,
+    const uint8_t*                peer_mac,
+    const LeapHelloReply*         hello_reply,
+    int                           slot);
+
 /*
  * Bootstrap every entry in a discovery table (best-effort; continues on failure).
  * bootstrapped_count receives the number of peers now in OP.
@@ -138,6 +145,24 @@ LeapPdControllerStatus leap_controller_session_hub_run_round_robin(
     LeapControllerSessionHub* hub,
     const LeapPdControllerIo* io,
     volatile int*             stop_flag);
+
+/*
+ * One parallel lap: send to all OP peers, finish each, optional lap pacing sleep.
+ */
+LeapPdControllerStatus leap_controller_session_hub_run_parallel_lap(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* io,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
+
+/*
+ * Parallel laps until stop_flag is set (no transport/link polling).
+ */
+LeapPdControllerStatus leap_controller_session_hub_run_parallel(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* io,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
 
 #ifdef __cplusplus
 }

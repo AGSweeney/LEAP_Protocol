@@ -82,18 +82,25 @@ static int leap_linux_pd_wait_exchange_reply(
     uint8_t*       reply_payload,
     size_t         reply_capacity,
     size_t*        reply_length,
-    int            timeout_ms)
+    int            timeout_ms,
+    uint64_t*      reply_recv_us_out)
 {
     LeapLinuxPdTransport* transport = (LeapLinuxPdTransport*)user_ctx;
     LeapFrameView         view;
     uint8_t               src_mac[6];
     uint8_t               frame_buf[LEAP_LINUX_PD_RX_BUF];
     size_t                frame_length;
+    uint64_t              recv_us;
 
     if (transport == NULL || transport->sock == NULL || reply_length == NULL ||
         peer_mac == NULL)
     {
         return -1;
+    }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = 0u;
     }
 
     for (;;)
@@ -108,6 +115,8 @@ static int leap_linux_pd_wait_exchange_reply(
         {
             return -1;
         }
+
+        recv_us = leap_raw_linux_monotonic_us();
 
         if (memcmp(src_mac, peer_mac, 6) != 0)
         {
@@ -132,6 +141,10 @@ static int leap_linux_pd_wait_exchange_reply(
 
         *reply_length = view.payload_length;
         memcpy(reply_payload, view.payload, view.payload_length);
+        if (reply_recv_us_out != NULL)
+        {
+            *reply_recv_us_out = recv_us;
+        }
         return 0;
     }
 }

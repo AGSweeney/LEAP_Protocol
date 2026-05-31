@@ -389,6 +389,48 @@ typedef struct HubPdMockIo
     uint64_t      now_us;
 } HubPdMockIo;
 
+static int g_hub_pd_exchange_parallel_ok = 0;
+
+static int hub_pd_exchange_mock_wait(
+    void*          user_ctx,
+    const uint8_t* peer_mac,
+    uint8_t*       reply_payload,
+    size_t           reply_capacity,
+    size_t*          reply_length,
+    int              timeout_ms,
+    uint64_t*        reply_recv_us_out)
+{
+    HubPdMockIo* mock = (HubPdMockIo*)user_ctx;
+
+    (void)peer_mac;
+    (void)reply_payload;
+    (void)reply_capacity;
+    (void)timeout_ms;
+
+    if (mock == NULL || reply_length == NULL)
+    {
+        return -1;
+    }
+
+    if (reply_recv_us_out != NULL)
+    {
+        *reply_recv_us_out = mock->now_us;
+    }
+
+    if (mock->pd_send_a >= 1u && mock->pd_send_b >= 1u)
+    {
+        g_hub_pd_exchange_parallel_ok = 1;
+    }
+
+    *reply_length = 0u;
+    return -1;
+}
+
+static int hub_pd_exchange_mock_parallel_ok(void)
+{
+    return g_hub_pd_exchange_parallel_ok;
+}
+
 static int hub_pd_mock_send(
     void*          user_ctx,
     const uint8_t* peer_mac,
@@ -574,6 +616,51 @@ TEST(test_session_hub_run_round_robin_two_peers)
     ASSERT_TRUE(stack_b->pd.stats.cycles_completed == 2u);
 }
 
+TEST(test_session_hub_run_parallel_sends_before_recv)
+{
+    LeapControllerSessionHub       hub;
+    LeapControllerSessionHubConfig config;
+    LeapControllerStackIo          stack_io;
+    HubMockStackIo                 stack_mock;
+    HubPdMockIo                    pd_mock;
+    LeapPdControllerIo             pd_io;
+    int                            slot_a;
+    int                            slot_b;
+    volatile int                   stop = 0;
+    int                            parallel_batch_ok = 0;
+
+    memset(&config, 0, sizeof(config));
+    config.default_peer.pd.use_exchange = 1;
+    leap_controller_session_hub_init(&hub, &config);
+
+    memset(&stack_mock, 0, sizeof(stack_mock));
+    memset(&stack_io, 0, sizeof(stack_io));
+    stack_io.user_ctx   = &stack_mock;
+    stack_io.send_frame = hub_mock_send;
+    stack_io.recv_frame = hub_mock_recv;
+
+    hub_bootstrap_two_peers(&hub, &stack_io, &stack_mock, &slot_a, &slot_b);
+
+    g_hub_pd_exchange_parallel_ok = 0;
+    memset(&pd_mock, 0, sizeof(pd_mock));
+    pd_mock.stop_flag = &stop;
+    pd_mock.now_us    = 1000u;
+
+    memset(&pd_io, 0, sizeof(pd_io));
+    pd_io.user_ctx     = &pd_mock;
+    pd_io.send_pd      = hub_pd_mock_send;
+    pd_io.monotonic_us = hub_pd_mock_monotonic;
+    pd_io.wait_exchange_reply = hub_pd_exchange_mock_wait;
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_run_parallel(&hub, &pd_io, &stop, 0),
+        LEAP_PD_CTRL_OK);
+    parallel_batch_ok = hub_pd_exchange_mock_parallel_ok();
+    ASSERT_TRUE(parallel_batch_ok != 0);
+    ASSERT_EQ_INT((int)pd_mock.pd_send_a, 2);
+    ASSERT_EQ_INT((int)pd_mock.pd_send_b, 2);
+}
+
 TEST(test_session_hub_table_bootstrap_round_robin)
 {
     LeapControllerSessionHub       hub;
@@ -700,6 +787,7 @@ void leap_run_controller_session_hub_tests(void)
     RUN_TEST(test_session_hub_release_one_keeps_other);
     RUN_TEST(test_session_hub_bootstrap_table_skips_foreign_owner);
     RUN_TEST(test_session_hub_run_round_robin_two_peers);
+    RUN_TEST(test_session_hub_run_parallel_sends_before_recv);
     RUN_TEST(test_session_hub_table_bootstrap_round_robin);
     RUN_TEST(test_session_hub_bootstrap_ignores_other_peer_frames);
 }

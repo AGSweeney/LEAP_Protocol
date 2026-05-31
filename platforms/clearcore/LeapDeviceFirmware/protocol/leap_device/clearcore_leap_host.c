@@ -96,6 +96,90 @@ static uint64_t clearcore_leap_monotonic_us(void)
 
 
 
+static void clearcore_leap_send_error_reply(
+
+    struct netif *               netif,
+
+    const uint8_t *              dst_mac,
+
+    const LeapDeviceStackResult *result,
+
+    uint16_t                     service_id,
+
+    uint16_t                     message_type,
+
+    uint16_t                     status_code)
+
+{
+
+    LeapErrorPayload err;
+
+    uint8_t          tx[1600];
+
+    size_t           tx_len = 0u;
+
+
+
+    memset(&err, 0, sizeof(err));
+
+    err.status_code = status_code;
+
+
+
+    if (leap_frame_write(
+
+            tx,
+
+            sizeof(tx),
+
+            &tx_len,
+
+            (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ERROR | LEAP_FLAG_ACK_REQUESTED),
+
+            service_id,
+
+            message_type,
+
+            result->frame.header.session_id,
+
+            result->frame.header.sequence,
+
+            result->frame.header.ack_sequence,
+
+            (const uint8_t*)&err,
+
+            sizeof(err)) != 0)
+
+    {
+
+        ++g_stats.tx_drop;
+
+        return;
+
+    }
+
+
+
+    if (clearcore_leap_eth_send(netif, dst_mac, tx, tx_len) == 0)
+
+    {
+
+        ++g_stats.tx_ok;
+
+    }
+
+    else
+
+    {
+
+        ++g_stats.tx_drop;
+
+    }
+
+}
+
+
+
 static void clearcore_leap_send_reply(
 
     struct netif *               netif,
@@ -225,6 +309,16 @@ static void clearcore_leap_log_rx(const LeapDeviceStackResult *result)
         {
 
             (void)snprintf(line, sizeof(line), "LEAP: received OPEN_SESSION");
+
+            clearcore_leap_trace_queue(line);
+
+        }
+
+        else if (result->frame.header.message_type == LEAP_MGMT_SET_STATE)
+
+        {
+
+            (void)snprintf(line, sizeof(line), "LEAP: received SET_STATE");
 
             clearcore_leap_trace_queue(line);
 
@@ -390,6 +484,18 @@ static void clearcore_leap_handle_result(
 
         {
 
+            if (result->mgmt_reply.message_type == LEAP_MGMT_STATE_REPLY &&
+
+                result->device_state == (uint16_t)LEAP_STATE_OP)
+
+            {
+
+                clearcore_leap_trace_queue("LEAP: entered OP");
+
+            }
+
+
+
             clearcore_leap_send_reply(
 
                 netif,
@@ -472,6 +578,28 @@ static void clearcore_leap_handle_result(
                 result->pd_reply_payload_length);
 
         }
+
+    }
+
+    else if (status == LEAP_DEVICE_STACK_PD_REJECTED)
+
+    {
+
+        clearcore_leap_send_error_reply(
+
+            netif,
+
+            src_mac,
+
+            result,
+
+            (uint16_t)LEAP_SERVICE_PD,
+
+            result->frame.header.message_type,
+
+            result->error_code);
+
+        clearcore_leap_log_status(status, result);
 
     }
 
@@ -579,11 +707,11 @@ int clearcore_leap_host_init(struct netif *netif)
 
     stack_config.mgmt.default_lease_us    = 5000000u;
 
-    stack_config.mgmt.default_watchdog_us = 500000u;
+    stack_config.mgmt.default_watchdog_us = 5000000u;
 
     stack_config.mgmt.max_lease_us        = 10000000u;
 
-    stack_config.mgmt.max_watchdog_us     = 1000000u;
+    stack_config.mgmt.max_watchdog_us     = 10000000u;
 
 
 

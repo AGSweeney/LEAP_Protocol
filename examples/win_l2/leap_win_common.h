@@ -39,11 +39,14 @@ typedef struct LeapWinHubOptions
     int         promiscuous;
     int         exchange;
     int         pacing;
+    int         parallel;
     int         stats;
     unsigned    stats_interval;
+    unsigned    run_sec;
     int         list_adapters;
     unsigned    peer_mac_count;
     uint8_t     peer_macs[LEAP_CTRL_MAX_PEERS][6];
+    int         peer_mac_slot[LEAP_CTRL_MAX_PEERS];
 } LeapWinHubOptions;
 
 typedef struct LeapWinDiscoverOptions
@@ -70,6 +73,13 @@ LeapPdControllerStatus leap_win_controller_run_cyclic_pd_with_link_watch(
     volatile int*             stop_flag);
 
 LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawWinpcapSocket*     transport,
+    volatile int*             stop_flag,
+    int                       sleep_for_period);
+
+LeapPdControllerStatus leap_win_hub_run_parallel_with_link_watch(
     LeapControllerSessionHub* hub,
     const LeapPdControllerIo* pd_io,
     LeapRawWinpcapSocket*     transport,

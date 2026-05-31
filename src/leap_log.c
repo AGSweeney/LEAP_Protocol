@@ -163,6 +163,7 @@ void leap_log_printf(const char* fmt, ...)
     va_start(args, fmt);
     leap_log_vfprintf(stdout, fmt, args);
     va_end(args);
+    fflush(stdout);
 }
 
 void leap_log_eprintf(const char* fmt, ...)
@@ -172,4 +173,5 @@ void leap_log_eprintf(const char* fmt, ...)
     va_start(args, fmt);
     leap_log_vfprintf(stderr, fmt, args);
     va_end(args);
+    fflush(stderr);
 }

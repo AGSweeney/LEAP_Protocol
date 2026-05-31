@@ -18,6 +18,26 @@
 #include <windows.h>
 #endif
 
+#define LEAP_WIN_PD_MAILBOX_SLOTS    8u
+#define LEAP_WIN_PD_MAILBOX_PAYLOAD  512u
+
+typedef struct LeapWinPdMailboxSlot
+{
+    uint8_t  src_mac[6];
+    uint8_t  payload[LEAP_WIN_PD_MAILBOX_PAYLOAD];
+    size_t   payload_length;
+    uint64_t recv_us;
+    int      valid;
+} LeapWinPdMailboxSlot;
+
+typedef struct LeapWinSharedTransport
+{
+    LeapRawWinpcapSocket   sock;
+    CRITICAL_SECTION       lock;
+    int                    lock_ready;
+    LeapWinPdMailboxSlot   pd_mailbox[LEAP_WIN_PD_MAILBOX_SLOTS];
+} LeapWinSharedTransport;
+
 int leap_win_send_leap(
     LeapRawWinpcapSocket* sock,
     const uint8_t*        dst_mac,
@@ -51,13 +71,6 @@ void leap_win_controller_io_init_loopback(
 void leap_win_pd_init_io(
     LeapPdControllerIo*    pd_io,
     LeapRawWinpcapSocket* sock);
-
-typedef struct LeapWinSharedTransport
-{
-    LeapRawWinpcapSocket sock;
-    CRITICAL_SECTION     lock;
-    int                  lock_ready;
-} LeapWinSharedTransport;
 
 void leap_win_shared_transport_init(LeapWinSharedTransport* transport);
 

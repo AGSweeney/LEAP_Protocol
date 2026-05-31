@@ -8,6 +8,7 @@
 #include "leap_win_common.h"
 
 #include "leap/leap_controller_peer.h"
+#include "leap/leap_controller_session_hub.h"
 #include "leap/leap_frame.h"
 #include "leap/leap_log.h"
 #include "leap/leap_protocol.h"
@@ -211,6 +212,55 @@ LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
         if (ran_any == 0)
         {
             return LEAP_PD_CTRL_INVALID_ARG;
+        }
+    }
+
+    return LEAP_PD_CTRL_OK;
+}
+
+LeapPdControllerStatus leap_win_hub_run_parallel_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawWinpcapSocket*     transport,
+    volatile int*             stop_flag,
+    int                       sleep_for_period)
+{
+    LeapPdControllerStatus status;
+
+    if (hub == NULL || pd_io == NULL || transport == NULL || stop_flag == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (hub->active_count == 0u)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    leap_log_printf(
+        "hub parallel PD%s - Ctrl+C or link-down to stop\n",
+        sleep_for_period != 0 ? " (paced per lap)" : "");
+
+    while (*stop_flag == 0)
+    {
+        (void)leap_win_link_stop_on_down(transport, stop_flag);
+        if (*stop_flag != 0)
+        {
+            break;
+        }
+
+        status = leap_controller_session_hub_run_parallel_lap(
+            hub,
+            pd_io,
+            stop_flag,
+            sleep_for_period);
+        if (status == LEAP_PD_CTRL_STOPPED)
+        {
+            return LEAP_PD_CTRL_OK;
+        }
+        if (status != LEAP_PD_CTRL_OK)
+        {
+            return status;
         }
     }
 
@@ -439,10 +489,16 @@ void leap_win_hub_parse_args(
     options->promiscuous       = 1;
     options->exchange          = 0;
     options->pacing            = 1;
+    options->parallel          = 0;
     options->stats             = 1;
     options->stats_interval    = 500u;
+    options->run_sec           = 0u;
     options->list_adapters     = 0;
     options->peer_mac_count    = 0u;
+    for (i = 0u; i < LEAP_CTRL_MAX_PEERS; i++)
+    {
+        options->peer_mac_slot[i] = -1;
+    }
 
     for (i = 1; i < argc; i++)
     {
@@ -494,6 +550,14 @@ void leap_win_hub_parse_args(
         {
             options->exchange = 1;
         }
+        else if (strcmp(argv[i], "--parallel") == 0)
+        {
+            options->parallel = 1;
+        }
+        else if (strcmp(argv[i], "--round-robin") == 0)
+        {
+            options->parallel = 0;
+        }
         else if (strcmp(argv[i], "--no-pacing") == 0)
         {
             options->pacing = 0;
@@ -522,6 +586,14 @@ void leap_win_hub_parse_args(
                 }
             }
         }
+        else if (strcmp(argv[i], "--run-sec") == 0)
+        {
+            if (i + 1 < argc && argv[i + 1][0] != '-')
+            {
+                i++;
+                options->run_sec = (unsigned)strtoul(argv[i], NULL, 10);
+            }
+        }
         else if (strcmp(argv[i], "--peer-mac") == 0)
         {
             if (i + 1 < argc && argv[i + 1][0] != '-')
@@ -532,7 +604,45 @@ void leap_win_hub_parse_args(
                         argv[i],
                         options->peer_macs[options->peer_mac_count]) != 0)
                 {
+                    options->peer_mac_slot[options->peer_mac_count] = -1;
                     options->peer_mac_count++;
+                }
+            }
+        }
+        else if (strcmp(argv[i], "--peer-slot") == 0)
+        {
+            if (i + 1 < argc && argv[i + 1][0] != '-')
+            {
+                const char* arg;
+                const char* mac_text;
+                char        slot_text[8];
+                size_t      slot_len;
+                unsigned long slot;
+                int         slot_i;
+
+                i++;
+                arg = argv[i];
+                mac_text = strchr(arg, ':');
+                if (mac_text != NULL && mac_text != arg)
+                {
+                    slot_len = (size_t)(mac_text - arg);
+                    if (slot_len > 0u && slot_len < sizeof(slot_text))
+                    {
+                        memcpy(slot_text, arg, slot_len);
+                        slot_text[slot_len] = '\0';
+                        slot = strtoul(slot_text, NULL, 10);
+                        if (slot < (unsigned long)LEAP_CTRL_MAX_PEERS &&
+                            options->peer_mac_count < LEAP_CTRL_MAX_PEERS &&
+                            leap_controller_peer_parse_mac(
+                                mac_text + 1,
+                                options->peer_macs[options->peer_mac_count]) != 0)
+                        {
+                            slot_i = (int)slot;
+                            options->peer_mac_slot[options->peer_mac_count] =
+                                slot_i;
+                            options->peer_mac_count++;
+                        }
+                    }
                 }
             }
         }

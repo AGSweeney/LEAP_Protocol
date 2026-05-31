@@ -40,6 +40,7 @@ typedef struct LeapLinuxHubOptions
     unsigned    cyclic_period_ms;
     int         exchange;
     int         promiscuous;
+    int         parallel;
 } LeapLinuxHubOptions;
 
 static volatile sig_atomic_t g_hub_stop = 0;
@@ -65,6 +66,7 @@ static void hub_parse_args(int argc, char** argv, LeapLinuxHubOptions* options)
     options->cyclic_period_ms = LEAP_HUB_DEFAULT_CYCLIC_MS;
     options->exchange         = 0;
     options->promiscuous      = 1;
+    options->parallel         = 0;
 
     for (i = 1; i < argc; i++)
     {
@@ -103,6 +105,14 @@ static void hub_parse_args(int argc, char** argv, LeapLinuxHubOptions* options)
         else if (strcmp(argv[i], "--exchange") == 0)
         {
             options->exchange = 1;
+        }
+        else if (strcmp(argv[i], "--parallel") == 0)
+        {
+            options->parallel = 1;
+        }
+        else if (strcmp(argv[i], "--round-robin") == 0)
+        {
+            options->parallel = 0;
         }
         else if (strcmp(argv[i], "--promisc") == 0)
         {
@@ -207,7 +217,8 @@ int main(int argc, char** argv)
 
     memset(&hub_config, 0, sizeof(hub_config));
     memcpy(hub_config.default_peer.mgmt.controller_mac, transport.local_mac, 6);
-    hub_config.default_peer.bootstrap_lease_us = 5000000u;
+    hub_config.default_peer.bootstrap_lease_us     = 5000000u;
+    hub_config.default_peer.bootstrap_watchdog_us  = 5000000u;
     hub_config.default_peer.pd.cycle_period_ms = options.cyclic_period_ms;
     hub_config.default_peer.pd.use_exchange    = options.exchange;
     hub_config.default_peer.pd.heartbeat_every_n_cycles = 10u;
@@ -245,15 +256,30 @@ int main(int argc, char** argv)
     }
 
     signal(SIGINT, hub_on_sigint);
-    printf("round-robin PD started (Ctrl+C to stop)\n");
-
-    if (leap_linux_hub_run_round_robin_with_link_watch(
-            &hub,
-            &pd_io,
-            &transport,
-            (volatile int*)&g_hub_stop) != LEAP_PD_CTRL_OK)
+    if (options.parallel != 0)
     {
-        fprintf(stderr, "round-robin PD stopped with error\n");
+        leap_log_printf("parallel PD started (Ctrl+C to stop)\n");
+        if (leap_linux_hub_run_parallel_with_link_watch(
+                &hub,
+                &pd_io,
+                &transport,
+                (volatile int*)&g_hub_stop,
+                0) != LEAP_PD_CTRL_OK)
+        {
+            leap_log_eprintf("parallel PD stopped with error\n");
+        }
+    }
+    else
+    {
+        leap_log_printf("round-robin PD started (Ctrl+C to stop)\n");
+        if (leap_linux_hub_run_round_robin_with_link_watch(
+                &hub,
+                &pd_io,
+                &transport,
+                (volatile int*)&g_hub_stop) != LEAP_PD_CTRL_OK)
+        {
+            leap_log_eprintf("round-robin PD stopped with error\n");
+        }
     }
 
     leap_controller_session_hub_release_all(&hub, &stack_io);

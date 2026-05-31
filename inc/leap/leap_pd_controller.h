@@ -36,6 +36,13 @@ typedef struct LeapPdControllerStats
     uint64_t last_latency_us;
     uint64_t max_latency_us;
     uint64_t total_latency_us;
+    uint64_t last_network_rtt_us;
+    uint64_t max_network_rtt_us;
+    uint64_t total_network_rtt_us;
+    uint64_t network_rtt_samples;
+    uint64_t last_queue_wait_us;
+    uint64_t max_queue_wait_us;
+    uint64_t total_queue_wait_us;
     uint64_t last_cycle_period_us;
     uint64_t min_cycle_period_us;
     uint64_t max_cycle_period_us;
@@ -69,6 +76,12 @@ typedef struct LeapPdControllerConfig
     int              enforce_reply_frame_age;
     uint32_t         max_frame_age_us;
     uint32_t         reply_jitter_margin_us;
+    /*
+     * When non-zero, stats logs split apparent latency (send to finish) from
+     * network RTT (send to wire reply) and queue wait (reply to finish start).
+     */
+    int              hub_parallel_finish;
+    unsigned         hub_finish_slot;
 } LeapPdControllerConfig;
 
 typedef enum LeapPdControllerStatus
@@ -91,6 +104,9 @@ typedef struct LeapPdControllerContext
     uint32_t               cycle_index;
     uint64_t               last_cycle_start_us;
     int                    cycle_timing_active;
+    int                    cycle_send_pending;
+    uint32_t               pending_process_sequence;
+    uint64_t               pending_cycle_start_us;
 } LeapPdControllerContext;
 
 typedef struct LeapPdControllerIo
@@ -120,7 +136,8 @@ typedef struct LeapPdControllerIo
         uint8_t*       reply_payload,
         size_t         reply_capacity,
         size_t*        reply_length,
-        int            timeout_ms);
+        int            timeout_ms,
+        uint64_t*      reply_recv_us_out);
 
     uint64_t (*monotonic_us)(void* user_ctx);
 } LeapPdControllerIo;
@@ -142,6 +159,21 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
     volatile int*              stop_flag,
     int                        sleep_for_period);
 
+LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
+    LeapPdControllerContext*     pd,
+    LeapMgmtControllerContext*   mgmt,
+    const LeapPdControllerIo*    io,
+    const uint8_t*               peer_mac,
+    volatile int*                stop_flag);
+
+LeapPdControllerStatus leap_pd_controller_run_one_cycle_finish(
+    LeapPdControllerContext*     pd,
+    LeapMgmtControllerContext*   mgmt,
+    const LeapPdControllerIo*    io,
+    const uint8_t*               peer_mac,
+    volatile int*                stop_flag,
+    int                          sleep_for_period);
+
 LeapPdControllerStatus leap_pd_controller_run_cyclic(
     LeapPdControllerContext*     pd,
     LeapMgmtControllerContext*   mgmt,
@@ -159,6 +191,8 @@ LeapPdControllerStatus leap_pd_controller_send_single_write(
 void leap_pd_controller_log_stats(
     const LeapPdControllerContext* ctx,
     const uint8_t*                 peer_mac);
+
+void leap_pd_controller_sleep_us(uint64_t sleep_us);
 
 #ifdef __cplusplus
 }
