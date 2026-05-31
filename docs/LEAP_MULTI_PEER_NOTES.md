@@ -16,6 +16,9 @@ segment, and known gaps for true multi-controller coexistence.
 | Foreign-owner skip | `leap_controller_session_hub` | `bootstrap_table` skips peers with another `active_owner_mac` |
 | Linux recv demux | `leap_linux_pd.c` | `wait_exchange_reply` ignores frames from other peer MACs |
 | I/O dirty flag | `LeapPdDeviceIoBinding.outputs_dirty` | Skip redundant output shadow writes |
+| PD telemetry | `leap_pd_controller` stats | Latency, jitter, lost frames, reply rejects |
+| Security logging | `leap_log.h` | Optional `LEAP_LOG_SECURITY` compile flag |
+| Stack PD entry points | `leap_controller_stack` | `run_cyclic_pd`, `pd_single_write` |
 
 ## Configuration knobs
 
