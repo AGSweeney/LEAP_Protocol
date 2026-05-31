@@ -1,0 +1,13 @@
+# Generated junctions (import_project_template.ps1)
+vendor/
+libClearCore/
+LwIP/
+ClearLinkCompatibilityFirmware/
+Tools/
+studio/
+LeapDeviceFirmware/leap_protocol/
+
+# Microchip Studio build outputs
+LeapDeviceFirmware/Debug/
+LeapDeviceFirmware/Release/
+LeapDeviceFirmware/.vs/

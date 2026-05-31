@@ -49,12 +49,19 @@ typedef struct LeapRawWinpcapOpenOptions
 typedef struct LeapRawWinpcapSocket
 {
     void*                 pcap;
+    void*                 pcap_tx;
     char                  device_name[LEAP_RAW_WINPCAP_NAME_MAX];
     uint16_t              ethertype;
     uint8_t               local_mac[LEAP_RAW_WINPCAP_MAC_LEN];
     int                   promiscuous;
     int                   filter_ethertype;
     int                   cached_link_up;
+    int                   last_rx_valid_leap;
+    uint16_t              last_rx_service_id;
+    uint16_t              last_rx_message_type;
+    size_t                last_rx_payload_len;
+    uint32_t              last_rx_eth_caplen;
+    uint8_t               last_rx_payload[512];
     LeapRawWinpcapStats   stats;
 } LeapRawWinpcapSocket;
 

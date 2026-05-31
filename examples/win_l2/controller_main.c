@@ -170,10 +170,12 @@ int main(int argc, char** argv)
     if (leap_controller_stack_bootstrap(&stack, &stack_io, peer_mac) !=
         LEAP_CTRL_STACK_OK)
     {
+        fprintf(stderr, "bootstrap failed (phase=%u)\n",
+                (unsigned)leap_controller_stack_get_phase(&stack));
+        leap_win_print_transport_stats(&transport);
         fprintf(
             stderr,
-            "bootstrap failed (phase=%u)\n",
-            (unsigned)leap_controller_stack_get_phase(&stack));
+            "hint: disable IPv4/IPv6 on bench NIC; leave Npcap enabled only\n");
         leap_raw_winpcap_close(&transport);
         return 1;
     }

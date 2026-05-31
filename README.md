@@ -25,6 +25,7 @@ tools/ci/wire_smoke_*.sh              manual end-to-end tests (native Linux)
 src/                                  reference stack (see docs/README.md)
 tests/                                conformance and regression tests (99+)
 examples/linux_loopback/              device, controller, discover binaries
+platforms/clearcore/                  ClearCore LEAP device firmware (ProjectTemplate)
 ```
 
 ## Services
@@ -117,6 +118,19 @@ sudo ./build/leap_linux_controller lo
 ```
 
 See [examples/linux_loopback/README.md](examples/linux_loopback/README.md).
+
+### ClearCore LEAP device (ProjectTemplate)
+
+Pair a ClearCore on the wire with `leap_win_controller` or `leap_linux_controller`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File platforms/clearcore/import_project_template.ps1
+powershell -ExecutionPolicy Bypass -File platforms/clearcore/open_studio.ps1
+# Open: platforms/clearcore/LeapDeviceFirmware/LeapDeviceFirmware.atsln
+# Build ClearCore -> LwIP -> LeapDeviceFirmware (Release)
+```
+
+See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 
 ## Roadmap
 

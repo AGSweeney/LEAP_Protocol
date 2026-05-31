@@ -435,8 +435,9 @@ int leap_raw_linux_send(
 
     memcpy(frame, dst_mac, 6);
     memcpy(frame + 6, sock->local_mac, 6);
-    frame[12] = (uint8_t)(sock->ethertype & 0xFFu);
-    frame[13] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
+    /* Ethernet II type field is big-endian on the wire. */
+    frame[12] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
+    frame[13] = (uint8_t)(sock->ethertype & 0xFFu);
     memcpy(frame + 14, payload, payload_length);
 
     sent = leap_raw_linux_send_all(sock, frame, total);

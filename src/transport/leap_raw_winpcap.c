@@ -12,6 +12,14 @@
 #include <windows.h>
 #include <iphlpapi.h>
 
+#ifndef GAA_FLAG_INCLUDE_ALL_INTERFACES
+#define GAA_FLAG_INCLUDE_ALL_INTERFACES 0x0100u
+#endif
+
+#define LEAP_WINPCAP_GAA_FLAGS \
+    (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | \
+     GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_ALL_INTERFACES)
+
 #include "leap/leap_raw_winpcap.h"
 
 #if defined(_WIN32)
@@ -73,6 +81,15 @@ typedef int (*leap_pcap_setfilter_fn)(pcap_t*, bpf_program*);
 typedef void (*leap_pcap_freecode_fn)(bpf_program*);
 typedef int (*leap_pcap_findalldevs_fn)(pcap_if_t**, char*);
 typedef void (*leap_pcap_freealldevs_fn)(pcap_if_t*);
+typedef int (*leap_pcap_setmintocopy_fn)(pcap_t*, int);
+typedef int (*leap_pcap_set_immediate_mode_fn)(pcap_t*, int);
+typedef int (*leap_pcap_setbuff_fn)(pcap_t*, int);
+typedef int (*leap_pcap_setnonblock_fn)(pcap_t*, int, char*);
+typedef int (*leap_pcap_setdirection_fn)(pcap_t*, int);
+
+#define LEAP_PCAP_D_INOUT 0
+#define LEAP_PCAP_D_IN    1
+#define LEAP_PCAP_D_OUT   2
 
 typedef struct LeapWinpcapApi
 {
@@ -86,13 +103,19 @@ typedef struct LeapWinpcapApi
     leap_pcap_freecode_fn     freecode;
     leap_pcap_findalldevs_fn  findalldevs;
     leap_pcap_freealldevs_fn  freealldevs;
+    leap_pcap_setmintocopy_fn      setmintocopy;
+    leap_pcap_set_immediate_mode_fn set_immediate_mode;
+    leap_pcap_setbuff_fn           setbuff;
+    leap_pcap_setnonblock_fn       setnonblock;
+    leap_pcap_setdirection_fn      setdirection;
 } LeapWinpcapApi;
 
 static LeapWinpcapApi g_winpcap;
 static int            g_winpcap_last_errno = 0;
 static char           g_winpcap_last_errbuf[PCAP_ERRBUF_SIZE];
 
-#define NPF_ENABLE_LOOPBACK 2
+#define NPF_DISABLE_LOOPBACK 0
+#define NPF_ENABLE_LOOPBACK  2
 
 typedef void* leap_packet_adapter;
 typedef leap_packet_adapter (*leap_packet_open_adapter_fn)(char*);
@@ -176,7 +199,7 @@ static void leap_winpcap_load_packet_dll(void)
         "PacketCloseAdapter");
 }
 
-static void leap_winpcap_enable_loopback_capture(const char* device_name)
+static void leap_winpcap_set_loopback_capture(const char* device_name, int mode)
 {
     leap_packet_adapter adapter;
 
@@ -193,8 +216,13 @@ static void leap_winpcap_enable_loopback_capture(const char* device_name)
         return;
     }
 
-    (void)g_packet_set_loopback(adapter, NPF_ENABLE_LOOPBACK);
+    (void)g_packet_set_loopback(adapter, mode);
     g_packet_close_adapter(adapter);
+}
+
+static void leap_winpcap_enable_loopback_capture(const char* device_name)
+{
+    leap_winpcap_set_loopback_capture(device_name, NPF_ENABLE_LOOPBACK);
 }
 
 #define LEAP_WIN_RELAY_DEPTH      32
@@ -216,6 +244,65 @@ typedef struct LeapWinLoopbackRelay
 } LeapWinLoopbackRelay;
 
 static LeapWinLoopbackRelay g_loopback_relay;
+
+static int leap_winpcap_leap_header_length(
+    const uint8_t* packet,
+    size_t           caplen,
+    size_t*          header_length_out)
+{
+    uint16_t ethertype;
+
+    if (packet == NULL || header_length_out == NULL || caplen < 14u)
+    {
+        return 0;
+    }
+
+    ethertype = (uint16_t)(((uint16_t)packet[12] << 8) | (uint16_t)packet[13]);
+    if (ethertype == 0x8100u)
+    {
+        if (caplen < 18u)
+        {
+            return 0;
+        }
+
+        ethertype = (uint16_t)(((uint16_t)packet[16] << 8) | (uint16_t)packet[17]);
+        *header_length_out = 18u;
+    }
+    else
+    {
+        *header_length_out = 14u;
+    }
+
+    return (ethertype == (uint16_t)LEAP_ETHERTYPE_DEVELOPMENT ||
+            ethertype == (uint16_t)LEAP_ETHERTYPE_EXPERIMENTAL_ALT ||
+            ethertype == 0xB688u ||
+            ethertype == 0xB587u) ? 1 : 0;
+}
+
+static void leap_winpcap_tune_capture_handle(pcap_t* handle, int physical_nic)
+{
+    (void)physical_nic;
+
+    if (handle == NULL)
+    {
+        return;
+    }
+
+    if (g_winpcap.set_immediate_mode != NULL)
+    {
+        (void)g_winpcap.set_immediate_mode(handle, 1);
+    }
+
+    if (g_winpcap.setbuff != NULL)
+    {
+        (void)g_winpcap.setbuff(handle, 1024 * 1024);
+    }
+
+    if (g_winpcap.setmintocopy != NULL)
+    {
+        (void)g_winpcap.setmintocopy(handle, 0);
+    }
+}
 
 static int leap_winpcap_is_loopback_device(const char* device_name)
 {
@@ -402,6 +489,11 @@ loaded:
     LOAD_OPT(freecode);
     LOAD_OPT(findalldevs);
     LOAD_OPT(freealldevs);
+    LOAD_OPT(setmintocopy);
+    LOAD_OPT(set_immediate_mode);
+    LOAD_OPT(setbuff);
+    LOAD_OPT(setnonblock);
+    LOAD_OPT(setdirection);
 
 #undef LOAD_REQ
 #undef LOAD_OPT
@@ -438,6 +530,58 @@ static int leap_winpcap_pick_loopback(char* out, size_t out_capacity)
     return 0;
 }
 
+static int leap_winpcap_mac_from_adapter_info(const char* guid, uint8_t* mac_out)
+{
+    ULONG              size = 0u;
+    PIP_ADAPTER_INFO info = NULL;
+    PIP_ADAPTER_INFO cur;
+    ULONG              rc;
+
+    if (guid == NULL || mac_out == NULL || guid[0] == '\0')
+    {
+        return -1;
+    }
+
+    rc = GetAdaptersInfo(NULL, &size);
+    if (rc != ERROR_BUFFER_OVERFLOW || size == 0u)
+    {
+        return -1;
+    }
+
+    info = (PIP_ADAPTER_INFO)HeapAlloc(GetProcessHeap(), 0, size);
+    if (info == NULL)
+    {
+        return -1;
+    }
+
+    rc = GetAdaptersInfo(info, &size);
+    if (rc != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, info);
+        return -1;
+    }
+
+    for (cur = info; cur != NULL; cur = cur->Next)
+    {
+        if (_stricmp(cur->AdapterName, guid) != 0)
+        {
+            continue;
+        }
+
+        if (cur->AddressLength != 6u)
+        {
+            continue;
+        }
+
+        memcpy(mac_out, cur->Address, 6);
+        HeapFree(GetProcessHeap(), 0, info);
+        return 0;
+    }
+
+    HeapFree(GetProcessHeap(), 0, info);
+    return -1;
+}
+
 static int leap_winpcap_mac_from_guid(const char* guid, uint8_t* mac_out)
 {
     ULONG                 size = 0u;
@@ -452,7 +596,7 @@ static int leap_winpcap_mac_from_guid(const char* guid, uint8_t* mac_out)
 
     rc = GetAdaptersAddresses(
         AF_UNSPEC,
-        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        LEAP_WINPCAP_GAA_FLAGS,
         NULL,
         NULL,
         &size);
@@ -469,7 +613,7 @@ static int leap_winpcap_mac_from_guid(const char* guid, uint8_t* mac_out)
 
     rc = GetAdaptersAddresses(
         AF_UNSPEC,
-        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        LEAP_WINPCAP_GAA_FLAGS,
         NULL,
         addrs,
         &size);
@@ -557,10 +701,17 @@ static int leap_winpcap_resolve_mac(
     }
 
     if (device_name != NULL &&
-        leap_winpcap_extract_guid(device_name, guid, sizeof(guid)) == 0 &&
-        leap_winpcap_mac_from_guid(guid, mac_out) == 0)
+        leap_winpcap_extract_guid(device_name, guid, sizeof(guid)) == 0)
     {
-        return 0;
+        if (leap_winpcap_mac_from_guid(guid, mac_out) == 0)
+        {
+            return 0;
+        }
+
+        if (leap_winpcap_mac_from_adapter_info(guid, mac_out) == 0)
+        {
+            return 0;
+        }
     }
 
     if (device_name != NULL &&
@@ -584,7 +735,7 @@ void leap_raw_winpcap_list_devices(void)
 
     rc = GetAdaptersAddresses(
         AF_UNSPEC,
-        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        LEAP_WINPCAP_GAA_FLAGS,
         NULL,
         NULL,
         &size);
@@ -602,7 +753,7 @@ void leap_raw_winpcap_list_devices(void)
 
     rc = GetAdaptersAddresses(
         AF_UNSPEC,
-        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        LEAP_WINPCAP_GAA_FLAGS,
         NULL,
         addrs,
         &size);
@@ -701,8 +852,28 @@ int leap_raw_winpcap_open(
 
     (void)snprintf(sock->device_name, sizeof(sock->device_name), "%s", chosen);
 
-    leap_winpcap_enable_loopback_capture(chosen);
+    if (leap_winpcap_resolve_mac(chosen, sock->local_mac) != 0)
+    {
+        (void)snprintf(
+            g_winpcap_last_errbuf,
+            sizeof(g_winpcap_last_errbuf),
+            "could not resolve MAC for adapter '%s'",
+            chosen);
+        return -1;
+    }
 
+    if (leap_winpcap_is_loopback_device(chosen) != 0)
+    {
+        leap_winpcap_enable_loopback_capture(chosen);
+    }
+    else
+    {
+        leap_winpcap_set_loopback_capture(chosen, NPF_DISABLE_LOOPBACK);
+    }
+
+    /*
+     * Physical NIC: honor --promisc. Software filters drop TX echoes.
+     */
     handle = g_winpcap.open_live(
         chosen,
         65536,
@@ -724,8 +895,11 @@ int leap_raw_winpcap_open(
         return -1;
     }
 
-    if (filter_leap != 0 && g_winpcap.compile != NULL &&
-        g_winpcap.setfilter != NULL && g_winpcap.freecode != NULL)
+    if (filter_leap != 0 &&
+        leap_winpcap_is_loopback_device(chosen) != 0 &&
+        g_winpcap.compile != NULL &&
+        g_winpcap.setfilter != NULL &&
+        g_winpcap.freecode != NULL)
     {
         if (g_winpcap.compile(
                 handle,
@@ -739,18 +913,12 @@ int leap_raw_winpcap_open(
         }
     }
 
+    /* Physical NIC: rely on software LEAP/unicast filters (no kernel BPF). */
+    leap_winpcap_tune_capture_handle(
+        handle,
+        leap_winpcap_is_loopback_device(chosen) == 0 ? 1 : 0);
+
     sock->pcap = handle;
-    if (leap_winpcap_resolve_mac(chosen, sock->local_mac) != 0)
-    {
-        (void)snprintf(
-            g_winpcap_last_errbuf,
-            sizeof(g_winpcap_last_errbuf),
-            "could not resolve MAC for adapter '%s'",
-            chosen);
-        g_winpcap.close(handle);
-        sock->pcap = NULL;
-        return -1;
-    }
 
     leap_winpcap_clear_errno();
     return 0;
@@ -758,7 +926,18 @@ int leap_raw_winpcap_open(
 
 void leap_raw_winpcap_close(LeapRawWinpcapSocket* sock)
 {
-    if (sock == NULL || sock->pcap == NULL)
+    if (sock == NULL)
+    {
+        return;
+    }
+
+    if (sock->pcap_tx != NULL)
+    {
+        g_winpcap.close((pcap_t*)sock->pcap_tx);
+        sock->pcap_tx = NULL;
+    }
+
+    if (sock->pcap == NULL)
     {
         return;
     }
@@ -789,15 +968,20 @@ int leap_raw_winpcap_send(
     total = 14u + payload_length;
     memcpy(frame, dst_mac, 6);
     memcpy(frame + 6, sock->local_mac, 6);
-    frame[12] = (uint8_t)(sock->ethertype & 0xFFu);
-    frame[13] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
+    /* Ethernet II type field is big-endian on the wire. */
+    frame[12] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
+    frame[13] = (uint8_t)(sock->ethertype & 0xFFu);
     memcpy(frame + 14, payload, payload_length);
 
-    if (g_winpcap.sendpacket((pcap_t*)sock->pcap, frame, (int)total) != 0)
     {
-        sock->stats.tx_errors++;
-        leap_winpcap_set_errno((int)GetLastError());
-        return -1;
+        pcap_t* tx_handle = (pcap_t*)sock->pcap;
+
+        if (g_winpcap.sendpacket(tx_handle, frame, (int)total) != 0)
+        {
+            sock->stats.tx_errors++;
+            leap_winpcap_set_errno((int)GetLastError());
+            return -1;
+        }
     }
 
     if (leap_winpcap_is_loopback_device(sock->device_name) != 0)
@@ -811,6 +995,134 @@ int leap_raw_winpcap_send(
     return 0;
 }
 
+static int leap_winpcap_is_broadcast_mac(const uint8_t* mac)
+{
+    static const uint8_t k_bcast[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
+    if (mac == NULL)
+    {
+        return 0;
+    }
+
+    return (memcmp(mac, k_bcast, 6) == 0) ? 1 : 0;
+}
+
+static int leap_winpcap_process_packet(
+    LeapRawWinpcapSocket*     sock,
+    const struct pcap_pkthdr* header,
+    const u_char*             packet,
+    uint8_t*                  src_mac,
+    uint8_t*                  payload,
+    size_t                    payload_capacity,
+    size_t*                   payload_length)
+{
+    size_t header_length = 14u;
+
+    if (header->caplen < 14u)
+    {
+        sock->stats.rx_short_frames++;
+        return 0;
+    }
+
+    if (sock->filter_ethertype != 0 &&
+        leap_winpcap_leap_header_length(
+            packet,
+            header->caplen,
+            &header_length) == 0)
+    {
+        sock->stats.rx_filtered++;
+        return 0;
+    }
+
+    if (leap_winpcap_is_loopback_device(sock->device_name) == 0 &&
+        memcmp(packet + 6, sock->local_mac, 6) == 0)
+    {
+        sock->stats.rx_filtered++;
+        return 0;
+    }
+
+    /*
+     * Npcap on physical NICs often delivers copies of our own broadcast TX
+     * (HELLO) with a non-local source address. Drop broadcast destinations
+     * so discovery sees unicast HELLO_REPLY frames only.
+     */
+    if (leap_winpcap_is_loopback_device(sock->device_name) == 0 &&
+        leap_winpcap_is_broadcast_mac(packet) != 0)
+    {
+        sock->stats.rx_filtered++;
+        return 0;
+    }
+
+    if (leap_winpcap_is_loopback_device(sock->device_name) == 0 &&
+        memcmp(packet, sock->local_mac, 6) != 0)
+    {
+        sock->stats.rx_filtered++;
+        return 0;
+    }
+
+    if (src_mac != NULL)
+    {
+        memcpy(src_mac, packet + 6, 6);
+    }
+
+    {
+        size_t leap_len = header->caplen - header_length;
+
+        if (leap_len > payload_capacity)
+        {
+            sock->stats.rx_errors++;
+            return -1;
+        }
+
+        memcpy(payload, packet + header_length, leap_len);
+        *payload_length = leap_len;
+
+        sock->last_rx_valid_leap   = 0;
+        sock->last_rx_payload_len  = leap_len;
+        sock->last_rx_eth_caplen   = header->caplen;
+        if (leap_len > sizeof(sock->last_rx_payload))
+        {
+            memcpy(sock->last_rx_payload, packet + header_length,
+                   sizeof(sock->last_rx_payload));
+        }
+        else if (leap_len > 0u)
+        {
+            memcpy(sock->last_rx_payload, packet + header_length, leap_len);
+        }
+
+        if (leap_len >= 12u &&
+            sock->last_rx_payload[0] == 'L' &&
+            sock->last_rx_payload[1] == 'E' &&
+            sock->last_rx_payload[2] == 'A' &&
+            sock->last_rx_payload[3] == 'P')
+        {
+            sock->last_rx_valid_leap   = 1;
+            sock->last_rx_service_id   =
+                (uint16_t)((uint16_t)sock->last_rx_payload[8] |
+                            ((uint16_t)sock->last_rx_payload[9] << 8));
+            sock->last_rx_message_type =
+                (uint16_t)((uint16_t)sock->last_rx_payload[10] |
+                            ((uint16_t)sock->last_rx_payload[11] << 8));
+        }
+    }
+
+    sock->stats.rx_frames_ok++;
+    sock->stats.rx_bytes += *payload_length;
+    leap_winpcap_clear_errno();
+    return 1;
+}
+
+static int leap_winpcap_next_ex_any(
+    LeapRawWinpcapSocket* sock,
+    struct pcap_pkthdr**  header_out,
+    const u_char**        packet_out,
+    int                   timeout_ms)
+{
+    (void)timeout_ms;
+
+    return g_winpcap.next_ex((pcap_t*)sock->pcap, header_out, packet_out);
+}
+
 int leap_raw_winpcap_recv(
     LeapRawWinpcapSocket* sock,
     uint8_t*              src_mac,
@@ -819,8 +1131,7 @@ int leap_raw_winpcap_recv(
     size_t*               payload_length,
     int                   timeout_ms)
 {
-    pcap_t*            handle;
-    struct pcap_pkthdr header;
+    struct pcap_pkthdr* header;
     const u_char*      packet;
     int                result;
     uint64_t           deadline_ms;
@@ -832,7 +1143,6 @@ int leap_raw_winpcap_recv(
         return -1;
     }
 
-    handle = (pcap_t*)sock->pcap;
     *payload_length = 0u;
 
     if (timeout_ms < 0)
@@ -858,9 +1168,7 @@ int leap_raw_winpcap_recv(
             return 0;
         }
 
-        struct pcap_pkthdr* hdr_ptr = &header;
-
-        result = g_winpcap.next_ex(handle, &hdr_ptr, &packet);
+        result = leap_winpcap_next_ex_any(sock, &header, &packet, timeout_ms);
         if (result == 0)
         {
             sock->stats.rx_timeouts++;
@@ -886,34 +1194,29 @@ int leap_raw_winpcap_recv(
             return -1;
         }
 
-        if (header.caplen < 14u)
+        if (header == NULL)
         {
-            sock->stats.rx_short_frames++;
-            continue;
+            sock->stats.rx_errors++;
+            return -1;
         }
 
-        if (src_mac != NULL)
+        result = leap_winpcap_process_packet(
+            sock,
+            header,
+            packet,
+            src_mac,
+            payload,
+            payload_capacity,
+            payload_length);
+        if (result == 1)
         {
-            memcpy(src_mac, packet + 6, 6);
+            return 0;
         }
 
+        if (result < 0)
         {
-            size_t leap_len = header.caplen - 14u;
-
-            if (leap_len > payload_capacity)
-            {
-                sock->stats.rx_errors++;
-                return -1;
-            }
-
-            memcpy(payload, packet + 14, leap_len);
-            *payload_length = leap_len;
+            return -1;
         }
-
-        sock->stats.rx_frames_ok++;
-        sock->stats.rx_bytes += *payload_length;
-        leap_winpcap_clear_errno();
-        return 0;
     }
 }
 

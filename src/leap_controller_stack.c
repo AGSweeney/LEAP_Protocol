@@ -620,6 +620,7 @@ LeapControllerStackStatus leap_controller_stack_step(
     {
         uint64_t deadline_us = 0u;
         uint64_t start_us    = leap_ctrl_stack_now_us(io);
+        uint64_t last_hello_us = start_us;
 
         if (start_us != 0u)
         {
@@ -644,6 +645,27 @@ LeapControllerStackStatus leap_controller_stack_step(
                         event->phase  = stack->phase;
                     }
                     return LEAP_CTRL_STACK_RECV_TIMEOUT;
+                }
+
+                if (now_us != 0u && (now_us - last_hello_us) >= 250000u)
+                {
+                    payload_length = leap_disc_controller_build_hello(
+                        payload,
+                        sizeof(payload));
+                    if (payload_length != 0u)
+                    {
+                        (void)leap_ctrl_stack_send(
+                            stack,
+                            io,
+                            k_bcast,
+                            LEAP_FLAG_BROADCAST,
+                            (uint16_t)LEAP_SERVICE_DISC,
+                            LEAP_DISC_HELLO,
+                            0u,
+                            payload,
+                            payload_length);
+                    }
+                    last_hello_us = now_us;
                 }
 
                 recv_timeout_ms = (int)((deadline_us - now_us) / 1000u);

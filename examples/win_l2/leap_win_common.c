@@ -7,6 +7,7 @@
 
 #include "leap_win_common.h"
 
+#include "leap/leap_frame.h"
 #include "leap/leap_protocol.h"
 
 #include <stdio.h>
@@ -182,6 +183,41 @@ void leap_win_print_transport_stats(const LeapRawWinpcapSocket* sock)
         (unsigned long long)stats.rx_errors,
         (unsigned long long)stats.rx_short_frames,
         (unsigned long long)stats.link_transitions);
+
+    if (stats.rx_frames_ok > 0u)
+    {
+        if (sock->last_rx_valid_leap != 0)
+        {
+            printf(
+                "transport: last_rx eth_cap=%u svc=0x%04X msg=0x%04X leap_len=%zu "
+                "(expect eth_cap~100 leap_len~86 HELLO_REPLY)\n",
+                (unsigned)sock->last_rx_eth_caplen,
+                (unsigned)sock->last_rx_service_id,
+                (unsigned)sock->last_rx_message_type,
+                sock->last_rx_payload_len);
+        }
+        else
+        {
+            printf(
+                "transport: last_rx eth_cap=%u leap_len=%zu (no LEAP magic)\n",
+                (unsigned)sock->last_rx_eth_caplen,
+                sock->last_rx_payload_len);
+        }
+
+        if (sock->last_rx_payload_len > 0u)
+        {
+            LeapFrameView        view;
+            LeapFrameParseResult parse_result;
+
+            parse_result = leap_frame_parse(
+                sock->last_rx_payload,
+                sock->last_rx_payload_len,
+                &view);
+            printf(
+                "transport: last_rx parse=%s\n",
+                leap_frame_parse_result_string(parse_result));
+        }
+    }
 }
 
 void leap_win_poll_link_and_log(LeapRawWinpcapSocket* sock)

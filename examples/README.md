@@ -31,6 +31,10 @@ See [linux_loopback/README.md](linux_loopback/README.md).
 
 See [win_l2/README.md](win_l2/README.md). Build with `-DLEAP_BUILD_WIN_L2=ON`.
 
+## ClearCore device host
+
+See [platforms/clearcore/README.md](../platforms/clearcore/README.md). LEAP `leap_device_stack` on Teknic ClearCore via ProjectTemplate + lwIP raw hook (`0x88B6`).
+
 ## Planned examples
 
 | Example | Description |
