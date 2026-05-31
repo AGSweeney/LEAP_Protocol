@@ -1,7 +1,7 @@
 /*
  * examples/linux_loopback/device_main.c
  *
- * Linux AF_PACKET LEAP device: DISC + MGMT with tick loop.
+ * Linux AF_PACKET LEAP device: DISC + MGMT + PD with tick loop.
  *
  * Usage: sudo ./leap_linux_device [interface]
  *
@@ -68,9 +68,41 @@ static void device_log_rx(const LeapDeviceStackResult* result)
                    (unsigned)result->device_state);
         }
         break;
+    case LEAP_SERVICE_PD:
+        if (result->frame.header.message_type == LEAP_PD_WRITE_ENDPOINT)
+        {
+            printf("received PD WRITE_ENDPOINT (state=%u)\n",
+                   (unsigned)result->device_state);
+        }
+        break;
     default:
         break;
     }
+}
+
+static void device_log_pd_result(const LeapDeviceStackResult* result)
+{
+    const LeapEndpointDataHeader* hdr;
+    const LeapProfileDigital16x16*  profile;
+
+    if ((result->flags & LEAP_DEVICE_STACK_FLAG_OUTPUTS_APPLIED) == 0u)
+    {
+        return;
+    }
+
+    if (result->frame.payload_length <
+        sizeof(LeapEndpointDataHeader) + sizeof(LeapProfileDigital16x16))
+    {
+        printf("PD outputs applied\n");
+        return;
+    }
+
+    hdr     = (const LeapEndpointDataHeader*)result->frame.payload;
+    profile = (const LeapProfileDigital16x16*)(result->frame.payload + sizeof(*hdr));
+    printf("PD outputs applied: endpoint=0x%04X outputs=0x%04X seq=%u\n",
+           hdr->endpoint_id,
+           profile->digital_outputs,
+           hdr->process_sequence);
 }
 
 static void device_log_tick(uint32_t flags, LeapState_u16 state)
@@ -144,15 +176,18 @@ int main(int argc, char** argv)
                 &rx_len,
                 100) == 0)
         {
-            if (leap_device_stack_process_frame(
-                    &stack,
-                    src_mac,
-                    now_us,
-                    rx,
-                    rx_len,
-                    &result) == LEAP_DEVICE_STACK_OK)
+            LeapDeviceStackStatus status = leap_device_stack_process_frame(
+                &stack,
+                src_mac,
+                now_us,
+                rx,
+                rx_len,
+                &result);
+
+            if (status == LEAP_DEVICE_STACK_OK)
             {
                 device_log_rx(&result);
+                device_log_pd_result(&result);
 
                 if ((result.flags & LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY) != 0u)
                 {
@@ -179,6 +214,12 @@ int main(int argc, char** argv)
                         result.mgmt_reply.payload,
                         result.mgmt_reply.payload_length);
                 }
+            }
+            else if (status == LEAP_DEVICE_STACK_PD_REJECTED)
+            {
+                printf("PD rejected (status=0x%04X state=%u)\n",
+                       result.error_code,
+                       (unsigned)result.device_state);
             }
         }
 

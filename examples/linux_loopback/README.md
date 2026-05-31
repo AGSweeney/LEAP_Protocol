@@ -10,8 +10,20 @@ Raw Ethernet LEAP discovery + MGMT over Linux `AF_PACKET` (development EtherType
 4. **Device** replies with `OPEN_SESSION_REPLY` and enters `SAFE`
 5. **Controller** sends `SET_STATE -> OP`
 6. **Device** replies with `STATE_REPLY` — device is now in `OP`
+7. **Controller** sends `PD WRITE_ENDPOINT` (digital outputs `0x0015`)
+8. **Device** applies outputs and logs `PD outputs applied`
 
 The device runs a 100 ms recv loop with monotonic-time `tick()` for lease/watchdog expiry logging.
+
+### Lease expiry demo
+
+Use a 2 s lease and idle without heartbeat/PD:
+
+```bash
+sudo ./build/leap_linux_controller --lease-demo lo
+```
+
+Watch the **device** terminal for `tick: lease/watchdog expired -> SAFE` after ~2 s.
 
 ## Requirements
 
@@ -44,13 +56,14 @@ Terminal 2 (controller):
 sudo ./build/leap_linux_controller lo
 ```
 
-Expected controller output ends with `MGMT flow complete — device is in OP with active owner lease`.
+Expected controller output ends with `flow complete — DISC + MGMT + PD on raw Ethernet`.
 
 ## Options
 
 ```bash
 sudo ./build/leap_linux_device eth0
 sudo ./build/leap_linux_controller eth0
+sudo ./build/leap_linux_controller --lease-demo lo
 ```
 
 Transport errors print `strerror()` details when `errno` is set (timeouts are silent).
@@ -58,4 +71,5 @@ Transport errors print `strerror()` details when `errno` is set (timeouts are si
 ## Notes
 
 - Test on `lo` first; validate on a physical NIC before relying on MAC filtering behavior.
-- PD writes are not yet included in this example — see `device_minimal` for simulated PD.
+- PD writes are included in the default controller flow (`WRITE_ENDPOINT` for `DIGITAL_IO_16X16`).
+- Use `--lease-demo` to exercise lease expiry without PD traffic.
