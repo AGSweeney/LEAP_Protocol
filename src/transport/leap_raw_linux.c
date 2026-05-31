@@ -21,10 +21,41 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
+
+static int g_leap_raw_linux_last_errno;
+
+static void leap_raw_linux_set_errno(void)
+{
+    g_leap_raw_linux_last_errno = errno;
+}
+
+static void leap_raw_linux_clear_errno(void)
+{
+    g_leap_raw_linux_last_errno = 0;
+}
+
+int leap_raw_linux_last_errno(void)
+{
+    return g_leap_raw_linux_last_errno;
+}
+
+uint64_t leap_raw_linux_monotonic_us(void)
+{
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+    {
+        leap_raw_linux_set_errno();
+        return 0u;
+    }
+
+    return ((uint64_t)ts.tv_sec * 1000000u) + ((uint64_t)ts.tv_nsec / 1000u);
+}
 
 static int leap_raw_linux_ifindex(int fd, const char* ifname, uint8_t* mac_out)
 {
@@ -35,11 +66,13 @@ static int leap_raw_linux_ifindex(int fd, const char* ifname, uint8_t* mac_out)
 
     if (ioctl(fd, SIOCGIFINDEX, &ifr) < 0)
     {
+        leap_raw_linux_set_errno();
         return -1;
     }
 
     if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0)
     {
+        leap_raw_linux_set_errno();
         return -1;
     }
 
@@ -61,10 +94,13 @@ int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t e
         return -1;
     }
 
+    leap_raw_linux_clear_errno();
+
     memset(sock, 0, sizeof(*sock));
     sock->fd = socket(AF_PACKET, SOCK_RAW, htons(ethertype));
     if (sock->fd < 0)
     {
+        leap_raw_linux_set_errno();
         return -1;
     }
 
@@ -83,6 +119,7 @@ int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t e
 
     if (bind(sock->fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
     {
+        leap_raw_linux_set_errno();
         close(sock->fd);
         sock->fd = -1;
         return -1;
@@ -136,7 +173,14 @@ int leap_raw_linux_send(
     memcpy(frame + 14, payload, payload_length);
 
     sent = send(sock->fd, frame, total, 0);
-    return (sent == (ssize_t)total) ? 0 : -1;
+    if (sent != (ssize_t)total)
+    {
+        leap_raw_linux_set_errno();
+        return -1;
+    }
+
+    leap_raw_linux_clear_errno();
+    return 0;
 }
 
 int leap_raw_linux_recv(
@@ -162,14 +206,26 @@ int leap_raw_linux_recv(
     pfd.fd     = sock->fd;
     pfd.events = POLLIN;
 
-    if (poll(&pfd, 1, timeout_ms) <= 0)
     {
-        return -1;
+        int poll_result = poll(&pfd, 1, timeout_ms);
+
+        if (poll_result == 0)
+        {
+            leap_raw_linux_clear_errno();
+            return -1;
+        }
+
+        if (poll_result < 0)
+        {
+            leap_raw_linux_set_errno();
+            return -1;
+        }
     }
 
     received = recv(sock->fd, frame, sizeof(frame), 0);
     if (received < 14)
     {
+        leap_raw_linux_set_errno();
         return -1;
     }
 
@@ -181,15 +237,30 @@ int leap_raw_linux_recv(
     leap_len = (size_t)received - 14u;
     if (leap_len > payload_capacity)
     {
+        errno = EMSGSIZE;
+        leap_raw_linux_set_errno();
         return -1;
     }
 
     memcpy(payload, frame + 14, leap_len);
     *payload_length = leap_len;
+    leap_raw_linux_clear_errno();
     return 0;
 }
 
 #else
+
+static int g_leap_raw_linux_last_errno;
+
+int leap_raw_linux_last_errno(void)
+{
+    return g_leap_raw_linux_last_errno;
+}
+
+uint64_t leap_raw_linux_monotonic_us(void)
+{
+    return 0u;
+}
 
 int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t ethertype)
 {

@@ -43,6 +43,16 @@ int leap_raw_linux_recv(
     size_t*                   payload_length,
     int                       timeout_ms);
 
+/*
+ * Monotonic time in microseconds (CLOCK_MONOTONIC). Returns 0 on non-Linux.
+ */
+uint64_t leap_raw_linux_monotonic_us(void);
+
+/*
+ * errno from the last failed leap_raw_linux_send/rec/open call (0 if none).
+ */
+int leap_raw_linux_last_errno(void);
+
 #ifdef __cplusplus
 }
 #endif

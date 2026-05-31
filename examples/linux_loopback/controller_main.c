@@ -1,7 +1,7 @@
 /*
  * examples/linux_loopback/controller_main.c
  *
- * Linux AF_PACKET LEAP controller: broadcast HELLO, wait for HELLO_REPLY.
+ * Linux AF_PACKET LEAP controller: HELLO -> OPEN_SESSION -> SET_STATE(OP).
  *
  * Usage: sudo ./leap_linux_controller [interface]
  *
@@ -9,29 +9,71 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "leap_linux_common.h"
+
 #include "leap/leap_frame.h"
 #include "leap/leap_protocol.h"
-#include "leap/leap_raw_linux.h"
 
 #include <stdio.h>
 #include <string.h>
 
 #define LEAP_RX_BUF_SIZE 1600u
-#define LEAP_TX_BUF_SIZE 256u
 
 static const uint8_t k_bcast[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
+static int controller_wait_reply(
+    const LeapRawLinuxSocket* sock,
+    uint8_t*                  peer_mac,
+    uint16_t                  expect_service,
+    uint16_t                  expect_message,
+    LeapFrameView*            view,
+    uint8_t*                  rx,
+    size_t                    rx_capacity)
+{
+    size_t rx_len = 0u;
+
+    if (leap_linux_recv_leap(sock, peer_mac, rx, rx_capacity, &rx_len, 5000) != 0)
+    {
+        fprintf(stderr, "timeout waiting for reply (service=0x%04X message=0x%04X)\n",
+                expect_service,
+                expect_message);
+        return -1;
+    }
+
+    if (leap_frame_parse(rx, rx_len, view) != LEAP_FRAME_OK)
+    {
+        fprintf(stderr, "invalid LEAP reply frame\n");
+        return -1;
+    }
+
+    if (view->header.service_id != expect_service ||
+        view->header.message_type != expect_message)
+    {
+        fprintf(stderr,
+                "unexpected reply (got service=0x%04X message=0x%04X)\n",
+                view->header.service_id,
+                view->header.message_type);
+        return -1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
-    const char*        ifname = "lo";
-    LeapRawLinuxSocket transport;
-    LeapHelloRequest   hello;
-    uint8_t            tx[LEAP_TX_BUF_SIZE];
-    uint8_t            rx[LEAP_RX_BUF_SIZE];
-    uint8_t            src_mac[6];
-    size_t             tx_len = 0u;
-    size_t             rx_len = 0u;
-    LeapFrameView      view;
+    const char*           ifname = "lo";
+    LeapRawLinuxSocket    transport;
+    LeapHelloRequest      hello;
+    LeapOpenSessionRequest open_req;
+    LeapSetStateRequest   set_req;
+    uint8_t               peer_mac[6];
+    uint8_t               rx[LEAP_RX_BUF_SIZE];
+    LeapFrameView         view;
+    uint32_t              session_id = 0u;
+    uint32_t              sequence   = 1u;
+    const LeapHelloReply* hello_reply;
+    const LeapOpenSessionReply* open_reply;
+    const LeapStateReply* state_reply;
 
 #if !defined(__linux__)
     (void)argc;
@@ -46,61 +88,154 @@ int main(int argc, char** argv)
 
     if (leap_raw_linux_open(&transport, ifname, LEAP_ETHERTYPE_DEVELOPMENT) != 0)
     {
-        fprintf(stderr, "failed to open raw socket on %s (need CAP_NET_RAW/root)\n", ifname);
+        leap_linux_print_transport_error("open");
         return 1;
     }
 
+    printf("LEAP controller on %s\n", ifname);
+    leap_linux_print_mac("  local MAC: ", transport.local_mac);
+
     memset(&hello, 0, sizeof(hello));
-    if (leap_frame_write(
-            tx,
-            sizeof(tx),
-            &tx_len,
+    if (leap_linux_send_leap(
+            &transport,
+            k_bcast,
             LEAP_FLAG_BROADCAST,
             (uint16_t)LEAP_SERVICE_DISC,
             LEAP_DISC_HELLO,
             0u,
-            1u,
+            sequence++,
             0u,
             (const uint8_t*)&hello,
             sizeof(hello)) != 0)
     {
-        fprintf(stderr, "failed to build HELLO frame\n");
         return 1;
     }
 
-    if (leap_raw_linux_send(&transport, k_bcast, tx, tx_len) != 0)
-    {
-        fprintf(stderr, "failed to send HELLO\n");
-        return 1;
-    }
+    printf("sent HELLO (broadcast)\n");
 
-    printf("sent HELLO on %s, waiting for HELLO_REPLY...\n", ifname);
-
-    if (leap_raw_linux_recv(&transport, src_mac, rx, sizeof(rx), &rx_len, 3000) != 0)
+    if (controller_wait_reply(
+            &transport,
+            peer_mac,
+            (uint16_t)LEAP_SERVICE_DISC,
+            LEAP_DISC_HELLO_REPLY,
+            &view,
+            rx,
+            sizeof(rx)) != 0)
     {
-        fprintf(stderr, "timeout waiting for HELLO_REPLY\n");
         leap_raw_linux_close(&transport);
         return 1;
     }
 
-    if (leap_frame_parse(rx, rx_len, &view) != LEAP_FRAME_OK)
+    if (view.payload_length < sizeof(LeapHelloReply))
     {
-        fprintf(stderr, "invalid HELLO_REPLY frame\n");
+        fprintf(stderr, "HELLO_REPLY too short\n");
         leap_raw_linux_close(&transport);
         return 1;
     }
 
-    if (view.header.service_id != (uint16_t)LEAP_SERVICE_DISC ||
-        view.header.message_type != LEAP_DISC_HELLO_REPLY)
+    hello_reply = (const LeapHelloReply*)view.payload;
+    printf("received HELLO_REPLY\n");
+    leap_linux_print_mac("  device MAC: ", peer_mac);
+    printf("  device state: %u\n", (unsigned)hello_reply->current_state);
+    printf("  profile: 0x%08X\n", hello_reply->active_profile_id);
+
+    memset(&open_req, 0, sizeof(open_req));
+    memcpy(open_req.controller_mac, transport.local_mac, 6);
+    open_req.open_flags                 = LEAP_OPEN_FLAG_REQUEST_OWNER;
+    open_req.requested_lease_time_us    = 5000000u;
+    open_req.requested_watchdog_time_us = 500000u;
+
+    if (leap_linux_send_leap(
+            &transport,
+            peer_mac,
+            LEAP_FLAG_ACK_REQUESTED,
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_OPEN_SESSION,
+            0u,
+            sequence++,
+            0u,
+            (const uint8_t*)&open_req,
+            sizeof(open_req)) != 0)
     {
-        fprintf(stderr, "unexpected reply service/message\n");
         leap_raw_linux_close(&transport);
         return 1;
     }
 
-    printf("received HELLO_REPLY from device, state=%u payload=%u bytes\n",
-           (unsigned)view.header.flags,
-           (unsigned)view.payload_length);
+    printf("sent OPEN_SESSION (owner request)\n");
+
+    if (controller_wait_reply(
+            &transport,
+            peer_mac,
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_OPEN_SESSION_REPLY,
+            &view,
+            rx,
+            sizeof(rx)) != 0)
+    {
+        leap_raw_linux_close(&transport);
+        return 1;
+    }
+
+    if (view.payload_length < sizeof(LeapOpenSessionReply))
+    {
+        fprintf(stderr, "OPEN_SESSION_REPLY too short\n");
+        leap_raw_linux_close(&transport);
+        return 1;
+    }
+
+    open_reply  = (const LeapOpenSessionReply*)view.payload;
+    session_id  = open_reply->assigned_session_id;
+    printf("received OPEN_SESSION_REPLY\n");
+    printf("  session_id: 0x%08X\n", session_id);
+    printf("  granted lease: %u us\n", open_reply->granted_lease_time_us);
+    printf("  device state: %u (expected SAFE=3)\n", (unsigned)open_reply->current_state);
+
+    memset(&set_req, 0, sizeof(set_req));
+    set_req.requested_state = (uint16_t)LEAP_STATE_OP;
+
+    if (leap_linux_send_leap(
+            &transport,
+            peer_mac,
+            LEAP_FLAG_ACK_REQUESTED,
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_SET_STATE,
+            session_id,
+            sequence++,
+            0u,
+            (const uint8_t*)&set_req,
+            sizeof(set_req)) != 0)
+    {
+        leap_raw_linux_close(&transport);
+        return 1;
+    }
+
+    printf("sent SET_STATE -> OP\n");
+
+    if (controller_wait_reply(
+            &transport,
+            peer_mac,
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_STATE_REPLY,
+            &view,
+            rx,
+            sizeof(rx)) != 0)
+    {
+        leap_raw_linux_close(&transport);
+        return 1;
+    }
+
+    if (view.payload_length < sizeof(LeapStateReply))
+    {
+        fprintf(stderr, "STATE_REPLY too short\n");
+        leap_raw_linux_close(&transport);
+        return 1;
+    }
+
+    state_reply = (const LeapStateReply*)view.payload;
+    printf("received STATE_REPLY\n");
+    printf("  accepted state: %u\n", (unsigned)state_reply->accepted_state);
+    printf("  current state: %u (expected OP=4)\n", (unsigned)state_reply->current_state);
+    printf("MGMT flow complete — device is in OP with active owner lease\n");
 
     leap_raw_linux_close(&transport);
     return 0;

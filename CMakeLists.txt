@@ -57,8 +57,20 @@ add_executable(device_minimal examples/device_minimal/main.c)
 target_link_libraries(device_minimal PRIVATE leap_core)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_executable(leap_linux_device examples/linux_loopback/device_main.c)
-  add_executable(leap_linux_controller examples/linux_loopback/controller_main.c)
+  add_executable(leap_linux_device
+    examples/linux_loopback/device_main.c
+    examples/linux_loopback/leap_linux_common.c
+  )
+  add_executable(leap_linux_controller
+    examples/linux_loopback/controller_main.c
+    examples/linux_loopback/leap_linux_common.c
+  )
+  target_include_directories(leap_linux_device PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/linux_loopback
+  )
+  target_include_directories(leap_linux_controller PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/linux_loopback
+  )
   target_link_libraries(leap_linux_device PRIVATE leap_core)
   target_link_libraries(leap_linux_controller PRIVATE leap_core)
 endif()
