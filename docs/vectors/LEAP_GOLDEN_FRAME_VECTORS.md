@@ -7,8 +7,7 @@ Purpose: Golden LEAP frame vectors for interoperability testing.
 
 # LEAP Golden Frame Vectors
 
-This document provides deterministic vectors aligned to `leap_protocol.h` and
-`LEAP_PROTOCOL_SPECIFICATION.md`.
+Deterministic test vectors for LEAP v1.0. All byte streams are aligned to the wire contract defined in `inc/leap/leap_protocol.h` and `docs/LEAP_PROTOCOL_SPECIFICATION.md`.
 
 ## 1. CRC Check Vectors
 
@@ -65,7 +64,7 @@ Field-by-field decode of `LeapEndpointDataHeader` (`32` bytes) followed by `Leap
 | `f1` | `241` | `v_field_supply` (24.1 V) |
 | `00` | `0x00` | `reserved0` |
 
-`0x0500` in the earlier raw notation was bytes 6–7 of the payload, which is `endpoint_flags = 0x0005`. These are the `APPLY_OUTPUTS` and `TIMESTAMP_VALID` flag bits from `LeapEndpointDataHeader` and are fully accounted for by the struct definition in `leap_protocol.h`.
+Bytes 6–7 of the payload are `endpoint_flags = 0x0005` (`APPLY_OUTPUTS | TIMESTAMP_VALID`). These are the two active flag bits in `LeapEndpointDataHeader.endpoint_flags` as defined in `leap_protocol.h`.
 
 ### 2.3 Full LEAP Frame Bytes (Header + Payload, `72` bytes)
 
@@ -212,11 +211,6 @@ Corrupted payload CRC field value: `0xC723066B`
 
 ## 8. Notes
 
-- Vector byte streams here are LEAP bytes (header + payload and optional transport
-  padding); Ethernet destination/source MAC and EtherType bytes are not included
-  unless noted.
-- When generating CRCs, include only the true payload bytes (`payload_length`),
-  never transport padding.
-- Profile ID in Section 2 (`0x00010002`) matches
-  `LEAP_PROFILE_DIGITAL_IO_16X16` in `leap_protocol.h` and the profile registry
-  table in `LEAP_PROTOCOL_SPECIFICATION.md`.
+- Byte streams cover the LEAP frame (header + payload, plus transport padding where shown). Ethernet destination/source MAC and EtherType fields are not included unless explicitly stated.
+- CRC coverage is limited to the true payload bytes declared by `payload_length`. Transport padding bytes are excluded from both `payload_crc32c` computation and receiver CRC validation.
+- The profile ID in Section 2 (`0x00010002`) matches `LEAP_PROFILE_DIGITAL_IO_16X16` in `inc/leap/leap_protocol.h` and the profile registry table in `docs/LEAP_PROTOCOL_SPECIFICATION.md`.

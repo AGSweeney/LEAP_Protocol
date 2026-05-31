@@ -1,9 +1,11 @@
-# `examples` Directory
+# `examples`
 
-Reference examples for bring-up and integration.
+Reference implementations for controller and device bring-up.
 
-Planned examples:
+## Planned Examples
 
-- Minimal controller example (discovery + session open + cyclic PD).
-- Minimal device example (discovery reply + session/state handling).
-- Packet capture replay utility using golden vectors.
+| Example | Description |
+| --- | --- |
+| `controller_minimal/` | Discovery, session open, cyclic EXCHANGE_ENDPOINTS loop |
+| `device_minimal/` | HELLO_REPLY, session/state handling, process-data response |
+| `vector_replay/` | Packet replay utility driven by `LEAP_GOLDEN_FRAME_VECTORS.md` |

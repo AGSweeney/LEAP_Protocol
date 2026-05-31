@@ -1,8 +1,6 @@
 # LEAP Protocol Repository
 
-`LEAP` (Lightweight Ethernet Application Protocol) is a deterministic, ownership-based, raw Layer-2 Ethernet control protocol for embedded devices and remote I/O.
-
-This repository is organized as a production-oriented protocol workspace with clear separation between wire contracts, specification artifacts, schemas, tooling, and future implementation code.
+LEAP (Lightweight Ethernet Application Protocol) is a deterministic, ownership-based, raw Layer-2 Ethernet control protocol for embedded devices and remote I/O.
 
 ## Repository Layout
 
@@ -25,29 +23,28 @@ This repository is organized as a production-oriented protocol workspace with cl
         └── leap_dissector.lua
 ```
 
-## Primary Artifacts
+## Artifacts
 
-- `inc/leap/leap_protocol.h`
-  - Canonical LEAP wire contract: constants, packed structs, service/profile IDs, and static size checks.
-- `docs/LEAP_PROTOCOL_SPECIFICATION.md`
-  - Normative protocol specification.
-- `docs/vectors/LEAP_GOLDEN_FRAME_VECTORS.md`
-  - CRC checks and golden frame vectors for conformance testing.
-- `schemas/leap-manifest-schema.json`
-  - Implementation-independent JSON schema for LEAP manifests.
-- `tools/wireshark/leap_dissector.lua`
-  - Initial Wireshark dissector for LEAP frame inspection.
+| File | Role |
+| --- | --- |
+| `inc/leap/leap_protocol.h` | Canonical wire contract: constants, packed structs, service/profile IDs, static size assertions |
+| `docs/LEAP_PROTOCOL_SPECIFICATION.md` | Normative protocol specification |
+| `docs/vectors/LEAP_GOLDEN_FRAME_VECTORS.md` | CRC check values and golden frame byte streams for conformance testing |
+| `schemas/leap-manifest-schema.json` | JSON Schema for implementation-independent LEAP device manifests |
+| `tools/wireshark/leap_dissector.lua` | Wireshark Lua dissector for LEAP frame inspection (initial) |
 
-## Intended Workflow
+## Development Workflow
 
-1. Update protocol rules in `docs/LEAP_PROTOCOL_SPECIFICATION.md`.
-2. Keep `inc/leap/leap_protocol.h` synchronized with the specification.
-3. Add/update vectors in `docs/vectors/LEAP_GOLDEN_FRAME_VECTORS.md`.
-4. Update `schemas/leap-manifest-schema.json` when metadata expectations change.
-5. Extend `tools/wireshark/leap_dissector.lua` as additional services/profiles are stabilized.
+1. Protocol rule changes go into `docs/LEAP_PROTOCOL_SPECIFICATION.md` first.
+2. `inc/leap/leap_protocol.h` is kept synchronized with the specification.
+3. New or updated frame vectors are added to `docs/vectors/LEAP_GOLDEN_FRAME_VECTORS.md`.
+4. `schemas/leap-manifest-schema.json` is updated when identity or channel metadata contracts change.
+5. `tools/wireshark/leap_dissector.lua` is extended as services and profiles stabilize.
 
-## Next Implementation Areas
+## Implementation Areas
 
-- `src/`: protocol parser, serializer, CRC helpers, and transport glue.
-- `tests/`: vector-driven parser/CRC/conformance tests.
-- `examples/`: controller/device reference examples.
+| Directory | Contents |
+| --- | --- |
+| `src/` | Protocol parser, serializer, CRC engines, transport glue |
+| `tests/` | Vector-driven parser/CRC checks, conformance tests |
+| `examples/` | Controller and device reference implementations |

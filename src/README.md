@@ -1,10 +1,12 @@
-# `src` Directory
+# `src`
 
-Implementation code goes here.
+Protocol implementation code.
 
-Suggested initial modules:
+## Modules
 
-- `crc/` for CRC-16/XMODEM and CRC-32C implementations.
-- `frame/` for LEAP header parse/serialize logic.
-- `services/` for service-level handlers (DISC/MGMT/DIR/PD/DIAG).
-- `transport/` for platform-specific raw Ethernet integration.
+| Directory | Contents |
+| --- | --- |
+| `crc/` | CRC-16/XMODEM and CRC-32C engines |
+| `frame/` | LEAP header parser and serializer |
+| `services/` | Service handlers: DISC, MGMT, DIR, PD, DIAG |
+| `transport/` | Platform-specific raw Ethernet send/receive |
