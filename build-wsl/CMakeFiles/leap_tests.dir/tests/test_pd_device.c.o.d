@@ -38,6 +38,7 @@ CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o: \
  /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

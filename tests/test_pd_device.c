@@ -10,6 +10,7 @@
 
 #include "leap/leap_crc.h"
 #include "leap/leap_mgmt_device.h"
+#include "leap/leap_pd_common.h"
 #include "leap/leap_pd_device.h"
 #include "leap/leap_protocol.h"
 
@@ -81,20 +82,36 @@ static int pd_build_write_frame(
     size_t         out_capacity,
     size_t*        out_length,
     uint32_t       session_id,
-    const uint8_t* payload,
-    size_t         payload_length)
+    uint16_t       digital_outputs)
 {
-    LeapHeader* header;
-    size_t      total_length;
+    LeapPdBuildParams params;
+    size_t            payload_length;
+    LeapHeader*       header;
+    size_t            total_length;
 
-    if (out == NULL || out_length == NULL ||
-        out_capacity < (size_t)LEAP_HEADER_LENGTH_V1 + payload_length)
+    if (out == NULL || out_length == NULL)
     {
         return -1;
     }
 
-    total_length = (size_t)LEAP_HEADER_LENGTH_V1 + payload_length;
-    memset(out, 0, total_length);
+    memset(&params, 0, sizeof(params));
+    params.profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
+    params.process_sequence = 100u;
+    params.endpoint_flags   = LEAP_PD_FLAG_APPLY_OUTPUTS;
+
+    payload_length = leap_pd_build_digital_write(
+        out + LEAP_HEADER_LENGTH_V1,
+        out_capacity - LEAP_HEADER_LENGTH_V1,
+        &params,
+        digital_outputs);
+    if (payload_length == 0u ||
+        out_capacity < LEAP_HEADER_LENGTH_V1 + payload_length)
+    {
+        return -1;
+    }
+
+    total_length = LEAP_HEADER_LENGTH_V1 + payload_length;
+    memset(out, 0, LEAP_HEADER_LENGTH_V1);
 
     header = (LeapHeader*)out;
     header->magic          = LEAP_MAGIC_U32;
@@ -106,12 +123,7 @@ static int pd_build_write_frame(
     header->session_id     = session_id;
     header->sequence       = 100u;
     header->payload_length = (uint16_t)payload_length;
-
-    if (payload != NULL && payload_length > 0u)
-    {
-        memcpy(out + LEAP_HEADER_LENGTH_V1, payload, payload_length);
-        header->payload_crc32c = leap_crc32c(out + LEAP_HEADER_LENGTH_V1, payload_length);
-    }
+    header->payload_crc32c = leap_crc32c(out + LEAP_HEADER_LENGTH_V1, payload_length);
 
     pd_finalize_header_crc(out);
     *out_length = total_length;
@@ -122,7 +134,6 @@ TEST(test_pd_rejects_without_op)
 {
     LeapMgmtDeviceContext ctx;
     LeapPdDeviceResult    result;
-    LeapEndpointDataHeader endpoint;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
@@ -130,21 +141,16 @@ TEST(test_pd_rejects_without_op)
     pd_setup_ready_op(&ctx, &session_id);
     ctx.device_state = LEAP_STATE_SAFE;
 
-    memset(&endpoint, 0, sizeof(endpoint));
-    endpoint.endpoint_flags = LEAP_PD_FLAG_APPLY_OUTPUTS;
-    endpoint.data_length    = 0u;
-
     ASSERT_TRUE(
         pd_build_write_frame(
             frame,
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
-            (const uint8_t*)&endpoint,
-            sizeof(endpoint)) == 0);
+            0x0001u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, k_mac_a, 0u, frame, frame_length, &result),
+        leap_pd_device_process_frame(&ctx, NULL, k_mac_a, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_REJECTED);
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_NOT_OWNER);
 }
@@ -153,16 +159,15 @@ TEST(test_pd_accepts_owner_write_in_op)
 {
     LeapMgmtDeviceContext ctx;
     LeapPdDeviceResult    result;
-    LeapEndpointDataHeader endpoint;
+    LeapPdDeviceIoBinding io;
+    uint16_t              outputs = 0u;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
 
     pd_setup_ready_op(&ctx, &session_id);
-
-    memset(&endpoint, 0, sizeof(endpoint));
-    endpoint.endpoint_flags = LEAP_PD_FLAG_APPLY_OUTPUTS;
-    endpoint.data_length    = 0u;
+    memset(&io, 0, sizeof(io));
+    io.digital_outputs = &outputs;
 
     ASSERT_TRUE(
         pd_build_write_frame(
@@ -170,12 +175,12 @@ TEST(test_pd_accepts_owner_write_in_op)
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
-            (const uint8_t*)&endpoint,
-            sizeof(endpoint)) == 0);
+            0x0015u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, k_mac_a, 0u, frame, frame_length, &result),
+        leap_pd_device_process_frame(&ctx, &io, k_mac_a, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_OK);
+    ASSERT_EQ_U16(outputs, 0x0015u);
     ASSERT_TRUE((result.flags & LEAP_PD_DEVICE_FLAG_OUTPUTS_APPLIED) != 0u);
     ASSERT_TRUE((result.flags & LEAP_PD_DEVICE_FLAG_LEASE_REFRESHED) != 0u);
 }
@@ -184,15 +189,11 @@ TEST(test_pd_spoof_forces_safe)
 {
     LeapMgmtDeviceContext ctx;
     LeapPdDeviceResult    result;
-    LeapEndpointDataHeader endpoint;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
 
     pd_setup_ready_op(&ctx, &session_id);
-
-    memset(&endpoint, 0, sizeof(endpoint));
-    endpoint.endpoint_flags = LEAP_PD_FLAG_APPLY_OUTPUTS;
 
     ASSERT_TRUE(
         pd_build_write_frame(
@@ -200,11 +201,10 @@ TEST(test_pd_spoof_forces_safe)
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
-            (const uint8_t*)&endpoint,
-            sizeof(endpoint)) == 0);
+            0x0001u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, k_mac_b, 0u, frame, frame_length, &result),
+        leap_pd_device_process_frame(&ctx, NULL, k_mac_b, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_REJECTED);
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_NOT_OWNER);
     ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
@@ -214,7 +214,6 @@ TEST(test_pd_watchdog_refresh_survives_tick)
 {
     LeapMgmtDeviceContext ctx;
     LeapPdDeviceResult    result;
-    LeapEndpointDataHeader endpoint;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
@@ -223,20 +222,16 @@ TEST(test_pd_watchdog_refresh_survives_tick)
     ctx.granted_watchdog_us = 100000u;
     leap_mgmt_device_refresh_process_watchdog(&ctx, 0u);
 
-    memset(&endpoint, 0, sizeof(endpoint));
-    endpoint.endpoint_flags = LEAP_PD_FLAG_APPLY_OUTPUTS;
-
     ASSERT_TRUE(
         pd_build_write_frame(
             frame,
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
-            (const uint8_t*)&endpoint,
-            sizeof(endpoint)) == 0);
+            0x0001u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, k_mac_a, 80000u, frame, frame_length, &result),
+        leap_pd_device_process_frame(&ctx, NULL, k_mac_a, 80000u, frame, frame_length, &result),
         LEAP_PD_DEVICE_OK);
 
     leap_mgmt_device_tick(&ctx, 150000u);

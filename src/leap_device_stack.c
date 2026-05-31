@@ -37,11 +37,37 @@ void leap_device_stack_init_full(LeapDeviceStack* stack, const LeapDeviceStackCo
     {
         leap_mgmt_device_init(&stack->mgmt, &config->mgmt);
         leap_disc_device_init(&stack->disc, &config->disc);
+        leap_dir_device_init(&stack->dir, &config->dir);
     }
     else
     {
         leap_mgmt_device_init(&stack->mgmt, NULL);
         leap_disc_device_init(&stack->disc, NULL);
+        leap_dir_device_init(&stack->dir, NULL);
+    }
+
+    leap_dir_device_sync_disc(&stack->dir, &stack->disc);
+    stack->pd_io_bound = 0;
+}
+
+void leap_device_stack_bind_pd_io(
+    LeapDeviceStack*             stack,
+    const LeapPdDeviceIoBinding* io_binding)
+{
+    if (stack == NULL)
+    {
+        return;
+    }
+
+    if (io_binding != NULL)
+    {
+        stack->pd_io      = *io_binding;
+        stack->pd_io_bound = 1;
+    }
+    else
+    {
+        memset(&stack->pd_io, 0, sizeof(stack->pd_io));
+        stack->pd_io_bound = 0;
     }
 }
 
@@ -58,9 +84,11 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
     LeapMgmtProcessResult mgmt_result;
     LeapPdDeviceResult    pd_result;
     LeapDiscDeviceResult  disc_result;
+    LeapDirDeviceResult   dir_result;
     LeapMgmtProcessStatus mgmt_status;
     LeapPdDeviceStatus    pd_status;
     LeapDiscDeviceStatus  disc_status;
+    LeapDirDeviceStatus   dir_status;
     uint16_t              service_id;
 
     if (result == NULL)
@@ -152,10 +180,44 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         return LEAP_DEVICE_STACK_DISC_ERROR;
     }
 
+    if (service_id == (uint16_t)LEAP_SERVICE_DIR)
+    {
+        dir_status = leap_dir_device_process_frame(
+            &stack->dir,
+            &stack->disc,
+            &stack->mgmt,
+            source_mac,
+            data,
+            length,
+            &dir_result);
+
+        result->frame        = dir_result.frame;
+        result->device_state = leap_mgmt_device_get_state(&stack->mgmt);
+        result->error_code   = dir_result.error_code;
+        result->dir_message_type   = dir_result.message_type;
+        result->dir_payload_length = dir_result.payload_length;
+        result->flags             |= dir_result.flags;
+        (void)memcpy(
+            result->dir_payload,
+            dir_result.payload,
+            dir_result.payload_length);
+
+        if (dir_status == LEAP_DIR_DEVICE_OK)
+        {
+            result->flags |= LEAP_DEVICE_STACK_FLAG_DIR_HAS_REPLY;
+            result->status = LEAP_DEVICE_STACK_OK;
+            return LEAP_DEVICE_STACK_OK;
+        }
+
+        result->status = LEAP_DEVICE_STACK_DIR_ERROR;
+        return LEAP_DEVICE_STACK_DIR_ERROR;
+    }
+
     if (service_id == (uint16_t)LEAP_SERVICE_PD)
     {
         pd_status = leap_pd_device_process_frame(
             &stack->mgmt,
+            stack->pd_io_bound ? &stack->pd_io : NULL,
             source_mac,
             now_us,
             data,
@@ -166,6 +228,17 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         result->flags       |= pd_result.flags;
         result->device_state = leap_mgmt_device_get_state(&stack->mgmt);
         result->error_code   = pd_result.error_code;
+        result->pd_outputs_applied  = pd_result.digital_outputs_applied;
+        result->pd_inputs_snapshot  = pd_result.digital_inputs_snapshot;
+        result->pd_reply_message_type   = pd_result.reply_message_type;
+        result->pd_reply_payload_length = pd_result.reply_payload_length;
+        if (pd_result.reply_payload_length > 0u)
+        {
+            (void)memcpy(
+                result->pd_reply_payload,
+                pd_result.reply_payload,
+                pd_result.reply_payload_length);
+        }
 
         if (pd_status == LEAP_PD_DEVICE_OK)
         {

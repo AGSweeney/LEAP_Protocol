@@ -83,7 +83,7 @@ TEST(test_fragment_rejected_by_pd_device)
             sizeof(frag)) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, k_mac, 0u, frame, frame_length, &result),
+        leap_pd_device_process_frame(&ctx, NULL, k_mac, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_REJECTED);
 }
 

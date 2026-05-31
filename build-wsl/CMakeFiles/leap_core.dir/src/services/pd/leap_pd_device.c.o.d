@@ -21,5 +21,6 @@ CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h /usr/include/string.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

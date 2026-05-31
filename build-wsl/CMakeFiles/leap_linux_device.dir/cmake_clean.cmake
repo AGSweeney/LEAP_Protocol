@@ -5,6 +5,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.o.d"
   "CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_io.c.o"
   "CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_io.c.o.d"
+  "CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o"
+  "CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o.d"
   "leap_linux_device"
   "leap_linux_device.pdb"
 )

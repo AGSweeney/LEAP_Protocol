@@ -11,6 +11,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/mnt/d/LEAP_Protocol/tests/leap_test_frame.c" "CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_crc.c" "CMakeFiles/leap_tests.dir/tests/test_crc.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_crc.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_device_stack.c" "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_dir_device.c" "CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_disc_device.c" "CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_frame_fragment.c" "CMakeFiles/leap_tests.dir/tests/test_frame_fragment.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_frame_fragment.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_frame_fuzz.c" "CMakeFiles/leap_tests.dir/tests/test_frame_fuzz.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_frame_fuzz.c.o.d"
@@ -19,8 +20,10 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/mnt/d/LEAP_Protocol/tests/test_harness.c" "CMakeFiles/leap_tests.dir/tests/test_harness.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_harness.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_main.c" "CMakeFiles/leap_tests.dir/tests/test_main.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_main.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_mgmt_boundaries.c" "CMakeFiles/leap_tests.dir/tests/test_mgmt_boundaries.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_mgmt_boundaries.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_mgmt_controller.c" "CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_mgmt_device.c" "CMakeFiles/leap_tests.dir/tests/test_mgmt_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_mgmt_device.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_mgmt_process.c" "CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_pd_common.c" "CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_pd_device.c" "CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_util.c" "CMakeFiles/leap_tests.dir/tests/test_util.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_util.c.o.d"
   )

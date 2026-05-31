@@ -17,7 +17,12 @@ add_library(leap_core STATIC
   src/services/disc/leap_disc_device.c
   src/services/mgmt/leap_mgmt_device.c
   src/services/mgmt/leap_mgmt_process.c
+  src/services/mgmt/leap_mgmt_controller.c
+  src/services/dir/leap_dir_device.c
+  src/services/dir/leap_dir_controller.c
   src/services/pd/leap_pd_device.c
+  src/services/pd/leap_pd_common.c
+  src/services/pd/leap_pd_controller.c
   src/leap_device_stack.c
   src/transport/leap_raw_linux.c
 )
@@ -38,7 +43,10 @@ add_executable(leap_tests
   tests/test_mgmt_boundaries.c
   tests/test_mgmt_process.c
   tests/test_pd_device.c
+  tests/test_pd_common.c
   tests/test_disc_device.c
+  tests/test_dir_device.c
+  tests/test_mgmt_controller.c
   tests/test_device_stack.c
   tests/test_util.c
   tests/leap_test_frame.c
@@ -61,10 +69,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     examples/linux_loopback/device_main.c
     examples/linux_loopback/leap_linux_common.c
     examples/linux_loopback/leap_linux_io.c
+    examples/linux_loopback/leap_linux_stats.c
   )
   add_executable(leap_linux_controller
     examples/linux_loopback/controller_main.c
     examples/linux_loopback/leap_linux_common.c
+    examples/linux_loopback/leap_linux_pd.c
   )
   target_include_directories(leap_linux_device PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/linux_loopback

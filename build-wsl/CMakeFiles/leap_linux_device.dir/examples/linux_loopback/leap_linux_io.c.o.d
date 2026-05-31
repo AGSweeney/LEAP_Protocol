@@ -17,7 +17,8 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_io.c.o: \
  /usr/include/x86_64-linux-gnu/bits/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
- /usr/include/x86_64-linux-gnu/bits/stdint-least.h /usr/include/stdio.h \
+ /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h /usr/include/stdio.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \

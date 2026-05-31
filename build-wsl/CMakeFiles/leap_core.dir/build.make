@@ -139,10 +139,52 @@ CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/src/services/mgmt/leap_mgmt_process.c -o CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.s
 
+CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o: CMakeFiles/leap_core.dir/flags.make
+CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o: /mnt/d/LEAP_Protocol/src/services/mgmt/leap_mgmt_controller.c
+CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o -MF CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o.d -o CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o -c /mnt/d/LEAP_Protocol/src/services/mgmt/leap_mgmt_controller.c
+
+CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/src/services/mgmt/leap_mgmt_controller.c > CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.i
+
+CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/src/services/mgmt/leap_mgmt_controller.c -o CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.s
+
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o: CMakeFiles/leap_core.dir/flags.make
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o: /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_device.c
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o -MF CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o.d -o CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o -c /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_device.c
+
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_device.c > CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.i
+
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_device.c -o CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.s
+
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o: CMakeFiles/leap_core.dir/flags.make
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o: /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_controller.c
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o -MF CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o.d -o CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o -c /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_controller.c
+
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_controller.c > CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.i
+
+CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_controller.c -o CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.s
+
 CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o: CMakeFiles/leap_core.dir/flags.make
 CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o: /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_device.c
 CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building C object CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o -MF CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o.d -o CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o -c /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_device.c
 
 CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.i: cmake_force
@@ -153,10 +195,38 @@ CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_device.c -o CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.s
 
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o: CMakeFiles/leap_core.dir/flags.make
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o: /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_common.c
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building C object CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o -MF CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o.d -o CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o -c /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_common.c
+
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_common.c > CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.i
+
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_common.c -o CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.s
+
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o: CMakeFiles/leap_core.dir/flags.make
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o: /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_controller.c
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building C object CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o -MF CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o.d -o CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o -c /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_controller.c
+
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_controller.c > CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.i
+
+CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_controller.c -o CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.s
+
 CMakeFiles/leap_core.dir/src/leap_device_stack.c.o: CMakeFiles/leap_core.dir/flags.make
 CMakeFiles/leap_core.dir/src/leap_device_stack.c.o: /mnt/d/LEAP_Protocol/src/leap_device_stack.c
 CMakeFiles/leap_core.dir/src/leap_device_stack.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/leap_core.dir/src/leap_device_stack.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building C object CMakeFiles/leap_core.dir/src/leap_device_stack.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/leap_device_stack.c.o -MF CMakeFiles/leap_core.dir/src/leap_device_stack.c.o.d -o CMakeFiles/leap_core.dir/src/leap_device_stack.c.o -c /mnt/d/LEAP_Protocol/src/leap_device_stack.c
 
 CMakeFiles/leap_core.dir/src/leap_device_stack.c.i: cmake_force
@@ -170,7 +240,7 @@ CMakeFiles/leap_core.dir/src/leap_device_stack.c.s: cmake_force
 CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: CMakeFiles/leap_core.dir/flags.make
 CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/src/transport/leap_raw_linux.c
 CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: CMakeFiles/leap_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building C object CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o -MF CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o.d -o CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o -c /mnt/d/LEAP_Protocol/src/transport/leap_raw_linux.c
 
 CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.i: cmake_force
@@ -188,7 +258,12 @@ leap_core_OBJECTS = \
 "CMakeFiles/leap_core.dir/src/services/disc/leap_disc_device.c.o" \
 "CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_device.c.o" \
 "CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.o" \
+"CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o" \
+"CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o" \
+"CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o" \
 "CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o" \
+"CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o" \
+"CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o" \
 "CMakeFiles/leap_core.dir/src/leap_device_stack.c.o" \
 "CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o"
 
@@ -200,12 +275,17 @@ libleap_core.a: CMakeFiles/leap_core.dir/src/frame/leap_frame.c.o
 libleap_core.a: CMakeFiles/leap_core.dir/src/services/disc/leap_disc_device.c.o
 libleap_core.a: CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_device.c.o
 libleap_core.a: CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.o
+libleap_core.a: CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o
+libleap_core.a: CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o
+libleap_core.a: CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o
 libleap_core.a: CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o
+libleap_core.a: CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o
+libleap_core.a: CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o
 libleap_core.a: CMakeFiles/leap_core.dir/src/leap_device_stack.c.o
 libleap_core.a: CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o
 libleap_core.a: CMakeFiles/leap_core.dir/build.make
 libleap_core.a: CMakeFiles/leap_core.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking C static library libleap_core.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Linking C static library libleap_core.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/leap_core.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/leap_core.dir/link.txt --verbose=$(VERBOSE)
 

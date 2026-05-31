@@ -20,6 +20,11 @@ typedef struct LeapLinuxControllerOptions
     const char* ifname;
     int         lease_demo;
     int         cyclic;
+    unsigned    cyclic_period_ms;
+    int         promiscuous;
+    int         exchange;
+    int         stats;
+    unsigned    stats_interval;
 } LeapLinuxControllerOptions;
 
 void leap_linux_print_mac(const char* label, const uint8_t* mac);

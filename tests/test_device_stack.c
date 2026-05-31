@@ -10,6 +10,7 @@
 
 #include "leap/leap_crc.h"
 #include "leap/leap_device_stack.h"
+#include "leap/leap_pd_common.h"
 #include "leap/leap_protocol.h"
 
 #include <string.h>
@@ -78,7 +79,9 @@ TEST(test_stack_mgmt_open_set_state_and_pd_flow)
     LeapDeviceStackResult   result;
     LeapOpenSessionRequest  open_req;
     LeapSetStateRequest     set_req;
-    LeapEndpointDataHeader  endpoint;
+    uint8_t                 pd_payload[128];
+    size_t                  pd_payload_length;
+    LeapPdBuildParams       pd_params;
     uint8_t                 frame[TEST_STACK_FRAME_BUF_SIZE];
     size_t                  frame_length = 0u;
     uint32_t                session_id   = 0u;
@@ -129,8 +132,16 @@ TEST(test_stack_mgmt_open_set_state_and_pd_flow)
         LEAP_DEVICE_STACK_OK);
     ASSERT_EQ_INT(result.device_state, LEAP_STATE_OP);
 
-    memset(&endpoint, 0, sizeof(endpoint));
-    endpoint.endpoint_flags = LEAP_PD_FLAG_APPLY_OUTPUTS;
+    memset(&pd_params, 0, sizeof(pd_params));
+    pd_params.profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
+    pd_params.process_sequence = 1u;
+    pd_params.endpoint_flags   = LEAP_PD_FLAG_APPLY_OUTPUTS;
+    pd_payload_length = leap_pd_build_digital_write(
+        pd_payload,
+        sizeof(pd_payload),
+        &pd_params,
+        0x0005u);
+    ASSERT_TRUE(pd_payload_length > 0u);
     ASSERT_TRUE(
         stack_build_frame(
             frame,
@@ -139,8 +150,8 @@ TEST(test_stack_mgmt_open_set_state_and_pd_flow)
             (uint16_t)LEAP_SERVICE_PD,
             LEAP_PD_WRITE_ENDPOINT,
             session_id,
-            (const uint8_t*)&endpoint,
-            sizeof(endpoint)) == 0);
+            pd_payload,
+            pd_payload_length) == 0);
     ASSERT_EQ_INT(
         leap_device_stack_process_frame(&stack, k_mac_a, 0u, frame, frame_length, &result),
         LEAP_DEVICE_STACK_OK);

@@ -7,6 +7,8 @@
 
 #include "leap_linux_io.h"
 
+#include "leap/leap_protocol.h"
+
 #include <stdio.h>
 
 void leap_linux_io_init(LeapLinuxIoShadow* io)
@@ -19,6 +21,7 @@ void leap_linux_io_init(LeapLinuxIoShadow* io)
     io->digital_outputs = 0u;
     io->digital_inputs  = 0x0003u;
     io->safe_outputs    = 0u;
+    io->io_status       = LEAP_DIO_STATUS_OK;
     io->safe_active     = 1;
 }
 
@@ -32,6 +35,7 @@ void leap_linux_io_apply_outputs(LeapLinuxIoShadow* io, uint16_t outputs)
     io->safe_active     = 0;
     io->digital_outputs = outputs;
     io->digital_inputs  = (uint16_t)((io->digital_inputs + 1u) & 0x000Fu);
+    io->io_status       = LEAP_DIO_STATUS_OK;
 
     printf("I/O shadow: outputs=0x%04X inputs=0x%04X (live)\n",
            io->digital_outputs,

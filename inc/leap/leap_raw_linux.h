@@ -19,14 +19,37 @@ extern "C" {
 
 #define LEAP_RAW_LINUX_MAC_LEN 6u
 
+typedef struct LeapRawLinuxOpenOptions
+{
+    /*
+     * Enable IFF_PROMISC on the interface. Useful on shared LAN segments when
+     * the switch does not flood unicast to the controller NIC.
+     */
+    int promiscuous;
+    /*
+     * When non-zero (default), ignore received frames not addressed to the
+     * local MAC, broadcast, or multicast.
+     */
+    int filter_dest_mac;
+} LeapRawLinuxOpenOptions;
+
 typedef struct LeapRawLinuxSocket
 {
     int      fd;
     uint16_t ethertype;
     uint8_t  local_mac[LEAP_RAW_LINUX_MAC_LEN];
+    int      promiscuous;
+    int      filter_dest_mac;
 } LeapRawLinuxSocket;
 
 int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t ethertype);
+
+int leap_raw_linux_open_ex(
+    LeapRawLinuxSocket*             sock,
+    const char*                     ifname,
+    uint16_t                        ethertype,
+    const LeapRawLinuxOpenOptions* options);
+
 void leap_raw_linux_close(LeapRawLinuxSocket* sock);
 
 int leap_raw_linux_send(

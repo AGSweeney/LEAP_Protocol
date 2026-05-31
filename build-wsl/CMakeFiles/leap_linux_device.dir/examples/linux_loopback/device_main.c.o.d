@@ -21,13 +21,16 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/device_main.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_io.h \
+ /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_stats.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h /usr/include/stdio.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h /usr/include/stdio.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \

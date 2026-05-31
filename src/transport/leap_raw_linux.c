@@ -84,19 +84,141 @@ static int leap_raw_linux_ifindex(int fd, const char* ifname, uint8_t* mac_out)
     return ifr.ifr_ifindex;
 }
 
-int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t ethertype)
+static int leap_raw_linux_set_promiscuous(int fd, const char* ifname, int enable)
+{
+    struct ifreq ifr;
+
+    memset(&ifr, 0, sizeof(ifr));
+    (void)snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
+
+    if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0)
+    {
+        leap_raw_linux_set_errno();
+        return -1;
+    }
+
+    if (enable != 0)
+    {
+        ifr.ifr_flags = (short)(ifr.ifr_flags | (short)IFF_PROMISC);
+    }
+    else
+    {
+        ifr.ifr_flags = (short)(ifr.ifr_flags & (short)(~IFF_PROMISC));
+    }
+
+    if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0)
+    {
+        leap_raw_linux_set_errno();
+        return -1;
+    }
+
+    return 0;
+}
+
+static int leap_raw_linux_mac_is_broadcast(const uint8_t* mac)
+{
+    static const uint8_t k_bcast[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
+    return (memcmp(mac, k_bcast, 6) == 0);
+}
+
+static int leap_raw_linux_mac_is_multicast(const uint8_t* mac)
+{
+    return (mac != NULL && (mac[0] & 0x01u) != 0u);
+}
+
+static int leap_raw_linux_frame_dest_ok(
+    const LeapRawLinuxSocket* sock,
+    const uint8_t*            frame_dst_mac)
+{
+    if (sock == NULL || frame_dst_mac == NULL)
+    {
+        return 0;
+    }
+
+    if (sock->filter_dest_mac == 0)
+    {
+        return 1;
+    }
+
+    if (memcmp(frame_dst_mac, sock->local_mac, LEAP_RAW_LINUX_MAC_LEN) == 0)
+    {
+        return 1;
+    }
+
+    if (leap_raw_linux_mac_is_broadcast(frame_dst_mac))
+    {
+        return 1;
+    }
+
+    if (leap_raw_linux_mac_is_multicast(frame_dst_mac))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+static ssize_t leap_raw_linux_send_all(int fd, const uint8_t* data, size_t length)
+{
+    size_t   offset = 0u;
+    ssize_t  sent;
+
+    while (offset < length)
+    {
+        sent = send(fd, data + offset, length - offset, 0);
+        if (sent < 0)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+
+            leap_raw_linux_set_errno();
+            return -1;
+        }
+
+        if (sent == 0)
+        {
+            errno = EIO;
+            leap_raw_linux_set_errno();
+            return -1;
+        }
+
+        offset += (size_t)sent;
+    }
+
+    return (ssize_t)length;
+}
+
+int leap_raw_linux_open_ex(
+    LeapRawLinuxSocket*             sock,
+    const char*                     ifname,
+    uint16_t                        ethertype,
+    const LeapRawLinuxOpenOptions* options)
 {
     struct sockaddr_ll addr;
     int                ifindex;
+    int                promiscuous = 0;
+    int                filter_dest = 1;
 
     if (sock == NULL || ifname == NULL)
     {
         return -1;
     }
 
+    if (options != NULL)
+    {
+        promiscuous = options->promiscuous;
+        filter_dest = options->filter_dest_mac;
+    }
+
     leap_raw_linux_clear_errno();
 
     memset(sock, 0, sizeof(*sock));
+    sock->fd               = -1;
+    sock->filter_dest_mac  = (filter_dest != 0) ? 1 : 0;
+
     sock->fd = socket(AF_PACKET, SOCK_RAW, htons(ethertype));
     if (sock->fd < 0)
     {
@@ -112,6 +234,18 @@ int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t e
         return -1;
     }
 
+    if (promiscuous != 0)
+    {
+        if (leap_raw_linux_set_promiscuous(sock->fd, ifname, 1) != 0)
+        {
+            close(sock->fd);
+            sock->fd = -1;
+            return -1;
+        }
+
+        sock->promiscuous = 1;
+    }
+
     memset(&addr, 0, sizeof(addr));
     addr.sll_family   = AF_PACKET;
     addr.sll_protocol = htons(ethertype);
@@ -119,7 +253,19 @@ int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t e
 
     if (bind(sock->fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
     {
+        if (errno == ENODEV)
+        {
+            /*
+             * WSL2 and some virtualized hosts reject AF_PACKET bind even when
+             * the interface name resolves. Preserve ENODEV for callers.
+             */
+        }
+
         leap_raw_linux_set_errno();
+        if (sock->promiscuous != 0)
+        {
+            (void)leap_raw_linux_set_promiscuous(sock->fd, ifname, 0);
+        }
         close(sock->fd);
         sock->fd = -1;
         return -1;
@@ -127,6 +273,11 @@ int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t e
 
     sock->ethertype = ethertype;
     return 0;
+}
+
+int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t ethertype)
+{
+    return leap_raw_linux_open_ex(sock, ifname, ethertype, NULL);
 }
 
 void leap_raw_linux_close(LeapRawLinuxSocket* sock)
@@ -172,10 +323,9 @@ int leap_raw_linux_send(
     frame[13] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
     memcpy(frame + 14, payload, payload_length);
 
-    sent = send(sock->fd, frame, total, 0);
+    sent = leap_raw_linux_send_all(sock->fd, frame, total);
     if (sent != (ssize_t)total)
     {
-        leap_raw_linux_set_errno();
         return -1;
     }
 
@@ -203,30 +353,60 @@ int leap_raw_linux_recv(
 
     *payload_length = 0u;
 
-    pfd.fd     = sock->fd;
-    pfd.events = POLLIN;
-
+    for (;;)
     {
-        int poll_result = poll(&pfd, 1, timeout_ms);
-
-        if (poll_result == 0)
+        for (;;)
         {
-            leap_raw_linux_clear_errno();
-            return -1;
+            pfd.fd     = sock->fd;
+            pfd.events = POLLIN;
+
+            {
+                int poll_result = poll(&pfd, 1, timeout_ms);
+
+                if (poll_result == 0)
+                {
+                    leap_raw_linux_clear_errno();
+                    return -1;
+                }
+
+                if (poll_result < 0)
+                {
+                    if (errno == EINTR)
+                    {
+                        continue;
+                    }
+
+                    leap_raw_linux_set_errno();
+                    return -1;
+                }
+            }
+
+            received = recv(sock->fd, frame, sizeof(frame), 0);
+            if (received < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue;
+                }
+
+                leap_raw_linux_set_errno();
+                return -1;
+            }
+
+            break;
         }
 
-        if (poll_result < 0)
+        if (received < 14)
         {
-            leap_raw_linux_set_errno();
-            return -1;
+            continue;
         }
-    }
 
-    received = recv(sock->fd, frame, sizeof(frame), 0);
-    if (received < 14)
-    {
-        leap_raw_linux_set_errno();
-        return -1;
+        if (!leap_raw_linux_frame_dest_ok(sock, frame))
+        {
+            continue;
+        }
+
+        break;
     }
 
     if (src_mac != NULL)
@@ -262,12 +442,22 @@ uint64_t leap_raw_linux_monotonic_us(void)
     return 0u;
 }
 
-int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t ethertype)
+int leap_raw_linux_open_ex(
+    LeapRawLinuxSocket*             sock,
+    const char*                     ifname,
+    uint16_t                        ethertype,
+    const LeapRawLinuxOpenOptions* options)
 {
     (void)sock;
     (void)ifname;
     (void)ethertype;
+    (void)options;
     return -1;
+}
+
+int leap_raw_linux_open(LeapRawLinuxSocket* sock, const char* ifname, uint16_t ethertype)
+{
+    return leap_raw_linux_open_ex(sock, ifname, ethertype, NULL);
 }
 
 void leap_raw_linux_close(LeapRawLinuxSocket* sock)

@@ -223,10 +223,24 @@ CMakeFiles/leap_tests.dir/tests/test_pd_device.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_pd_device.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_pd_device.c -o CMakeFiles/leap_tests.dir/tests/test_pd_device.c.s
 
+CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o: CMakeFiles/leap_tests.dir/flags.make
+CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o: /mnt/d/LEAP_Protocol/tests/test_pd_common.c
+CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building C object CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o -MF CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o -c /mnt/d/LEAP_Protocol/tests/test_pd_common.c
+
+CMakeFiles/leap_tests.dir/tests/test_pd_common.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_tests.dir/tests/test_pd_common.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/tests/test_pd_common.c > CMakeFiles/leap_tests.dir/tests/test_pd_common.c.i
+
+CMakeFiles/leap_tests.dir/tests/test_pd_common.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_pd_common.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_pd_common.c -o CMakeFiles/leap_tests.dir/tests/test_pd_common.c.s
+
 CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o: /mnt/d/LEAP_Protocol/tests/test_disc_device.c
 CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building C object CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building C object CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o -MF CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o -c /mnt/d/LEAP_Protocol/tests/test_disc_device.c
 
 CMakeFiles/leap_tests.dir/tests/test_disc_device.c.i: cmake_force
@@ -237,10 +251,38 @@ CMakeFiles/leap_tests.dir/tests/test_disc_device.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_disc_device.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_disc_device.c -o CMakeFiles/leap_tests.dir/tests/test_disc_device.c.s
 
+CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o: CMakeFiles/leap_tests.dir/flags.make
+CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o: /mnt/d/LEAP_Protocol/tests/test_dir_device.c
+CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building C object CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o -MF CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o -c /mnt/d/LEAP_Protocol/tests/test_dir_device.c
+
+CMakeFiles/leap_tests.dir/tests/test_dir_device.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_tests.dir/tests/test_dir_device.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/tests/test_dir_device.c > CMakeFiles/leap_tests.dir/tests/test_dir_device.c.i
+
+CMakeFiles/leap_tests.dir/tests/test_dir_device.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_dir_device.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_dir_device.c -o CMakeFiles/leap_tests.dir/tests/test_dir_device.c.s
+
+CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o: CMakeFiles/leap_tests.dir/flags.make
+CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o: /mnt/d/LEAP_Protocol/tests/test_mgmt_controller.c
+CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building C object CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o -MF CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o -c /mnt/d/LEAP_Protocol/tests/test_mgmt_controller.c
+
+CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/tests/test_mgmt_controller.c > CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.i
+
+CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_mgmt_controller.c -o CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.s
+
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o: /mnt/d/LEAP_Protocol/tests/test_device_stack.c
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building C object CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building C object CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o -MF CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o -c /mnt/d/LEAP_Protocol/tests/test_device_stack.c
 
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.i: cmake_force
@@ -254,7 +296,7 @@ CMakeFiles/leap_tests.dir/tests/test_device_stack.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/test_util.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_util.c
 CMakeFiles/leap_tests.dir/tests/test_util.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building C object CMakeFiles/leap_tests.dir/tests/test_util.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building C object CMakeFiles/leap_tests.dir/tests/test_util.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_util.c.o -MF CMakeFiles/leap_tests.dir/tests/test_util.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_util.c.o -c /mnt/d/LEAP_Protocol/tests/test_util.c
 
 CMakeFiles/leap_tests.dir/tests/test_util.c.i: cmake_force
@@ -268,7 +310,7 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: /mnt/d/LEAP_Protocol/tests/leap_test_frame.c
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building C object CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building C object CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o -MF CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o.d -o CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o -c /mnt/d/LEAP_Protocol/tests/leap_test_frame.c
 
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.i: cmake_force
@@ -292,7 +334,10 @@ leap_tests_OBJECTS = \
 "CMakeFiles/leap_tests.dir/tests/test_mgmt_boundaries.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o" \
+"CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o" \
+"CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o" \
+"CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_util.c.o" \
 "CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
@@ -311,14 +356,17 @@ leap_tests: CMakeFiles/leap_tests.dir/tests/test_mgmt_device.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_mgmt_boundaries.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o
+leap_tests: CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o
+leap_tests: CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o
+leap_tests: CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_util.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o
 leap_tests: CMakeFiles/leap_tests.dir/build.make
 leap_tests: libleap_core.a
 leap_tests: CMakeFiles/leap_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Linking C executable leap_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Linking C executable leap_tests"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/leap_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

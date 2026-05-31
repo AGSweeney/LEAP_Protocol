@@ -17,6 +17,7 @@ typedef struct LeapLinuxIoShadow
     uint16_t digital_outputs;
     uint16_t digital_inputs;
     uint16_t safe_outputs;
+    uint16_t io_status;
     int      safe_active;
 } LeapLinuxIoShadow;
 

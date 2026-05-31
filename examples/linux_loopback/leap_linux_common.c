@@ -10,7 +10,9 @@
 #include "leap/leap_frame.h"
 #include "leap/leap_protocol.h"
 
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define LEAP_LINUX_TX_BUF 1600u
@@ -44,6 +46,12 @@ void leap_linux_print_transport_error(const char* action)
     if (err != 0)
     {
         fprintf(stderr, "%s failed: %s\n", action, strerror(err));
+        if (err == ENODEV && strcmp(action, "open") == 0)
+        {
+            fprintf(stderr,
+                    "hint: WSL2 cannot bind AF_PACKET — use native Linux or a VM "
+                    "(see examples/linux_loopback/README.md)\n");
+        }
     }
     else
     {
@@ -147,9 +155,14 @@ void leap_linux_controller_parse_args(
         return;
     }
 
-    options->ifname     = "lo";
-    options->lease_demo = 0;
-    options->cyclic     = 0;
+    options->ifname           = "lo";
+    options->lease_demo       = 0;
+    options->cyclic           = 0;
+    options->cyclic_period_ms = 100u;
+    options->promiscuous      = 0;
+    options->exchange         = 0;
+    options->stats            = 0;
+    options->stats_interval   = 100u;
 
     for (i = 1; i < argc; i++)
     {
@@ -160,6 +173,45 @@ void leap_linux_controller_parse_args(
         else if (strcmp(argv[i], "--cyclic") == 0)
         {
             options->cyclic = 1;
+            options->stats  = 1;
+        }
+        else if (strcmp(argv[i], "--cyclic-ms") == 0)
+        {
+            options->cyclic = 1;
+            options->stats  = 1;
+            if (i + 1 < argc && argv[i + 1][0] != '-')
+            {
+                i++;
+                options->cyclic_period_ms = (unsigned)strtoul(argv[i], NULL, 10);
+                if (options->cyclic_period_ms == 0u)
+                {
+                    options->cyclic_period_ms = 100u;
+                }
+            }
+        }
+        else if (strcmp(argv[i], "--promisc") == 0)
+        {
+            options->promiscuous = 1;
+        }
+        else if (strcmp(argv[i], "--exchange") == 0)
+        {
+            options->exchange = 1;
+        }
+        else if (strcmp(argv[i], "--stats") == 0)
+        {
+            options->stats = 1;
+        }
+        else if (strcmp(argv[i], "--stats-interval") == 0)
+        {
+            if (i + 1 < argc && argv[i + 1][0] != '-')
+            {
+                i++;
+                options->stats_interval = (unsigned)strtoul(argv[i], NULL, 10);
+                if (options->stats_interval == 0u)
+                {
+                    options->stats_interval = 100u;
+                }
+            }
         }
         else if (argv[i][0] != '-')
         {
