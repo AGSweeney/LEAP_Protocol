@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 option(LEAP_BUILD_WIN_SMOKE "Build Windows Npcap wire smoke test" OFF)
+option(LEAP_BUILD_WIN_L2 "Build Windows Npcap device/controller examples" OFF)
 
 if(MSVC)
   add_compile_options(/W4)
@@ -39,6 +40,7 @@ add_library(leap_core STATIC
 if(WIN32)
   target_sources(leap_core PRIVATE src/transport/leap_raw_winpcap.c)
   target_sources(leap_core PRIVATE src/transport/leap_raw_linux.c)
+  target_link_libraries(leap_core PUBLIC iphlpapi ws2_32)
 else()
   target_sources(leap_core PRIVATE src/transport/leap_raw_linux.c)
 endif()
@@ -136,6 +138,7 @@ if(WIN32 AND LEAP_BUILD_WIN_SMOKE)
   add_executable(leap_win_smoke
     examples/win_smoke/wire_smoke_main.c
     examples/win_smoke/leap_win_io.c
+    examples/win_smoke/leap_win_smoke.c
   )
   target_include_directories(leap_win_smoke PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
@@ -143,5 +146,33 @@ if(WIN32 AND LEAP_BUILD_WIN_SMOKE)
   target_link_libraries(leap_win_smoke PRIVATE leap_core ws2_32)
   if(MSVC)
     target_compile_options(leap_win_smoke PRIVATE /utf-8)
+  endif()
+endif()
+
+if(WIN32 AND LEAP_BUILD_WIN_L2)
+  add_executable(leap_win_controller
+    examples/win_l2/controller_main.c
+    examples/win_l2/leap_win_common.c
+    examples/win_smoke/leap_win_io.c
+  )
+  add_executable(leap_win_device
+    examples/win_l2/device_main.c
+    examples/win_l2/leap_win_common.c
+    examples/win_l2/leap_win_device_io.c
+    examples/win_smoke/leap_win_io.c
+  )
+  target_include_directories(leap_win_controller PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
+  )
+  target_include_directories(leap_win_device PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
+  )
+  target_link_libraries(leap_win_controller PRIVATE leap_core ws2_32)
+  target_link_libraries(leap_win_device PRIVATE leap_core ws2_32)
+  if(MSVC)
+    target_compile_options(leap_win_controller PRIVATE /utf-8)
+    target_compile_options(leap_win_device PRIVATE /utf-8)
   endif()
 endif()

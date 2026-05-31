@@ -1,21 +1,15 @@
 /*
  * examples/win_smoke/wire_smoke_main.c
  *
- * Windows Npcap loopback wire smoke: in-process device + controller on one
- * pcap handle. Npcap loopback uses an in-driver relay when the OS does not
- * capture injected frames (see leap_raw_winpcap.c).
- *
- * Usage:
- *   leap_win_smoke.exe
- *   leap_win_smoke.exe \Device\NPF_Loopback
- *
- * Requires Npcap (wpcap.dll) with the Loopback adapter enabled.
+ * Windows Npcap loopback wire smoke: bootstrap validation, cyclic PD,
+ * lease expiry, and transport statistics.
  *
  * Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
  * SPDX-License-Identifier: MIT
  */
 
 #include "leap_win_io.h"
+#include "leap_win_smoke.h"
 
 #include "leap/leap_controller_stack.h"
 #include "leap/leap_device_stack.h"
@@ -38,7 +32,7 @@ typedef struct WinSmokeCoopCtx
     LeapRawWinpcapSocket* transport;
     LeapDeviceStack*      device;
     unsigned long*        device_frames;
-    int                   hello_reply_returned;
+    int*                  hello_reply_gate;
 } WinSmokeCoopCtx;
 
 static void win_smoke_device_send_reply(
@@ -221,14 +215,15 @@ static int win_smoke_coop_recv(
             }
 
             if (view.header.service_id == (uint16_t)LEAP_SERVICE_DISC &&
-                view.header.message_type == LEAP_DISC_HELLO_REPLY)
+                view.header.message_type == LEAP_DISC_HELLO_REPLY &&
+                ctx->hello_reply_gate != NULL)
             {
-                if (ctx->hello_reply_returned != 0)
+                if (*ctx->hello_reply_gate != 0)
                 {
                     continue;
                 }
 
-                ctx->hello_reply_returned = 1;
+                *ctx->hello_reply_gate = 1;
             }
         }
 
@@ -298,10 +293,74 @@ static uint64_t win_smoke_ctrl_io_monotonic(void* user_ctx)
     return leap_raw_winpcap_monotonic_us();
 }
 
+static void win_smoke_pump_pending(WinSmokeCoopCtx* ctx, unsigned max_frames)
+{
+    uint8_t  src_mac[6];
+    uint8_t  payload[LEAP_WIN_RX_BUF];
+    size_t   payload_length;
+    unsigned i;
+
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    for (i = 0u; i < max_frames; i++)
+    {
+        if (leap_win_recv_leap(
+                ctx->transport,
+                src_mac,
+                payload,
+                sizeof(payload),
+                &payload_length,
+                10) != 0)
+        {
+            break;
+        }
+
+        win_smoke_device_feed(ctx, src_mac, payload, payload_length);
+    }
+}
+
 static int win_smoke_pd_send(
     void*          user_ctx,
     const uint8_t* peer_mac,
     uint16_t       message_type,
+    const uint8_t* payload,
+    size_t         payload_length,
+    uint32_t       session_id,
+    uint32_t       sequence)
+{
+    WinSmokeCoopCtx* ctx = (WinSmokeCoopCtx*)user_ctx;
+    int              result;
+
+    result = leap_win_send_leap(
+        ctx->transport,
+        peer_mac,
+        0u,
+        (uint16_t)LEAP_SERVICE_PD,
+        message_type,
+        session_id,
+        sequence,
+        0u,
+        payload,
+        payload_length);
+    if (result != 0)
+    {
+        return result;
+    }
+
+    if (message_type == LEAP_PD_WRITE_ENDPOINT)
+    {
+        win_smoke_pump_pending(ctx, 8u);
+    }
+
+    return 0;
+}
+
+static int win_smoke_pd_send_heartbeat(
+    void*          user_ctx,
+    const uint8_t* peer_mac,
     const uint8_t* payload,
     size_t         payload_length,
     uint32_t       session_id,
@@ -313,8 +372,8 @@ static int win_smoke_pd_send(
         ctx->transport,
         peer_mac,
         0u,
-        (uint16_t)LEAP_SERVICE_PD,
-        message_type,
+        (uint16_t)LEAP_SERVICE_MGMT,
+        LEAP_MGMT_HEARTBEAT,
         session_id,
         sequence,
         0u,
@@ -354,11 +413,6 @@ static int win_smoke_pd_wait_exchange_reply(
             return -1;
         }
 
-        if (memcmp(src_mac, peer_mac, 6) != 0)
-        {
-            continue;
-        }
-
         if (leap_frame_parse(frame_buf, frame_length, &view) != LEAP_FRAME_OK)
         {
             continue;
@@ -369,6 +423,9 @@ static int win_smoke_pd_wait_exchange_reply(
         {
             continue;
         }
+
+        (void)peer_mac;
+        (void)src_mac;
 
         if (view.payload_length > reply_capacity)
         {
@@ -387,10 +444,34 @@ static uint64_t win_smoke_pd_monotonic(void* user_ctx)
     return leap_raw_winpcap_monotonic_us();
 }
 
+static void win_smoke_pump_cb(void* user_ctx, unsigned max_frames)
+{
+    win_smoke_pump_pending((WinSmokeCoopCtx*)user_ctx, max_frames);
+}
+
+static void win_smoke_fail_bootstrap(
+    const LeapControllerStack* stack,
+    unsigned long              device_frames,
+    const LeapRawWinpcapSocket* transport)
+{
+    LeapRawWinpcapStats stats;
+
+    leap_raw_winpcap_get_stats(transport, &stats);
+    fprintf(
+        stderr,
+        "bootstrap failed (phase=%u status=%d device_frames=%lu tx=%llu rx=%llu)\n",
+        (unsigned)leap_controller_stack_get_phase(stack),
+        (int)stack->last_status,
+        device_frames,
+        (unsigned long long)stats.tx_frames_ok,
+        (unsigned long long)stats.rx_frames_ok);
+}
+
 int main(int argc, char** argv)
 {
+    LeapWinSmokeOptions        options;
+    LeapWinSmokeReport         report;
     LeapRawWinpcapSocket       transport;
-    LeapRawWinpcapOpenOptions  open_options;
     LeapDeviceStack            device_stack;
     LeapDeviceStackConfig      device_config;
     LeapPdDeviceIoBinding      pd_binding;
@@ -399,37 +480,41 @@ int main(int argc, char** argv)
     LeapControllerStackIo      stack_io;
     LeapPdControllerIo         pd_io;
     WinSmokeCoopCtx            coop;
-    char                       adapter_name[LEAP_RAW_WINPCAP_NAME_MAX];
     uint16_t                   digital_outputs = 0u;
     uint16_t                   digital_inputs  = 0x0004u;
     uint16_t                   io_status       = 0u;
     unsigned long              device_frames   = 0u;
+    int                        hello_reply_gate;
     uint8_t                    peer_mac[6];
     uint32_t                   tick_flags;
+    int                        parse_result;
 
-    adapter_name[0] = '\0';
-    if (argc > 1 && argv[1][0] != '\0')
+    parse_result = leap_win_smoke_parse_args(argc, argv, &options);
+    if (parse_result == 1)
     {
-        (void)snprintf(adapter_name, sizeof(adapter_name), "%s", argv[1]);
+        leap_win_smoke_print_usage(argv[0]);
+        return 0;
     }
 
-    printf("LEAP Windows wire smoke (Npcap loopback)\n");
-
-    memset(&open_options, 0, sizeof(open_options));
-    open_options.promiscuous           = 1;
-    open_options.filter_leap_ethertype = 0;
-
-    if (leap_raw_winpcap_open(
-            &transport,
-            adapter_name[0] != '\0' ? adapter_name : NULL,
-            LEAP_ETHERTYPE_DEVELOPMENT,
-            &open_options) != 0)
+    if (parse_result != 0)
     {
-        fprintf(
-            stderr,
-            "pcap open failed: %s\n",
-            leap_raw_winpcap_last_error());
-        leap_raw_winpcap_list_devices();
+        leap_win_smoke_print_usage(argv[0]);
+        return 1;
+    }
+
+    if (options.list_adapters != 0)
+    {
+        leap_win_smoke_print_adapter_hint();
+        return 0;
+    }
+
+    leap_win_smoke_console_init(&options);
+    leap_win_smoke_report_init(&report, &options);
+
+    printf("LEAP Windows wire smoke\n");
+
+    if (leap_win_smoke_open_transport(&transport, &options) != 0)
+    {
         return 1;
     }
 
@@ -437,7 +522,7 @@ int main(int argc, char** argv)
     leap_win_print_mac("  MAC: ", transport.local_mac);
 
     memset(&device_config, 0, sizeof(device_config));
-    device_config.mgmt.default_lease_us    = 5000000u;
+    device_config.mgmt.default_lease_us    = LEAP_WIN_SMOKE_DEFAULT_LEASE_US;
     device_config.mgmt.default_watchdog_us = 500000u;
     leap_device_stack_init_full(&device_stack, &device_config);
 
@@ -455,15 +540,18 @@ int main(int argc, char** argv)
     leap_dir_device_sync_disc(&device_stack.dir, &device_stack.disc);
     leap_mgmt_device_on_transport_ready(&device_stack.mgmt);
 
+    hello_reply_gate = 0;
     memset(&coop, 0, sizeof(coop));
-    coop.transport     = &transport;
-    coop.device        = &device_stack;
-    coop.device_frames = &device_frames;
+    coop.transport         = &transport;
+    coop.device            = &device_stack;
+    coop.device_frames     = &device_frames;
+    coop.hello_reply_gate  = &hello_reply_gate;
 
     memset(&ctrl_config, 0, sizeof(ctrl_config));
     memcpy(ctrl_config.mgmt.controller_mac, transport.local_mac, 6);
-    ctrl_config.bootstrap_lease_us = 5000000u;
+    ctrl_config.bootstrap_lease_us = LEAP_WIN_SMOKE_DEFAULT_LEASE_US;
     ctrl_config.recv_timeout_ms    = 3000;
+    ctrl_config.pd.cycle_period_ms = options.cycle_ms;
     leap_controller_stack_init(&ctrl_stack, &ctrl_config);
 
     memset(&stack_io, 0, sizeof(stack_io));
@@ -475,6 +563,7 @@ int main(int argc, char** argv)
     memset(&pd_io, 0, sizeof(pd_io));
     pd_io.user_ctx            = &coop;
     pd_io.send_pd             = win_smoke_pd_send;
+    pd_io.send_heartbeat      = win_smoke_pd_send_heartbeat;
     pd_io.wait_exchange_reply = win_smoke_pd_wait_exchange_reply;
     pd_io.monotonic_us        = win_smoke_pd_monotonic;
 
@@ -487,47 +576,128 @@ int main(int argc, char** argv)
     if (leap_controller_stack_bootstrap(&ctrl_stack, &stack_io, peer_mac) !=
         LEAP_CTRL_STACK_OK)
     {
-        LeapRawWinpcapStats stats;
-
-        leap_raw_winpcap_get_stats(&transport, &stats);
-        fprintf(
-            stderr,
-            "bootstrap failed (phase=%u status=%d device_frames=%lu tx=%llu rx=%llu)\n",
-            (unsigned)leap_controller_stack_get_phase(&ctrl_stack),
-            (int)ctrl_stack.last_status,
-            device_frames,
-            (unsigned long long)stats.tx_frames_ok,
-            (unsigned long long)stats.rx_frames_ok);
+        win_smoke_fail_bootstrap(&ctrl_stack, device_frames, &transport);
+        leap_win_smoke_fail(&report, "bootstrap");
         leap_raw_winpcap_close(&transport);
         return 1;
     }
 
-    printf("bootstrap complete — peer ");
+    printf("bootstrap complete - peer ");
     leap_win_print_mac(NULL, peer_mac);
+    leap_win_smoke_pass(&report, "bootstrap");
+
+    if (leap_win_smoke_validate_bootstrap(
+            &ctrl_stack,
+            &device_stack,
+            transport.local_mac) != 0)
+    {
+        leap_win_smoke_fail(&report, "bootstrap validation");
+        leap_raw_winpcap_close(&transport);
+        return 1;
+    }
+
+    leap_win_smoke_pass(&report, "bootstrap validation");
+
+    if (options.verbose != 0)
+    {
+        printf(
+            "  controller seq=%u pd_seq=%u\n",
+            (unsigned)ctrl_stack.mgmt.sequence,
+            (unsigned)ctrl_stack.pd.pd_sequence);
+    }
 
     if (leap_controller_stack_pd_single_write(
-            &ctrl_stack, &pd_io, 0x0015u) != LEAP_PD_CTRL_OK)
+            &ctrl_stack, &pd_io, options.pd_outputs) != LEAP_PD_CTRL_OK)
     {
-        fprintf(stderr, "PD single write failed\n");
-        leap_controller_stack_release(&ctrl_stack, &stack_io);
+        fprintf(stderr, "error: initial PD write failed\n");
+        leap_win_smoke_fail(&report, "PD write");
         leap_raw_winpcap_close(&transport);
         return 1;
     }
 
-    printf("sent PD WRITE (outputs=0x0015)\n");
+    win_smoke_pump_pending(&coop, 4u);
+    leap_win_smoke_pass(&report, "PD write");
+
+    if (leap_win_smoke_validate_outputs(digital_outputs, options.pd_outputs) != 0)
+    {
+        leap_win_smoke_fail(&report, "outputs");
+        leap_raw_winpcap_close(&transport);
+        return 1;
+    }
+
+    leap_win_smoke_pass(&report, "outputs");
+
+    if (options.skip_cyclic == 0)
+    {
+        if (leap_win_smoke_run_cyclic(
+                &ctrl_stack, &pd_io, &options, &report) != 0)
+        {
+            leap_win_smoke_fail(&report, "cyclic PD");
+            leap_raw_winpcap_close(&transport);
+            return 1;
+        }
+    }
+
+    if (options.skip_lease_test == 0)
+    {
+        (void)leap_controller_stack_release(&ctrl_stack, &stack_io);
+        win_smoke_pump_pending(&coop, 32u);
+        leap_win_smoke_reset_hello_gate(&hello_reply_gate);
+
+        memset(&device_config, 0, sizeof(device_config));
+        device_config.mgmt.default_lease_us    = LEAP_WIN_SMOKE_DEFAULT_LEASE_US;
+        device_config.mgmt.default_watchdog_us = 500000u;
+        leap_device_stack_init_full(&device_stack, &device_config);
+        leap_device_stack_bind_pd_io(&device_stack, &pd_binding);
+        memcpy(device_stack.dir.config.identity.primary_mac, transport.local_mac, 6);
+        memcpy(
+            device_stack.disc.config.identity.primary_mac,
+            transport.local_mac,
+            6);
+        leap_dir_device_sync_disc(&device_stack.dir, &device_stack.disc);
+        leap_mgmt_device_on_transport_ready(&device_stack.mgmt);
+        digital_outputs = 0u;
+
+        if (leap_win_smoke_run_lease_expiry(
+                &ctrl_stack,
+                &stack_io,
+                &pd_io,
+                &device_stack,
+                &hello_reply_gate,
+                transport.local_mac,
+                &digital_outputs,
+                options.pd_outputs,
+                win_smoke_pump_cb,
+                &coop,
+                &report) != 0)
+        {
+            leap_win_smoke_fail(&report, "lease expiry test");
+            leap_raw_winpcap_close(&transport);
+            return 1;
+        }
+    }
 
     if (device_frames == 0u)
     {
-        fprintf(stderr, "device did not receive any LEAP frames\n");
+        fprintf(stderr, "error: device did not receive any LEAP frames\n");
+        leap_win_smoke_fail(&report, "device traffic");
         leap_controller_stack_release(&ctrl_stack, &stack_io);
         leap_raw_winpcap_close(&transport);
         return 1;
     }
 
+    leap_win_smoke_pass(&report, "device traffic");
+
     leap_controller_stack_release(&ctrl_stack, &stack_io);
+    leap_win_smoke_print_transport_stats(&transport);
     leap_raw_winpcap_close(&transport);
 
-    printf("Windows wire smoke: OK (device_frames=%lu)\n", device_frames);
+    leap_win_smoke_print_summary(&report);
+
+    printf(
+        "Windows wire smoke: OK (device_frames=%lu pd_seq=%u)\n",
+        device_frames,
+        (unsigned)ctrl_stack.pd.pd_sequence);
     return 0;
 }
 

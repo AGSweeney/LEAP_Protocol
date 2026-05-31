@@ -9,6 +9,8 @@ Reference implementations for controller and device bring-up.
 | `linux_loopback/leap_linux_device` | `leap_device_stack` only | **Porting template** — recv loop + tick + I/O shadow |
 | `linux_loopback/leap_linux_controller` | `leap_controller_stack` only | **Porting template** — bootstrap + PD |
 | `linux_loopback/leap_linux_hub` | `leap_controller_session_hub` | **Multi-peer template** — discover → bootstrap_table → round-robin |
+| `win_l2/leap_win_controller` | `leap_controller_stack` | **Windows Npcap** — bootstrap + PD (pair with `leap_win_device` on LAN) |
+| `win_l2/leap_win_device` | `leap_device_stack` | **Windows Npcap** — recv loop + tick + I/O shadow |
 | `linux_loopback/leap_linux_discover` | peer table only | HELLO scan utility |
 | `device_minimal/` | `leap_device_stack` + hand-built frames | **Learning / fuzz** — not the production porting path |
 
@@ -24,6 +26,10 @@ Reference implementations for controller and device bring-up.
 ## Linux loopback
 
 See [linux_loopback/README.md](linux_loopback/README.md).
+
+## Windows L2 (Npcap)
+
+See [win_l2/README.md](win_l2/README.md). Build with `-DLEAP_BUILD_WIN_L2=ON`.
 
 ## Planned examples
 

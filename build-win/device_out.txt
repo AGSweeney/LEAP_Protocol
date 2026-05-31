@@ -1,0 +1,7 @@
+Usage: D:\LEAP_Protocol\build-win\Release\leap_win_device.exe [options] [adapter]
+
+  adapter              Npcap device (default: \\Device\\NPF_Loopback)
+  --list               List Npcap adapters
+  --stats              Log frame counts periodically
+
+Run alongside leap_win_controller on the same adapter.

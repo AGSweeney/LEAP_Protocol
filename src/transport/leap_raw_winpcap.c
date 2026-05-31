@@ -10,6 +10,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <windows.h>
+#include <iphlpapi.h>
 
 #include "leap/leap_raw_winpcap.h"
 
@@ -70,6 +71,8 @@ typedef int (*leap_pcap_compile_fn)(
     pcap_t*, bpf_program*, const char*, int, bpf_u_int32);
 typedef int (*leap_pcap_setfilter_fn)(pcap_t*, bpf_program*);
 typedef void (*leap_pcap_freecode_fn)(bpf_program*);
+typedef int (*leap_pcap_findalldevs_fn)(pcap_if_t**, char*);
+typedef void (*leap_pcap_freealldevs_fn)(pcap_if_t*);
 
 typedef struct LeapWinpcapApi
 {
@@ -81,6 +84,8 @@ typedef struct LeapWinpcapApi
     leap_pcap_compile_fn      compile;
     leap_pcap_setfilter_fn    setfilter;
     leap_pcap_freecode_fn     freecode;
+    leap_pcap_findalldevs_fn  findalldevs;
+    leap_pcap_freealldevs_fn  freealldevs;
 } LeapWinpcapApi;
 
 static LeapWinpcapApi g_winpcap;
@@ -362,7 +367,7 @@ static int leap_winpcap_load_api(void)
         (void)snprintf(
             g_winpcap_last_errbuf,
             sizeof(g_winpcap_last_errbuf),
-            "wpcap.dll not found (win32 err=%lu)",
+            "wpcap.dll not found (win32 err=%lu) — install Npcap from https://npcap.com/",
             (unsigned long)GetLastError());
         leap_winpcap_set_errno((int)GetLastError());
         return -1;
@@ -395,6 +400,8 @@ loaded:
     LOAD_OPT(compile);
     LOAD_OPT(setfilter);
     LOAD_OPT(freecode);
+    LOAD_OPT(findalldevs);
+    LOAD_OPT(freealldevs);
 
 #undef LOAD_REQ
 #undef LOAD_OPT
@@ -431,25 +438,209 @@ static int leap_winpcap_pick_loopback(char* out, size_t out_capacity)
     return 0;
 }
 
+static int leap_winpcap_mac_from_guid(const char* guid, uint8_t* mac_out)
+{
+    ULONG                 size = 0u;
+    PIP_ADAPTER_ADDRESSES addrs = NULL;
+    PIP_ADAPTER_ADDRESSES cur;
+    ULONG                 rc;
+
+    if (guid == NULL || mac_out == NULL || guid[0] == '\0')
+    {
+        return -1;
+    }
+
+    rc = GetAdaptersAddresses(
+        AF_UNSPEC,
+        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        NULL,
+        NULL,
+        &size);
+    if (rc != ERROR_BUFFER_OVERFLOW || size == 0u)
+    {
+        return -1;
+    }
+
+    addrs = (PIP_ADAPTER_ADDRESSES)HeapAlloc(GetProcessHeap(), 0, size);
+    if (addrs == NULL)
+    {
+        return -1;
+    }
+
+    rc = GetAdaptersAddresses(
+        AF_UNSPEC,
+        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        NULL,
+        addrs,
+        &size);
+    if (rc != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, addrs);
+        return -1;
+    }
+
+    for (cur = addrs; cur != NULL; cur = cur->Next)
+    {
+        if (cur->AdapterName == NULL ||
+            _stricmp(cur->AdapterName, guid) != 0)
+        {
+            continue;
+        }
+
+        if (cur->PhysicalAddressLength != 6u)
+        {
+            continue;
+        }
+
+        memcpy(mac_out, cur->PhysicalAddress, 6);
+        HeapFree(GetProcessHeap(), 0, addrs);
+        return 0;
+    }
+
+    HeapFree(GetProcessHeap(), 0, addrs);
+    return -1;
+}
+
+static int leap_winpcap_extract_guid(
+    const char* device_name,
+    char*       guid_out,
+    size_t      guid_capacity)
+{
+    const char* start;
+    const char* end;
+    size_t      len;
+
+    if (device_name == NULL || guid_out == NULL || guid_capacity == 0u)
+    {
+        return -1;
+    }
+
+    start = strchr(device_name, '{');
+    if (start == NULL)
+    {
+        return -1;
+    }
+
+    end = strchr(start, '}');
+    if (end == NULL)
+    {
+        return -1;
+    }
+
+    len = (size_t)(end - start + 1);
+    if (len + 1u > guid_capacity)
+    {
+        return -1;
+    }
+
+    memcpy(guid_out, start, len);
+    guid_out[len] = '\0';
+    return 0;
+}
+
 static int leap_winpcap_resolve_mac(
     const char* device_name,
     uint8_t*    mac_out)
 {
-    (void)device_name;
+    char guid[64];
 
     if (mac_out == NULL)
     {
         return -1;
     }
 
-    memcpy(mac_out, k_npcap_loopback_mac, 6);
-    return 0;
+    if (device_name != NULL &&
+        leap_winpcap_is_loopback_device(device_name) != 0)
+    {
+        memcpy(mac_out, k_npcap_loopback_mac, 6);
+        return 0;
+    }
+
+    if (device_name != NULL &&
+        leap_winpcap_extract_guid(device_name, guid, sizeof(guid)) == 0 &&
+        leap_winpcap_mac_from_guid(guid, mac_out) == 0)
+    {
+        return 0;
+    }
+
+    if (device_name != NULL &&
+        leap_winpcap_is_loopback_device(device_name) != 0)
+    {
+        memcpy(mac_out, k_npcap_loopback_mac, 6);
+        return 0;
+    }
+
+    return -1;
 }
 
 void leap_raw_winpcap_list_devices(void)
 {
-    printf("  \\Device\\NPF_Loopback (Npcap Loopback — default for smoke tests)\n");
-    printf("  hint: install Npcap with Loopback support enabled\n");
+    ULONG                 size = 0u;
+    PIP_ADAPTER_ADDRESSES addrs = NULL;
+    PIP_ADAPTER_ADDRESSES cur;
+    ULONG                 rc;
+
+    printf("  \\Device\\NPF_Loopback (Npcap Loopback - default for local smoke)\n");
+
+    rc = GetAdaptersAddresses(
+        AF_UNSPEC,
+        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        NULL,
+        NULL,
+        &size);
+    if (rc != ERROR_BUFFER_OVERFLOW || size == 0u)
+    {
+        printf("  hint: install Npcap from https://npcap.com/\n");
+        return;
+    }
+
+    addrs = (PIP_ADAPTER_ADDRESSES)HeapAlloc(GetProcessHeap(), 0, size);
+    if (addrs == NULL)
+    {
+        return;
+    }
+
+    rc = GetAdaptersAddresses(
+        AF_UNSPEC,
+        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+        NULL,
+        addrs,
+        &size);
+    if (rc != NO_ERROR)
+    {
+        HeapFree(GetProcessHeap(), 0, addrs);
+        return;
+    }
+
+    for (cur = addrs; cur != NULL; cur = cur->Next)
+    {
+        if (cur->AdapterName == NULL || cur->IfType == IF_TYPE_SOFTWARE_LOOPBACK)
+        {
+            continue;
+        }
+
+        printf("  \\Device\\NPF_%s", cur->AdapterName);
+        if (cur->FriendlyName != NULL && cur->FriendlyName[0] != L'\0')
+        {
+            printf("  (");
+            (void)fputws(cur->FriendlyName, stdout);
+            printf(")");
+        }
+        if (cur->PhysicalAddressLength == 6u)
+        {
+            printf("  %02x:%02x:%02x:%02x:%02x:%02x",
+                   cur->PhysicalAddress[0],
+                   cur->PhysicalAddress[1],
+                   cur->PhysicalAddress[2],
+                   cur->PhysicalAddress[3],
+                   cur->PhysicalAddress[4],
+                   cur->PhysicalAddress[5]);
+        }
+        printf("\n");
+    }
+
+    HeapFree(GetProcessHeap(), 0, addrs);
+    printf("  hint: match InterfaceGuid from Get-NetAdapter to NPF_{GUID}\n");
 }
 
 int leap_raw_winpcap_open(
@@ -527,7 +718,7 @@ int leap_raw_winpcap_open(
             errbuf);
         fprintf(
             stderr,
-            "pcap_open_live(%s) failed: %s (Admin + Npcap Loopback required)\n",
+            "pcap_open_live(%s) failed: %s (run as Admin; Npcap required)\n",
             chosen,
             errbuf);
         return -1;
@@ -549,7 +740,18 @@ int leap_raw_winpcap_open(
     }
 
     sock->pcap = handle;
-    (void)leap_winpcap_resolve_mac(chosen, sock->local_mac);
+    if (leap_winpcap_resolve_mac(chosen, sock->local_mac) != 0)
+    {
+        (void)snprintf(
+            g_winpcap_last_errbuf,
+            sizeof(g_winpcap_last_errbuf),
+            "could not resolve MAC for adapter '%s'",
+            chosen);
+        g_winpcap.close(handle);
+        sock->pcap = NULL;
+        return -1;
+    }
+
     leap_winpcap_clear_errno();
     return 0;
 }

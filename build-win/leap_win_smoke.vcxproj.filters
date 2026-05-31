@@ -7,6 +7,9 @@
     <ClCompile Include="D:\LEAP_Protocol\examples\win_smoke\leap_win_io.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\LEAP_Protocol\examples\win_smoke\leap_win_smoke.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="D:\LEAP_Protocol\CMakeLists.txt" />
