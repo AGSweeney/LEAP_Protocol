@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leap-protocol.org/schema/leap-manifest-schema.json",
+  "title": "LeapDeviceManifest",
+  "description": "Implementation-independent LEAP profile/device manifest.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "vendor_id": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "product_code": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "serial_number": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "product_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "supported_services": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 65535
+      },
+      "uniqueItems": true
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile_id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "profile_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "process_data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "input_size_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "output_size_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "channels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "BIT",
+                        "UINT8",
+                        "INT8",
+                        "UINT16",
+                        "INT16",
+                        "UINT32",
+                        "RAW"
+                      ]
+                    },
+                    "bit_offset": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "size_bytes": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "Required when type is RAW; indicates the byte length of the raw block."
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": [
+                        "INPUT",
+                        "OUTPUT",
+                        "DIAGNOSTIC"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "bit_offset",
+                    "direction"
+                  ],
+                  "if": {
+                    "properties": { "type": { "const": "RAW" } },
+                    "required": ["type"]
+                  },
+                  "then": {
+                    "required": ["size_bytes"]
+                  }
+                }
+              }
+            },
+            "required": [
+              "input_size_bytes",
+              "output_size_bytes",
+              "channels"
+            ]
+          }
+        },
+        "required": [
+          "profile_id",
+          "profile_name",
+          "process_data"
+        ]
+      }
+    }
+  },
+  "required": [
+    "vendor_id",
+    "product_code",
+    "serial_number",
+    "product_name",
+    "revision",
+    "supported_services",
+    "profiles"
+  ]
+}

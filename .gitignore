@@ -1,0 +1,31 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build outputs
+build/
+out/
+dist/
+bin/
+obj/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.exe
+
+# Python tooling (for scripts/utilities)
+__pycache__/
+*.pyc
+
+# Logs and temporary files
+*.log
+*.tmp
