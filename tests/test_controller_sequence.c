@@ -9,6 +9,8 @@
 
 #include "leap/leap_controller_sequence.h"
 
+#include <string.h>
+
 TEST(test_frame_sequence_duplicate_rejected)
 {
     LeapControllerFrameSequenceState    state;

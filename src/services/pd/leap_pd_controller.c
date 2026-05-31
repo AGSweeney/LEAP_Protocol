@@ -5,14 +5,20 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "leap/leap_pd_controller.h"
 
 #include "leap/leap_pd_common.h"
 
 #include "leap/leap_log.h"
 
+#include <string.h>
+
 #if defined(__linux__)
-#include <unistd.h>
+#include <time.h>
 #endif
 
 #if defined(_WIN32)
@@ -32,7 +38,11 @@ static void leap_pd_ctrl_sleep_us(uint64_t sleep_us)
     }
 
 #if defined(__linux__)
-    usleep((useconds_t)sleep_us);
+    struct timespec ts;
+
+    ts.tv_sec  = (time_t)(sleep_us / 1000000u);
+    ts.tv_nsec = (long)((sleep_us % 1000000u) * 1000u);
+    (void)nanosleep(&ts, NULL);
 #elif defined(_WIN32)
     leap_win_sleep_us(sleep_us);
 #endif
