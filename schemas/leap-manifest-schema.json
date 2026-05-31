@@ -2,41 +2,71 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://leap-protocol.org/schema/leap-manifest-schema.json",
   "title": "LeapDeviceManifest",
-  "description": "Implementation-independent LEAP profile/device manifest.",
+  "description": "Implementation-independent LEAP profile/device manifest. Manifest content MUST be consistent with LEAP-DIR objects and endpoint descriptors; live LEAP-DIR responses take precedence on conflict.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "schema_version": {
+      "description": "Semantic version of this manifest schema (e.g. '1.0'). Required per §22 versioning requirement.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
     "vendor_id": {
+      "description": "16-bit vendor identifier. Aligned with LeapIdentity.vendor_id on the wire.",
       "type": "integer",
       "minimum": 0,
       "maximum": 65535
     },
     "product_code": {
+      "description": "32-bit product code. Aligned with LeapIdentity.product_code on the wire.",
       "type": "integer",
       "minimum": 0,
       "maximum": 4294967295
     },
     "serial_number": {
+      "description": "32-bit serial number. Aligned with LeapIdentity.serial_number on the wire.",
       "type": "integer",
       "minimum": 0,
       "maximum": 4294967295
     },
     "product_name": {
+      "description": "Human-readable product name. Corresponds to the DEVICE_NAME TLV (0x0002).",
       "type": "string",
       "minLength": 1
     },
-    "revision": {
+    "hardware_revision": {
+      "description": "16-bit hardware revision. Aligned with LeapIdentity.hardware_revision on the wire.",
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "firmware_revision": {
+      "description": "16-bit firmware revision. Aligned with LeapIdentity.firmware_revision on the wire.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "revision": {
+      "description": "Product or device revision as exposed by the REVISION TLV (0x0005). Maximum 65535 to match the 16-bit wire representation.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
     },
     "supported_services": {
+      "description": "Array of supported 16-bit LEAP service IDs. Matches the packed uint16_t[] list in HELLO_REPLY and the SUPPORTED_SERVICES TLV.",
       "type": "array",
       "items": {
         "type": "integer",
-        "minimum": 0,
-        "maximum": 65535
+        "minimum": 1,
+        "maximum": 65534
       },
       "uniqueItems": true
+    },
+    "default_profile_id": {
+      "description": "32-bit profile ID of the default active profile after boot. Corresponds to LeapHelloReply.default_profile_id and LEAP_TLV_DEFAULT_PROFILE_ID. Must be non-zero and present in the profiles array.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295
     },
     "profiles": {
       "type": "array",
@@ -46,8 +76,9 @@
         "additionalProperties": false,
         "properties": {
           "profile_id": {
+            "description": "32-bit LEAP profile ID. Must be non-zero; 0x00000000 is LEAP_PROFILE_NONE and MUST NOT appear as an active profile entry. Standard IDs are defined in leap_protocol.h; vendor profiles start at 0x80000000.",
             "type": "integer",
-            "minimum": 0,
+            "minimum": 1,
             "maximum": 4294967295
           },
           "profile_name": {
@@ -59,15 +90,18 @@
             "additionalProperties": false,
             "properties": {
               "input_size_bytes": {
+                "description": "Total byte size of the device-to-controller endpoint payload for this profile.",
                 "type": "integer",
                 "minimum": 0
               },
               "output_size_bytes": {
+                "description": "Total byte size of the controller-to-device endpoint payload for this profile.",
                 "type": "integer",
                 "minimum": 0
               },
               "channels": {
                 "type": "array",
+                "minItems": 1,
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
@@ -77,6 +111,7 @@
                       "minLength": 1
                     },
                     "type": {
+                      "description": "Wire data type for this channel. INT32 supports 32-bit signed fields. RAW marks an opaque byte block and requires size_bytes or bit_width.",
                       "type": "string",
                       "enum": [
                         "BIT",
@@ -85,19 +120,27 @@
                         "UINT16",
                         "INT16",
                         "UINT32",
+                        "INT32",
                         "RAW"
                       ]
                     },
                     "bit_offset": {
+                      "description": "Absolute bit offset of the channel within the process data image (bit 0 = LSB of byte 0). Byte-aligned types must have bit_offset divisible by 8.",
                       "type": "integer",
                       "minimum": 0
                     },
                     "size_bytes": {
+                      "description": "Byte length of the channel value. Required when type is RAW; indicates the byte length of the raw block.",
                       "type": "integer",
-                      "minimum": 1,
-                      "description": "Required when type is RAW; indicates the byte length of the raw block."
+                      "minimum": 1
+                    },
+                    "bit_width": {
+                      "description": "Bit width of the channel value. Required when type is RAW and size_bytes is not provided. Also used for sub-byte or partial-word fields.",
+                      "type": "integer",
+                      "minimum": 1
                     },
                     "direction": {
+                      "description": "Data flow direction. INPUT = device-to-controller, OUTPUT = controller-to-device, DIAGNOSTIC = status/diagnostic within the process data image.",
                       "type": "string",
                       "enum": [
                         "INPUT",
@@ -117,7 +160,10 @@
                     "required": ["type"]
                   },
                   "then": {
-                    "required": ["size_bytes"]
+                    "anyOf": [
+                      { "required": ["size_bytes"] },
+                      { "required": ["bit_width"] }
+                    ]
                   }
                 }
               }
@@ -138,6 +184,7 @@
     }
   },
   "required": [
+    "schema_version",
     "vendor_id",
     "product_code",
     "serial_number",

@@ -474,6 +474,33 @@ Reboot owner recovery:
   device MUST reject the request with `BUSY`, `NOT_OWNER`, or
   `PERMISSION_DENIED`.
 
+### 10.3.1 Controller-Side Session Continuity
+
+Controllers MUST monitor per-device session continuity across all owned devices.
+A controller MUST treat any of the following as a session-reset event for a
+previously known device MAC:
+
+- Receipt of a `HELLO_REPLY` or `IDENTIFY_REPLY` from that MAC with the device
+  reporting `BOOT` or `INIT` state while the controller holds an active
+  `session_id` for that device.
+- Receipt of any LEAP frame from that MAC with `session_id = 0` while the
+  controller holds a non-zero active `session_id`.
+- Receipt of any LEAP frame from that MAC carrying a `session_id` that does not
+  match the controller's recorded active session for that device.
+
+On detecting a session-reset event, the controller MUST:
+
+1. Immediately invalidate its locally held `session_id` and lease state for that
+   device.
+2. Halt all cyclic `LEAP-PD` output writes to that device.
+3. Re-execute the full discovery, session open, directory read, profile
+   confirmation, and state-progression sequence before resuming output writes.
+
+Controllers MUST NOT rely solely on device-side rejection of stale `session_id`
+frames as the safety gate for this condition. Sending cyclic output writes using
+a stale `session_id` to a freshly rebooted device is a controller-side protocol
+error regardless of whether the device rejects those frames.
+
 ### 10.4 Device State Machine
 
 | State | Value | Meaning | Output Behavior |
@@ -779,6 +806,23 @@ Required behavior:
 - Category A devices continue operation until watchdog or lease rules force a
   transition; congestion warnings do not by themselves authorize output changes.
 
+Consecutive-miss thresholds for Category A devices:
+
+- **1 or 2 consecutive missed cycles:** The device MUST increment
+  `PROCESS_CYCLES_MISSED` and SHOULD increment `SWITCH_CONGESTION_HINTS`.
+  Output application continues from the last valid frame subject to all other
+  watchdog and lease rules. A device MUST NOT transition state on a single
+  missed cycle attributable to ordinary switch queuing jitter.
+- **3 or more consecutive missed cycles:** The device MUST cease output
+  application and transition from `OP` to `SAFE`. This threshold is the
+  normative default; profiles MAY lower it but MUST NOT raise it above `3`.
+
+A missed cycle is counted when local inter-arrival time since the last
+sequence-valid frame exceeds `cycle_time_us` from that frame. When
+`cycle_time_us` is zero or unavailable, the device MUST use the process-data
+timeout negotiated at `OPEN_SESSION` as the cycle-boundary reference. The
+missed-cycle counter MUST reset to zero on every accepted sequence-valid frame.
+
 #### 13.4.2 Stale-Frame Category B: Shared-Time Devices
 
 Category B applies when device and controller share a synchronized time basis.
@@ -794,6 +838,29 @@ Required behavior:
 - If consecutive stale or missing frames span longer than profile watchdog/lease
   limits, the state machine MUST transition to `SAFE` (or `FAULT` if profile
   policy requires).
+
+Timestamp arithmetic and jitter handling for Category B devices:
+
+Frame age MUST be computed using unsigned wrapping subtraction on the 64-bit
+`controller_timestamp_us` field:
+
+    frame_age_us = (local_arrival_time_us - controller_timestamp_us)
+
+Both operands are treated as unsigned 64-bit values. Signed arithmetic MUST NOT
+be used; it produces incorrect results whenever the controller timestamp has
+wrapped past the `2^64` microsecond boundary (approximately 584,542 years from
+epoch, but reachable when timestamps are relative to device boot or power cycle).
+
+Implementations MAY apply a normative jitter margin when the deployment includes
+managed switches with bounded and measurable queuing delays:
+
+    frame_age_us <= max_frame_age_us + jitter_margin_us
+
+`jitter_margin_us` MUST be profile-defined and MUST NOT exceed one full expected
+cycle period (`cycle_time_us`). When no profile-specific jitter margin is
+defined, implementations MUST use zero and rely solely on `max_frame_age_us`.
+Jitter margins MUST NOT be applied to compensate for clock synchronization
+drift; that drift must be bounded by the time-synchronization subsystem itself.
 
 Category A and Category B are capability modes. Devices MUST report which mode is
 implemented through discovery or directory capability data.
