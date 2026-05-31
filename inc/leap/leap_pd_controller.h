@@ -90,6 +90,8 @@ typedef struct LeapPdControllerIo
     int (*send_heartbeat)(
         void*          user_ctx,
         const uint8_t* peer_mac,
+        const uint8_t* payload,
+        size_t         payload_length,
         uint32_t       session_id,
         uint32_t       sequence);
 

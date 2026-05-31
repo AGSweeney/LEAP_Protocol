@@ -15,8 +15,7 @@
 
 typedef struct LeapLinuxPdTransport
 {
-    LeapRawLinuxSocket*       sock;
-    LeapMgmtControllerContext* mgmt;
+    LeapRawLinuxSocket* sock;
 } LeapLinuxPdTransport;
 
 void leap_linux_pd_init_io(

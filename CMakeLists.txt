@@ -15,6 +15,7 @@ add_library(leap_core STATIC
   src/crc/leap_crc.c
   src/frame/leap_frame.c
   src/services/disc/leap_disc_device.c
+  src/services/disc/leap_disc_controller.c
   src/services/mgmt/leap_mgmt_device.c
   src/services/mgmt/leap_mgmt_process.c
   src/services/mgmt/leap_mgmt_controller.c
@@ -24,6 +25,9 @@ add_library(leap_core STATIC
   src/services/pd/leap_pd_common.c
   src/services/pd/leap_pd_controller.c
   src/leap_device_stack.c
+  src/leap_controller_stack.c
+  src/leap_controller_peer.c
+  src/leap_controller_session_hub.c
   src/transport/leap_raw_linux.c
 )
 
@@ -46,7 +50,11 @@ add_executable(leap_tests
   tests/test_pd_controller.c
   tests/test_pd_common.c
   tests/test_disc_device.c
+  tests/test_disc_controller.c
   tests/test_dir_device.c
+  tests/test_controller_stack.c
+  tests/test_controller_peer.c
+  tests/test_controller_session_hub.c
   tests/test_mgmt_controller.c
   tests/test_device_stack.c
   tests/test_comms_loss.c
@@ -78,6 +86,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     examples/linux_loopback/controller_main.c
     examples/linux_loopback/leap_linux_common.c
     examples/linux_loopback/leap_linux_pd.c
+    examples/linux_loopback/leap_linux_controller_io.c
+  )
+  add_executable(leap_linux_discover
+    examples/linux_loopback/discover_main.c
+    examples/linux_loopback/leap_linux_common.c
+    examples/linux_loopback/leap_linux_controller_io.c
   )
   target_include_directories(leap_linux_device PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/linux_loopback
@@ -85,6 +99,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_include_directories(leap_linux_controller PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/linux_loopback
   )
+  target_include_directories(leap_linux_discover PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/linux_loopback
+  )
   target_link_libraries(leap_linux_device PRIVATE leap_core)
   target_link_libraries(leap_linux_controller PRIVATE leap_core)
+  target_link_libraries(leap_linux_discover PRIVATE leap_core)
 endif()

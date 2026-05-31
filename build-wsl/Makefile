@@ -191,6 +191,19 @@ leap_linux_controller/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/build
 .PHONY : leap_linux_controller/fast
 
+#=============================================================================
+# Target rules for targets named leap_linux_discover
+
+# Build rule for target.
+leap_linux_discover: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 leap_linux_discover
+.PHONY : leap_linux_discover
+
+# fast build rule for target.
+leap_linux_discover/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/build
+.PHONY : leap_linux_discover/fast
+
 examples/device_minimal/main.o: examples/device_minimal/main.c.o
 .PHONY : examples/device_minimal/main.o
 
@@ -263,6 +276,30 @@ examples/linux_loopback/device_main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/device_main.c.s
 .PHONY : examples/linux_loopback/device_main.c.s
 
+examples/linux_loopback/discover_main.o: examples/linux_loopback/discover_main.c.o
+.PHONY : examples/linux_loopback/discover_main.o
+
+# target to build an object file
+examples/linux_loopback/discover_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/discover_main.c.o
+.PHONY : examples/linux_loopback/discover_main.c.o
+
+examples/linux_loopback/discover_main.i: examples/linux_loopback/discover_main.c.i
+.PHONY : examples/linux_loopback/discover_main.i
+
+# target to preprocess a source file
+examples/linux_loopback/discover_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/discover_main.c.i
+.PHONY : examples/linux_loopback/discover_main.c.i
+
+examples/linux_loopback/discover_main.s: examples/linux_loopback/discover_main.c.s
+.PHONY : examples/linux_loopback/discover_main.s
+
+# target to generate assembly for a file
+examples/linux_loopback/discover_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/discover_main.c.s
+.PHONY : examples/linux_loopback/discover_main.c.s
+
 examples/linux_loopback/leap_linux_common.o: examples/linux_loopback/leap_linux_common.c.o
 .PHONY : examples/linux_loopback/leap_linux_common.o
 
@@ -270,6 +307,7 @@ examples/linux_loopback/leap_linux_common.o: examples/linux_loopback/leap_linux_
 examples/linux_loopback/leap_linux_common.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_common.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.o
 .PHONY : examples/linux_loopback/leap_linux_common.c.o
 
 examples/linux_loopback/leap_linux_common.i: examples/linux_loopback/leap_linux_common.c.i
@@ -279,6 +317,7 @@ examples/linux_loopback/leap_linux_common.i: examples/linux_loopback/leap_linux_
 examples/linux_loopback/leap_linux_common.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_common.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.i
 .PHONY : examples/linux_loopback/leap_linux_common.c.i
 
 examples/linux_loopback/leap_linux_common.s: examples/linux_loopback/leap_linux_common.c.s
@@ -288,7 +327,35 @@ examples/linux_loopback/leap_linux_common.s: examples/linux_loopback/leap_linux_
 examples/linux_loopback/leap_linux_common.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_common.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.s
 .PHONY : examples/linux_loopback/leap_linux_common.c.s
+
+examples/linux_loopback/leap_linux_controller_io.o: examples/linux_loopback/leap_linux_controller_io.c.o
+.PHONY : examples/linux_loopback/leap_linux_controller_io.o
+
+# target to build an object file
+examples/linux_loopback/leap_linux_controller_io.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controller_io.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.o
+.PHONY : examples/linux_loopback/leap_linux_controller_io.c.o
+
+examples/linux_loopback/leap_linux_controller_io.i: examples/linux_loopback/leap_linux_controller_io.c.i
+.PHONY : examples/linux_loopback/leap_linux_controller_io.i
+
+# target to preprocess a source file
+examples/linux_loopback/leap_linux_controller_io.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controller_io.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.i
+.PHONY : examples/linux_loopback/leap_linux_controller_io.c.i
+
+examples/linux_loopback/leap_linux_controller_io.s: examples/linux_loopback/leap_linux_controller_io.c.s
+.PHONY : examples/linux_loopback/leap_linux_controller_io.s
+
+# target to generate assembly for a file
+examples/linux_loopback/leap_linux_controller_io.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controller_io.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.s
+.PHONY : examples/linux_loopback/leap_linux_controller_io.c.s
 
 examples/linux_loopback/leap_linux_io.o: examples/linux_loopback/leap_linux_io.c.o
 .PHONY : examples/linux_loopback/leap_linux_io.o
@@ -410,6 +477,78 @@ src/frame/leap_frame.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/frame/leap_frame.c.s
 .PHONY : src/frame/leap_frame.c.s
 
+src/leap_controller_peer.o: src/leap_controller_peer.c.o
+.PHONY : src/leap_controller_peer.o
+
+# target to build an object file
+src/leap_controller_peer.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_peer.c.o
+.PHONY : src/leap_controller_peer.c.o
+
+src/leap_controller_peer.i: src/leap_controller_peer.c.i
+.PHONY : src/leap_controller_peer.i
+
+# target to preprocess a source file
+src/leap_controller_peer.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_peer.c.i
+.PHONY : src/leap_controller_peer.c.i
+
+src/leap_controller_peer.s: src/leap_controller_peer.c.s
+.PHONY : src/leap_controller_peer.s
+
+# target to generate assembly for a file
+src/leap_controller_peer.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_peer.c.s
+.PHONY : src/leap_controller_peer.c.s
+
+src/leap_controller_session_hub.o: src/leap_controller_session_hub.c.o
+.PHONY : src/leap_controller_session_hub.o
+
+# target to build an object file
+src/leap_controller_session_hub.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_session_hub.c.o
+.PHONY : src/leap_controller_session_hub.c.o
+
+src/leap_controller_session_hub.i: src/leap_controller_session_hub.c.i
+.PHONY : src/leap_controller_session_hub.i
+
+# target to preprocess a source file
+src/leap_controller_session_hub.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_session_hub.c.i
+.PHONY : src/leap_controller_session_hub.c.i
+
+src/leap_controller_session_hub.s: src/leap_controller_session_hub.c.s
+.PHONY : src/leap_controller_session_hub.s
+
+# target to generate assembly for a file
+src/leap_controller_session_hub.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_session_hub.c.s
+.PHONY : src/leap_controller_session_hub.c.s
+
+src/leap_controller_stack.o: src/leap_controller_stack.c.o
+.PHONY : src/leap_controller_stack.o
+
+# target to build an object file
+src/leap_controller_stack.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_stack.c.o
+.PHONY : src/leap_controller_stack.c.o
+
+src/leap_controller_stack.i: src/leap_controller_stack.c.i
+.PHONY : src/leap_controller_stack.i
+
+# target to preprocess a source file
+src/leap_controller_stack.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_stack.c.i
+.PHONY : src/leap_controller_stack.c.i
+
+src/leap_controller_stack.s: src/leap_controller_stack.c.s
+.PHONY : src/leap_controller_stack.s
+
+# target to generate assembly for a file
+src/leap_controller_stack.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_stack.c.s
+.PHONY : src/leap_controller_stack.c.s
+
 src/leap_device_stack.o: src/leap_device_stack.c.o
 .PHONY : src/leap_device_stack.o
 
@@ -481,6 +620,30 @@ src/services/dir/leap_dir_device.s: src/services/dir/leap_dir_device.c.s
 src/services/dir/leap_dir_device.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.s
 .PHONY : src/services/dir/leap_dir_device.c.s
+
+src/services/disc/leap_disc_controller.o: src/services/disc/leap_disc_controller.c.o
+.PHONY : src/services/disc/leap_disc_controller.o
+
+# target to build an object file
+src/services/disc/leap_disc_controller.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_controller.c.o
+.PHONY : src/services/disc/leap_disc_controller.c.o
+
+src/services/disc/leap_disc_controller.i: src/services/disc/leap_disc_controller.c.i
+.PHONY : src/services/disc/leap_disc_controller.i
+
+# target to preprocess a source file
+src/services/disc/leap_disc_controller.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_controller.c.i
+.PHONY : src/services/disc/leap_disc_controller.c.i
+
+src/services/disc/leap_disc_controller.s: src/services/disc/leap_disc_controller.c.s
+.PHONY : src/services/disc/leap_disc_controller.s
+
+# target to generate assembly for a file
+src/services/disc/leap_disc_controller.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_controller.c.s
+.PHONY : src/services/disc/leap_disc_controller.c.s
 
 src/services/disc/leap_disc_device.o: src/services/disc/leap_disc_device.c.o
 .PHONY : src/services/disc/leap_disc_device.o
@@ -722,6 +885,78 @@ tests/test_comms_loss.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.s
 .PHONY : tests/test_comms_loss.c.s
 
+tests/test_controller_peer.o: tests/test_controller_peer.c.o
+.PHONY : tests/test_controller_peer.o
+
+# target to build an object file
+tests/test_controller_peer.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.o
+.PHONY : tests/test_controller_peer.c.o
+
+tests/test_controller_peer.i: tests/test_controller_peer.c.i
+.PHONY : tests/test_controller_peer.i
+
+# target to preprocess a source file
+tests/test_controller_peer.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.i
+.PHONY : tests/test_controller_peer.c.i
+
+tests/test_controller_peer.s: tests/test_controller_peer.c.s
+.PHONY : tests/test_controller_peer.s
+
+# target to generate assembly for a file
+tests/test_controller_peer.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.s
+.PHONY : tests/test_controller_peer.c.s
+
+tests/test_controller_session_hub.o: tests/test_controller_session_hub.c.o
+.PHONY : tests/test_controller_session_hub.o
+
+# target to build an object file
+tests/test_controller_session_hub.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o
+.PHONY : tests/test_controller_session_hub.c.o
+
+tests/test_controller_session_hub.i: tests/test_controller_session_hub.c.i
+.PHONY : tests/test_controller_session_hub.i
+
+# target to preprocess a source file
+tests/test_controller_session_hub.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.i
+.PHONY : tests/test_controller_session_hub.c.i
+
+tests/test_controller_session_hub.s: tests/test_controller_session_hub.c.s
+.PHONY : tests/test_controller_session_hub.s
+
+# target to generate assembly for a file
+tests/test_controller_session_hub.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.s
+.PHONY : tests/test_controller_session_hub.c.s
+
+tests/test_controller_stack.o: tests/test_controller_stack.c.o
+.PHONY : tests/test_controller_stack.o
+
+# target to build an object file
+tests/test_controller_stack.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.o
+.PHONY : tests/test_controller_stack.c.o
+
+tests/test_controller_stack.i: tests/test_controller_stack.c.i
+.PHONY : tests/test_controller_stack.i
+
+# target to preprocess a source file
+tests/test_controller_stack.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.i
+.PHONY : tests/test_controller_stack.c.i
+
+tests/test_controller_stack.s: tests/test_controller_stack.c.s
+.PHONY : tests/test_controller_stack.s
+
+# target to generate assembly for a file
+tests/test_controller_stack.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.s
+.PHONY : tests/test_controller_stack.c.s
+
 tests/test_crc.o: tests/test_crc.c.o
 .PHONY : tests/test_crc.o
 
@@ -793,6 +1028,30 @@ tests/test_dir_device.s: tests/test_dir_device.c.s
 tests/test_dir_device.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_dir_device.c.s
 .PHONY : tests/test_dir_device.c.s
+
+tests/test_disc_controller.o: tests/test_disc_controller.c.o
+.PHONY : tests/test_disc_controller.o
+
+# target to build an object file
+tests/test_disc_controller.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_disc_controller.c.o
+.PHONY : tests/test_disc_controller.c.o
+
+tests/test_disc_controller.i: tests/test_disc_controller.c.i
+.PHONY : tests/test_disc_controller.i
+
+# target to preprocess a source file
+tests/test_disc_controller.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_disc_controller.c.i
+.PHONY : tests/test_disc_controller.c.i
+
+tests/test_disc_controller.s: tests/test_disc_controller.c.s
+.PHONY : tests/test_disc_controller.s
+
+# target to generate assembly for a file
+tests/test_disc_controller.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_disc_controller.c.s
+.PHONY : tests/test_disc_controller.c.s
 
 tests/test_disc_device.o: tests/test_disc_device.c.o
 .PHONY : tests/test_disc_device.o
@@ -1191,6 +1450,7 @@ help:
 	@echo "... leap_core"
 	@echo "... leap_linux_controller"
 	@echo "... leap_linux_device"
+	@echo "... leap_linux_discover"
 	@echo "... leap_tests"
 	@echo "... examples/device_minimal/main.o"
 	@echo "... examples/device_minimal/main.i"
@@ -1201,9 +1461,15 @@ help:
 	@echo "... examples/linux_loopback/device_main.o"
 	@echo "... examples/linux_loopback/device_main.i"
 	@echo "... examples/linux_loopback/device_main.s"
+	@echo "... examples/linux_loopback/discover_main.o"
+	@echo "... examples/linux_loopback/discover_main.i"
+	@echo "... examples/linux_loopback/discover_main.s"
 	@echo "... examples/linux_loopback/leap_linux_common.o"
 	@echo "... examples/linux_loopback/leap_linux_common.i"
 	@echo "... examples/linux_loopback/leap_linux_common.s"
+	@echo "... examples/linux_loopback/leap_linux_controller_io.o"
+	@echo "... examples/linux_loopback/leap_linux_controller_io.i"
+	@echo "... examples/linux_loopback/leap_linux_controller_io.s"
 	@echo "... examples/linux_loopback/leap_linux_io.o"
 	@echo "... examples/linux_loopback/leap_linux_io.i"
 	@echo "... examples/linux_loopback/leap_linux_io.s"
@@ -1219,6 +1485,15 @@ help:
 	@echo "... src/frame/leap_frame.o"
 	@echo "... src/frame/leap_frame.i"
 	@echo "... src/frame/leap_frame.s"
+	@echo "... src/leap_controller_peer.o"
+	@echo "... src/leap_controller_peer.i"
+	@echo "... src/leap_controller_peer.s"
+	@echo "... src/leap_controller_session_hub.o"
+	@echo "... src/leap_controller_session_hub.i"
+	@echo "... src/leap_controller_session_hub.s"
+	@echo "... src/leap_controller_stack.o"
+	@echo "... src/leap_controller_stack.i"
+	@echo "... src/leap_controller_stack.s"
 	@echo "... src/leap_device_stack.o"
 	@echo "... src/leap_device_stack.i"
 	@echo "... src/leap_device_stack.s"
@@ -1228,6 +1503,9 @@ help:
 	@echo "... src/services/dir/leap_dir_device.o"
 	@echo "... src/services/dir/leap_dir_device.i"
 	@echo "... src/services/dir/leap_dir_device.s"
+	@echo "... src/services/disc/leap_disc_controller.o"
+	@echo "... src/services/disc/leap_disc_controller.i"
+	@echo "... src/services/disc/leap_disc_controller.s"
 	@echo "... src/services/disc/leap_disc_device.o"
 	@echo "... src/services/disc/leap_disc_device.i"
 	@echo "... src/services/disc/leap_disc_device.s"
@@ -1258,6 +1536,15 @@ help:
 	@echo "... tests/test_comms_loss.o"
 	@echo "... tests/test_comms_loss.i"
 	@echo "... tests/test_comms_loss.s"
+	@echo "... tests/test_controller_peer.o"
+	@echo "... tests/test_controller_peer.i"
+	@echo "... tests/test_controller_peer.s"
+	@echo "... tests/test_controller_session_hub.o"
+	@echo "... tests/test_controller_session_hub.i"
+	@echo "... tests/test_controller_session_hub.s"
+	@echo "... tests/test_controller_stack.o"
+	@echo "... tests/test_controller_stack.i"
+	@echo "... tests/test_controller_stack.s"
 	@echo "... tests/test_crc.o"
 	@echo "... tests/test_crc.i"
 	@echo "... tests/test_crc.s"
@@ -1267,6 +1554,9 @@ help:
 	@echo "... tests/test_dir_device.o"
 	@echo "... tests/test_dir_device.i"
 	@echo "... tests/test_dir_device.s"
+	@echo "... tests/test_disc_controller.o"
+	@echo "... tests/test_disc_controller.i"
+	@echo "... tests/test_disc_controller.s"
 	@echo "... tests/test_disc_device.o"
 	@echo "... tests/test_disc_device.i"
 	@echo "... tests/test_disc_device.s"

@@ -48,23 +48,14 @@ static int leap_linux_pd_send_pd(
 static int leap_linux_pd_send_heartbeat(
     void*          user_ctx,
     const uint8_t* peer_mac,
+    const uint8_t* payload,
+    size_t         payload_length,
     uint32_t       session_id,
     uint32_t       sequence)
 {
     LeapLinuxPdTransport* transport = (LeapLinuxPdTransport*)user_ctx;
-    uint8_t               payload[sizeof(LeapHeartbeatPayload)];
-    size_t                payload_length;
 
-    if (transport == NULL || transport->mgmt == NULL)
-    {
-        return -1;
-    }
-
-    payload_length = leap_mgmt_controller_build_heartbeat(
-        transport->mgmt,
-        payload,
-        sizeof(payload));
-    if (payload_length == 0u)
+    if (transport == NULL || transport->sock == NULL || payload == NULL)
     {
         return -1;
     }
@@ -83,6 +74,8 @@ static int leap_linux_pd_send_heartbeat(
         3);
 }
 
+#define LEAP_LINUX_PD_RX_BUF 256u
+
 static int leap_linux_pd_wait_exchange_reply(
     void*          user_ctx,
     const uint8_t* peer_mac,
@@ -93,40 +86,54 @@ static int leap_linux_pd_wait_exchange_reply(
 {
     LeapLinuxPdTransport* transport = (LeapLinuxPdTransport*)user_ctx;
     LeapFrameView         view;
-    uint8_t                 src_mac[6];
+    uint8_t               src_mac[6];
+    uint8_t               frame_buf[LEAP_LINUX_PD_RX_BUF];
+    size_t                frame_length;
 
-    (void)peer_mac;
-
-    if (transport == NULL || transport->sock == NULL || reply_length == NULL)
+    if (transport == NULL || transport->sock == NULL || reply_length == NULL ||
+        peer_mac == NULL)
     {
         return -1;
     }
 
-    if (leap_linux_recv_leap(
-            transport->sock,
-            src_mac,
-            reply_payload,
-            reply_capacity,
-            reply_length,
-            timeout_ms) != 0)
+    for (;;)
     {
-        return -1;
-    }
+        if (leap_linux_recv_leap(
+                transport->sock,
+                src_mac,
+                frame_buf,
+                sizeof(frame_buf),
+                &frame_length,
+                timeout_ms) != 0)
+        {
+            return -1;
+        }
 
-    if (leap_frame_parse(reply_payload, *reply_length, &view) != LEAP_FRAME_OK)
-    {
-        return -1;
-    }
+        if (memcmp(src_mac, peer_mac, 6) != 0)
+        {
+            continue;
+        }
 
-    if (view.header.service_id != (uint16_t)LEAP_SERVICE_PD ||
-        view.header.message_type != LEAP_PD_EXCHANGE_REPLY)
-    {
-        return -1;
-    }
+        if (leap_frame_parse(frame_buf, frame_length, &view) != LEAP_FRAME_OK)
+        {
+            continue;
+        }
 
-    *reply_length = view.payload_length;
-    memmove(reply_payload, view.payload, view.payload_length);
-    return 0;
+        if (view.header.service_id != (uint16_t)LEAP_SERVICE_PD ||
+            view.header.message_type != LEAP_PD_EXCHANGE_REPLY)
+        {
+            continue;
+        }
+
+        if (view.payload_length > reply_capacity)
+        {
+            return -1;
+        }
+
+        *reply_length = view.payload_length;
+        memcpy(reply_payload, view.payload, view.payload_length);
+        return 0;
+    }
 }
 
 static uint64_t leap_linux_pd_monotonic_us(void* user_ctx)

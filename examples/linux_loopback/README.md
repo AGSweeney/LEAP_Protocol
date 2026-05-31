@@ -31,7 +31,20 @@ Controller logic uses `leap_mgmt_controller` and `leap_dir_controller` from
 
 WSL2 rejects `AF_PACKET` bind with `ENODEV` even on `lo`. Build and unit tests
 work in WSL; the wire example requires bare metal Linux or a VM with a real
-network stack.
+network stack. The CI wire-smoke script auto-skips on WSL2.
+
+### CI wire smoke
+
+GitHub Actions (`ubuntu-latest`) runs the end-to-end loopback test after unit
+tests:
+
+```bash
+LEAP_BUILD_DIR=build tools/ci/wire_smoke_lo.sh
+```
+
+Set `LEAP_SKIP_WIRE_SMOKE=1` to skip locally. CI sets `LEAP_WIRE_SMOKE_REQUIRED=1`
+so the job fails if AF_PACKET on `lo` is unavailable (this should not happen on
+standard GitHub-hosted Linux runners).
 
 ## Build
 

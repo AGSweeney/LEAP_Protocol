@@ -45,4 +45,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/device_minimal.dir/DependInfo.cmake"
   "CMakeFiles/leap_linux_device.dir/DependInfo.cmake"
   "CMakeFiles/leap_linux_controller.dir/DependInfo.cmake"
+  "CMakeFiles/leap_linux_discover.dir/DependInfo.cmake"
   )

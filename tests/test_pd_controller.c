@@ -68,12 +68,16 @@ static int mock_send_pd(
 static int mock_send_heartbeat(
     void*          user_ctx,
     const uint8_t* peer_mac,
+    const uint8_t* payload,
+    size_t         payload_length,
     uint32_t       session_id,
     uint32_t       sequence)
 {
     PdCtrlMockIo* mock = (PdCtrlMockIo*)user_ctx;
 
     (void)peer_mac;
+    (void)payload;
+    (void)payload_length;
     (void)session_id;
     (void)sequence;
 

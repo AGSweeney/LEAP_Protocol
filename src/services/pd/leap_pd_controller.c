@@ -149,9 +149,29 @@ static LeapPdControllerStatus leap_pd_ctrl_maintain_lease(
     session_id = leap_mgmt_controller_session_id(mgmt);
     sequence   = leap_mgmt_controller_next_sequence(mgmt);
 
-    if (io->send_heartbeat(io->user_ctx, peer_mac, session_id, sequence) != 0)
     {
-        return LEAP_PD_CTRL_HEARTBEAT_FAILED;
+        uint8_t hb_payload[sizeof(LeapHeartbeatPayload)];
+        size_t  hb_length;
+
+        hb_length = leap_mgmt_controller_build_heartbeat(
+            mgmt,
+            hb_payload,
+            sizeof(hb_payload));
+        if (hb_length == 0u)
+        {
+            return LEAP_PD_CTRL_HEARTBEAT_FAILED;
+        }
+
+        if (io->send_heartbeat(
+                io->user_ctx,
+                peer_mac,
+                hb_payload,
+                hb_length,
+                session_id,
+                sequence) != 0)
+        {
+            return LEAP_PD_CTRL_HEARTBEAT_FAILED;
+        }
     }
 
     leap_mgmt_controller_on_heartbeat_sent(mgmt, now_us);

@@ -46,6 +46,31 @@ LEAP v1.0 assumes an isolated machine network. It is not appropriate for
 plant-wide or routed networks without an authentication extension — the owner
 lease is not an access control mechanism on open networks. See spec §17.
 
+## Current capabilities
+
+The reference stack provides a full device path and a controller bootstrap FSM:
+
+| Layer | Device | Controller |
+| --- | --- | --- |
+| DISC | HELLO reply, identity | HELLO broadcast, `leap_disc_controller` |
+| DIR | profile/endpoints | SELECT_PROFILE, profile reply parsing |
+| MGMT | sessions, lease, watchdog, state | open session, set OP, heartbeat, owner release |
+| PD | pack/unpack, I/O shadow, sequence policy | cyclic exchange, cycle metrics |
+| Stack | `leap_device_stack` (dispatch + tick) | `leap_controller_stack`, `leap_controller_session_hub` |
+
+After bootstrap the controller stack tracks inbound peer sequence numbers (duplicate
+detection, `ack_sequence` on outbound frames), dispatches async MGMT replies and
+ERROR payloads to `FAULT`, and supports graceful `OWNER_RELEASE` shutdown.
+
+Multi-device discovery uses `leap_controller_peer_table_discover()` (broadcast HELLO,
+collect up to 16 peers). Known peers can be brought to OP with
+`leap_controller_stack_bootstrap_peer()` without repeating discovery.
+
+Concurrent multi-peer control uses `leap_controller_session_hub`: each bound peer
+gets an independent `LeapControllerStack` (session ID, sequence, lease, PD state).
+Use `leap_controller_session_hub_run_round_robin()` for cyclic I/O across all OP
+peers on one shared transport.
+
 ## Roadmap
 
 ### Done (reference stack)
@@ -58,12 +83,12 @@ lease is not an access control mechanism on open networks. See spec §17.
 - Integrated `leap_device_stack` (DISC + DIR + MGMT + PD dispatch and tick)
 - Linux `AF_PACKET` transport with partial-send retry, promisc/filter options, transport counters
 - Linux loopback examples (controller + device), WSL limitation documented
+- Controller stack Phase 1–3: bootstrap FSM, Linux IO adapter, `on_frame`, `release`
 - Automated comms-loss unit test (`leap_device_stack_tick` lease expiry)
 - CI: build, ctest, Linux example binaries, loopback wire smoke on `lo`
 
 ### Next
 
-- Multi-device discovery and session isolation on a shared segment
 - Sequence/ACK window enforcement and replay hardening
 - **LEAP-DIAG** service (counters, timing, event log)
 - Wireshark dissector coverage for all v1.0 services and PD profiles
