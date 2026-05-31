@@ -1,7 +1,7 @@
 /*
  * examples/linux_loopback/device_main.c
  *
- * Linux AF_PACKET LEAP device: DISC + MGMT + PD with tick loop.
+ * Linux AF_PACKET LEAP device: DISC + MGMT + PD with tick loop and I/O shadow.
  *
  * Usage: sudo ./leap_linux_device [interface]
  *
@@ -10,6 +10,7 @@
  */
 
 #include "leap_linux_common.h"
+#include "leap_linux_io.h"
 
 #include "leap/leap_device_stack.h"
 #include "leap/leap_protocol.h"
@@ -19,13 +20,15 @@
 
 #define LEAP_RX_BUF_SIZE 1600u
 
+static LeapLinuxIoShadow g_io;
+
 static void device_send_reply(
-    const LeapRawLinuxSocket*   transport,
-    const uint8_t*              dst_mac,
+    const LeapRawLinuxSocket*    transport,
+    const uint8_t*               dst_mac,
     const LeapDeviceStackResult* result,
-    uint16_t                    message_type,
-    const uint8_t*              payload,
-    size_t                        payload_length)
+    uint16_t                     message_type,
+    const uint8_t*               payload,
+    size_t                         payload_length)
 {
     if (leap_linux_send_leap(
             transport,
@@ -67,6 +70,10 @@ static void device_log_rx(const LeapDeviceStackResult* result)
             printf("received SET_STATE -> state now %u\n",
                    (unsigned)result->device_state);
         }
+        else if (result->frame.header.message_type == LEAP_MGMT_HEARTBEAT)
+        {
+            printf("received HEARTBEAT (lease refreshed)\n");
+        }
         break;
     case LEAP_SERVICE_PD:
         if (result->frame.header.message_type == LEAP_PD_WRITE_ENDPOINT)
@@ -80,10 +87,10 @@ static void device_log_rx(const LeapDeviceStackResult* result)
     }
 }
 
-static void device_log_pd_result(const LeapDeviceStackResult* result)
+static void device_apply_pd_result(const LeapDeviceStackResult* result)
 {
-    const LeapEndpointDataHeader* hdr;
-    const LeapProfileDigital16x16*  profile;
+    const LeapEndpointDataHeader*  hdr;
+    const LeapProfileDigital16x16* profile;
 
     if ((result->flags & LEAP_DEVICE_STACK_FLAG_OUTPUTS_APPLIED) == 0u)
     {
@@ -93,15 +100,15 @@ static void device_log_pd_result(const LeapDeviceStackResult* result)
     if (result->frame.payload_length <
         sizeof(LeapEndpointDataHeader) + sizeof(LeapProfileDigital16x16))
     {
-        printf("PD outputs applied\n");
         return;
     }
 
     hdr     = (const LeapEndpointDataHeader*)result->frame.payload;
     profile = (const LeapProfileDigital16x16*)(result->frame.payload + sizeof(*hdr));
-    printf("PD outputs applied: endpoint=0x%04X outputs=0x%04X seq=%u\n",
+    leap_linux_io_apply_outputs(&g_io, profile->digital_outputs);
+
+    printf("PD outputs applied: endpoint=0x%04X seq=%u\n",
            hdr->endpoint_id,
-           profile->digital_outputs,
            hdr->process_sequence);
 }
 
@@ -110,6 +117,7 @@ static void device_log_tick(uint32_t flags, LeapState_u16 state)
     if ((flags & LEAP_DEVICE_STACK_FLAG_SAFE_STATE_ENTERED) != 0u)
     {
         printf("tick: lease/watchdog expired -> SAFE (state=%u)\n", (unsigned)state);
+        leap_linux_io_enter_safe(&g_io);
     }
     else if ((flags & LEAP_DEVICE_STACK_FLAG_OWNERSHIP_CHANGED) != 0u)
     {
@@ -141,6 +149,8 @@ int main(int argc, char** argv)
         ifname = argv[1];
     }
 
+    leap_linux_io_init(&g_io);
+
     memset(&mgmt_config, 0, sizeof(mgmt_config));
     mgmt_config.default_lease_us    = 5000000u;
     mgmt_config.default_watchdog_us = 500000u;
@@ -162,7 +172,7 @@ int main(int argc, char** argv)
 
     printf("LEAP device on %s\n", ifname);
     leap_linux_print_mac("  local MAC: ", transport.local_mac);
-    printf("  state: CONFIGURED — waiting for frames\n");
+    printf("  state: CONFIGURED — I/O shadow in safe mode (outputs=0x0000)\n");
 
     for (;;)
     {
@@ -187,7 +197,7 @@ int main(int argc, char** argv)
             if (status == LEAP_DEVICE_STACK_OK)
             {
                 device_log_rx(&result);
-                device_log_pd_result(&result);
+                device_apply_pd_result(&result);
 
                 if ((result.flags & LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY) != 0u)
                 {

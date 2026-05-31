@@ -60,6 +60,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(leap_linux_device
     examples/linux_loopback/device_main.c
     examples/linux_loopback/leap_linux_common.c
+    examples/linux_loopback/leap_linux_io.c
   )
   add_executable(leap_linux_controller
     examples/linux_loopback/controller_main.c

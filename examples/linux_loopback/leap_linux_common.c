@@ -94,6 +94,80 @@ int leap_linux_send_leap(
     return 0;
 }
 
+int leap_linux_send_leap_retry(
+    const LeapRawLinuxSocket* sock,
+    const uint8_t*            dst_mac,
+    uint8_t                   flags,
+    uint16_t                  service_id,
+    uint16_t                  message_type,
+    uint32_t                  session_id,
+    uint32_t                  sequence,
+    uint32_t                  ack_sequence,
+    const uint8_t*            payload,
+    size_t                    payload_length,
+    int                       max_attempts)
+{
+    int attempt;
+
+    if (max_attempts < 1)
+    {
+        max_attempts = 1;
+    }
+
+    for (attempt = 0; attempt < max_attempts; attempt++)
+    {
+        if (leap_linux_send_leap(
+                sock,
+                dst_mac,
+                flags,
+                service_id,
+                message_type,
+                session_id,
+                sequence,
+                ack_sequence,
+                payload,
+                payload_length) == 0)
+        {
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+void leap_linux_controller_parse_args(
+    int                        argc,
+    char**                     argv,
+    LeapLinuxControllerOptions* options)
+{
+    int i;
+
+    if (options == NULL)
+    {
+        return;
+    }
+
+    options->ifname     = "lo";
+    options->lease_demo = 0;
+    options->cyclic     = 0;
+
+    for (i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--lease-demo") == 0)
+        {
+            options->lease_demo = 1;
+        }
+        else if (strcmp(argv[i], "--cyclic") == 0)
+        {
+            options->cyclic = 1;
+        }
+        else if (argv[i][0] != '-')
+        {
+            options->ifname = argv[i];
+        }
+    }
+}
+
 int leap_linux_recv_leap(
     const LeapRawLinuxSocket* sock,
     uint8_t*                  src_mac,
