@@ -1,86 +1,88 @@
 # LEAP Reference Stack — Forward Plan
 
-Prioritized work aligned with porting readiness. Status as of May 2026.
+Prioritized open work for porting readiness. Status as of May 2026.
 
-Legend: **done** · **partial** · **open**
+Completed capabilities are documented below under **Implemented capabilities**.
+This file lists only remaining and deferred work.
 
 ---
 
-## Your 7–10 day goals vs current state
+## Implemented capabilities
 
-| Goal | Status | Notes |
+### Core stack and LEAP-PD
+
+- LEAP-PD lives in `src/services/pd/` (`leap_pd_common`, `leap_pd_device`, `leap_pd_controller`). Linux and Windows examples use stacks plus transport adapters only; see the porting path in [examples/README.md](../examples/README.md).
+- **`leap_controller_stack`** mirrors the device-side model: bootstrap FSM, `on_frame`, release, cyclic PD, and DIAG read helpers alongside **`leap_device_stack`** dispatch for all five v1 services.
+- **`LeapPdControllerStats`** tracks cycle latency, jitter vs target period, lost frames (exchange timeouts), reply rejects, overruns, and optional hub RTT/queue split. Logged via `leap_pd_controller_log_stats()`.
+- Example audit complete: porting templates are `examples/linux_loopback/*` and `examples/win_l2/*`; `examples/device_minimal` remains learning-only.
+
+### LEAP-DIAG and observability
+
+- Device handler, stack dispatch, controller builders/parsers, and unit tests.
+- Post-OP **`leap_controller_stack_read_diag()`** / **`log_diag()`** without new bootstrap FSM phases.
+- **`--diag`** on Linux and Windows controllers reads counters and timing after bootstrap or a PD run.
+- Golden frames for DIAG `READ_COUNTERS` / `COUNTERS_REPLY` (§10) and `READ_TIMING` / `TIMING_REPLY` (§10.7).
+- Wireshark dissector covers v1 services, PD exchange layout, and DIAG message types.
+
+### Multi-peer and session hub
+
+- Discovery peer table with **`discover_ex`** early exit at `min_peers`, **`probe_peer`**, and MAC parse helpers.
+- **`leap_controller_session_hub`**: independent MGMT/PD/session state per peer slot.
+- Hub examples: **`leap_linux_hub`**, **`leap_win_hub`**, **`leap_win_discover`** (Windows parity); documented in example READMEs.
+- Hub PD modes: round-robin, parallel lap, and **`--random-peer`** (one random device + one random output bit per paced cycle on Windows hub).
+- Hardening: per-peer Ethernet sequence, session binding after OP, PD exchange validation, §13.4 frame age on replies, foreign-owner skip on bootstrap, optional `LEAP_LOG_SECURITY` logging.
+- Integration tests (no sockets): hub bootstrap isolation, round-robin, parallel send-before-recv, foreign-owner skip, random-peer slot indexing — see `test_controller_session_hub.c`.
+- Porting checklist: “Ready for hardware” table in [docs/README.md](README.md).
+
+### Transport and resilience
+
+- **`leap_raw_linux`**: `query_link` / `poll_link` with carrier up/down surfaced to examples; link transition stats.
+- Reconnect policy documented: rediscover vs `bootstrap_peer` vs full stack reset — [LEAP_TRANSPORT_RECONNECT.md](LEAP_TRANSPORT_RECONNECT.md).
+- Windows Npcap transport (`leap_raw_winpcap`) with stats; timestamped logging via **`leap_log`** across examples.
+
+---
+
+## Open work
+
+### Near term (7–10 days) — core lock-down
+
+| Item | Notes |
+| --- | --- |
+| Manual wire smoke | Run `tools/ci/wire_smoke_*.sh` (Linux) and `wire_smoke_win.ps1` (Windows) on native hosts before platform forks |
+
+### Medium term (3–4 weeks) — integration and release prep
+
+| Item | Status | Notes |
 | --- | --- | --- |
-| Polish LEAP-PD in `src/services/pd/`; extract from examples | **done** | Core PD in `src/services/pd/`; Linux examples use stacks + transport adapters only. |
-| Controller stack symmetry with device stack | **done** | `leap_controller_stack` mirrors bootstrap + tick-adjacent PD; `leap_device_stack` dispatches all five services. |
-| Stabilize multi-peer (sequence + ownership) | **partial** | Per-peer sequence, session bind, PD validation, foreign-owner skip, security log hook. Rolling bitmap + MGMT frame-age still open. |
-| PD statistics (jitter, latency, lost frames) | **done** | `LeapPdControllerStats`: latency, cycle jitter vs target, `lost_frames`, reply rejects; `leap_pd_controller_log_stats()`. |
+| Periodic transport stats in cyclic PD logs | **partial** | Exit-time `--stats` exists; drops/retries/parse errors not yet logged during cyclic runs |
+| Hub `--diag` across all peers | **open** | Session hub has no multi-peer DIAG helper; use per-slot `read_diag()` or controller `--diag` |
+| DIAG auto-poll in controller FSM | **open** | Use explicit `read_diag()` or `--diag` today |
+| Auto-reconnect FSM | **open** | Policy is documented; examples poll link but do not auto-rebootstrap |
+| Rolling 64-bit sequence bitmap | **open** | Optional unless hardware shows reordering |
+| MGMT frame-age on generic inbound path | **open** | §13.4 age check today on PD exchange reply path |
+| v1.0 conformance / release readiness review | **open** | Spec freeze candidate, manifest schema, independent implementer checklist |
 
-**Reprioritized next 7–10 days (core lock-down):**
+### Deferred (avoid before porting gate)
 
-1. **PD extraction finish** — **done** — audit documented in [examples/README.md](../examples/README.md); porting path is `linux_loopback/*`; `device_minimal` stays learning-only.
-2. **Controller DIAG symmetry** — **done** — `leap_controller_stack_read_diag()` + `leap_controller_stack_log_diag()`; `--diag` in Linux example (bootstrap-only or after PD).
-3. **Multi-peer test gap** — **done** — hub round-robin, foreign-owner skip, bootstrap cross-peer isolation, discover early exit.
-4. **Porting checklist** — **done** — “Ready for hardware” table in [docs/README.md](README.md).
-5. **Manual wire smoke** — run `tools/ci/wire_smoke_*.sh` (Linux) and `wire_smoke_win.ps1` (Windows) before platform forks.
-6. **Windows hub parity** — **done** — `leap_win_hub`, `leap_win_discover`; timestamped logging via `leap_log`.
-
----
-
-## Your 3–4 week goals vs current state
-
-| Goal | Status | Notes |
-| --- | --- | --- |
-| Implement LEAP-DIAG | **partial** | Device handler + stack dispatch + controller builders/parsers + unit tests + stack `read_diag` + Linux/Windows `--diag`. Hub DIAG variant and FSM auto-poll **open**. |
-| Transport (link monitoring, reconnect) | **partial** | `query_link` / `poll_link` + `link_transitions` stat; reconnect policy doc; example poll in device recv loop. Auto-reconnect FSM **open**. |
-| Multi-device test coverage | **done** | Peer table, `discover_ex` early exit, probe, session hub, foreign-owner skip, round-robin PD, bootstrap isolation tests. |
-| Spec + golden vectors | **done** | DIAG counters + timing golden frames (§10); Wireshark DIAG + PD exchange decode. |
-
-**Reprioritized next 3–4 weeks:**
-
-### Week 2 — Integration & observability
-
-- ~~Controller-side DIAG read path (post-OP, no new FSM phases).~~ **done**
-- ~~Linux example: `--diag` reads counters / timing after bootstrap or PD run.~~ **done**
-- ~~Session hub example or documented pattern: discover → hub → round-robin (optional binary).~~ **done** — `leap_linux_hub`, `leap_win_hub` + READMEs.
-
-### Week 3 — Transport & resilience
-
-- ~~`LeapRawLinux` link state hook (carrier up/down) surfaced to examples.~~ **done**
-- ~~Document reconnect policy: rediscover vs `bootstrap_peer` vs full stack reset.~~ **done** — [LEAP_TRANSPORT_RECONNECT.md](LEAP_TRANSPORT_RECONNECT.md)
-- Expand transport stats in periodic example logs (drops, retries, parse errors) — **partial** (`--stats` on exit; not yet periodic during cyclic PD).
-
-### Week 4 — Conformance & release prep
-
-- ~~Golden vector(s) for DIAG `READ_COUNTERS` / `COUNTERS_REPLY` round-trip.~~ **done** (§10)
-- ~~Golden vector(s) for DIAG `READ_TIMING` / `TIMING_REPLY`.~~ **done** (§10.7)
-- ~~Wireshark dissector: DIAG message types + PD exchange layout.~~ **done**
-- ~~Multi-device integration test in `ctest` (hub + 2 mock peers, no sockets).~~ **done** — `test_session_hub_table_bootstrap_round_robin`
-- Tag readiness review: spec freeze candidate, manifest schema, independent implementer checklist.
-
----
-
-## Explicitly defer (avoid before porting gate)
-
-- Rolling 64-bit sequence bitmap (unless hardware shows reordering).
 - Multi-controller election / priority MGMT extension.
 - IP/routed transport, fragmentation for large blobs.
 - Platform-specific PD timing workarounds in examples (belongs in core stats/config).
 
 ---
 
-## Success metrics
+## Success metrics (remaining)
 
 | Milestone | Criteria |
 | --- | --- |
-| **Core locked** | Examples use stacks only; `ctest` green (115–116 tests); porting gate signed off |
-| **DIAG complete** | Device + controller read path + example/test round-trip + golden vectors |
-| **Multi-peer confident** | Hub round-robin, parallel, random-peer + foreign-owner tests; multi-peer notes match behavior |
-| **v1.0 candidate** | Golden vectors updated; dissector covers v1 services; manual wire smoke passed on Linux |
+| **Core locked** | Manual wire smoke passed on Linux and Windows; porting gate signed off |
+| **DIAG complete** | Hub DIAG variant or documented per-peer pattern; optional FSM auto-poll |
+| **Multi-peer confident** | Soak validation on hardware (hub modes + foreign-owner behavior) |
+| **v1.0 candidate** | Release readiness review complete; manual wire smoke recorded |
 
 ---
 
 ## See also
 
-- [README.md](../README.md) — repository overview
-- [LEAP_CONTROLLER_STACK_PLAN.md](LEAP_CONTROLLER_STACK_PLAN.md) — controller implementation status
+- [README.md](../README.md) — repository overview and feature summary
+- [LEAP_CONTROLLER_STACK_PLAN.md](LEAP_CONTROLLER_STACK_PLAN.md) — controller design and API
 - [LEAP_MULTI_PEER_NOTES.md](LEAP_MULTI_PEER_NOTES.md) — multi-peer config and failure modes

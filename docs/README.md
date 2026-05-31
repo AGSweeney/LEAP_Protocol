@@ -16,7 +16,7 @@ in this repository.
 
 | Document | Purpose |
 | --- | --- |
-| [LEAP_FORWARD_PLAN.md](LEAP_FORWARD_PLAN.md) | Prioritized roadmap (7–10 days + 3–4 weeks) vs implementation status |
+| [LEAP_FORWARD_PLAN.md](LEAP_FORWARD_PLAN.md) | Implemented capabilities and remaining open work |
 | [LEAP_CONTROLLER_STACK_PLAN.md](LEAP_CONTROLLER_STACK_PLAN.md) | Controller bootstrap FSM, session hub, implementation status |
 | [LEAP_MULTI_PEER_NOTES.md](LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller behavior, config knobs, failure modes |
 | [LEAP_TRANSPORT_RECONNECT.md](LEAP_TRANSPORT_RECONNECT.md) | Link monitoring (`leap_raw_linux`) and reconnect policy |

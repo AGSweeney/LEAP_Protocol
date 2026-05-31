@@ -23,7 +23,7 @@ schemas/leap-manifest-schema.json     JSON Schema for device/profile manifests
 tools/wireshark/leap_dissector.lua    Wireshark dissector (v1 services + PD exchange)
 tools/ci/wire_smoke_*                 manual end-to-end tests (Linux shell, Windows PS1)
 src/                                  reference stack (see src/README.md)
-tests/                                conformance and regression tests (111–112)
+tests/                                conformance and regression tests (115–116)
 examples/linux_loopback/              Linux AF_PACKET device, controller, hub, discover
 examples/win_l2/                        Windows Npcap device, controller, hub, discover
 examples/win_smoke/                     Windows Npcap single-process wire smoke
@@ -97,6 +97,14 @@ optional `LEAP_LOG_SECURITY` stderr diagnostics.
 
 Details: [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md)
 
+### DIAG and tooling
+
+Post-OP **`read_diag()`** / **`log_diag()`** on the controller stack; **`--diag`** in Linux and Windows controller examples. Golden DIAG vectors (spec §10), Wireshark dissector for v1 services + PD exchange + DIAG. Reconnect policy and link polling: [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md).
+
+### Examples and porting path
+
+Production-style examples use stacks only — **`linux_loopback/*`** and **`win_l2/*`**. Hub binaries support round-robin, parallel, and Windows **`--random-peer`** soak mode. **`device_minimal`** is a learning/fuzz harness, not the porting template. See [examples/README.md](examples/README.md).
+
 ### Porting gate
 
 Before porting to embedded or Windows masters:
@@ -152,37 +160,32 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 
 ## Roadmap
 
-### Done (reference stack)
+Shipped reference-stack capabilities are summarized under [Reference stack overview](#reference-stack-overview) and in the **Done** list below. Remaining work is tracked in [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md).
+
+### Shipped (reference stack)
 
 - Wire contract, normative spec, golden vectors (incl. DIAG §10), manifest schema
 - Frame parser/serializer, CRC, fragment rejection policy, fuzz/regression tests (115–116)
 - All five v1 services: device handlers + controller helpers (where applicable)
 - **`leap_device_stack`** — DISC + DIR + MGMT + PD + DIAG + tick
-- **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`, `read_diag`
-- **`leap_controller_session_hub`** + peer discovery table + `leap_linux_hub` example
-- Multi-peer hardening (sequence, session bind, PD validation, frame age, security log)
-- Linux AF_PACKET transport + Windows Npcap transport (`leap_raw_winpcap`)
-- Linux loopback/hub/discover examples; Windows `leap_win_smoke` + `leap_win_device`/`leap_win_controller`/`leap_win_hub`/`leap_win_discover`
-- Timestamped example logging (`leap_log_printf`) across Linux and Windows examples
-- ClearCore device firmware port (`platforms/clearcore`)
-- Wireshark dissector: v1 services, PD exchange, DIAG message types
-- CI: Linux build + unit tests (115) + example binary checks; Windows build + unit tests (116)
+- **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`, `read_diag`, `--diag`
+- **`leap_controller_session_hub`** — round-robin, parallel, random-peer lap; peer discovery; hub integration tests
+- Multi-peer hardening (sequence, session bind, PD validation, frame age, foreign-owner skip, security log)
+- Linux AF_PACKET + Windows Npcap transport; link query/poll and reconnect policy doc
+- Linux and Windows device/controller/hub/discover examples; ClearCore firmware port
+- Wireshark dissector; timestamped `leap_log_printf`; CI unit tests (115 Linux / 116 Windows)
 
-### Next (see [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md))
+### Open (see forward plan)
 
-**Near term (core lock-down)**
+**Near term**
 
-- ~~PD/example audit~~ **done** — porting path is `linux_loopback/*` and `win_l2/*`; `device_minimal` stays learning-only
-- ~~Controller DIAG read helper + `--diag` flag~~ **done** (Linux + Windows controllers)
-- ~~Hub integration tests (round-robin, foreign-owner skip)~~ **done**
 - Manual wire smoke on native Linux (`tools/ci/wire_smoke_*.sh`) and Windows (`wire_smoke_win.ps1`) before platform ports
 
-**Medium term (3–4 weeks)**
+**Medium term**
 
-- ~~Transport link monitoring and reconnect policy~~ **done** — see [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md)
-- ~~DIAG golden vectors + Wireshark coverage~~ **done**
-- ~~Multi-device hub example~~ **done** — `leap_linux_hub`; hub `--diag` variant still open
-- Expand transport stats in periodic example logs (drops, retries, parse errors)
+- Periodic transport stats during cyclic PD (partial — exit stats exist today)
+- Hub `--diag` variant; optional DIAG auto-poll in controller FSM
+- Auto-reconnect FSM (policy documented; examples poll link only)
 - v1.0 conformance / release readiness review
 
 **Later**
@@ -195,7 +198,7 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 | Doc | Description |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Documentation index + module map |
-| [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md) | Prioritized 7–10 day and 3–4 week plan vs current status |
+| [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md) | Open work and implemented capability reference |
 | [docs/LEAP_PROTOCOL_SPECIFICATION.md](docs/LEAP_PROTOCOL_SPECIFICATION.md) | Normative spec |
 | [docs/LEAP_CONTROLLER_STACK_PLAN.md](docs/LEAP_CONTROLLER_STACK_PLAN.md) | Controller stack design + status |
 | [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller notes |
