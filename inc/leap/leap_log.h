@@ -14,6 +14,7 @@
 #define LEAP_LOG_H
 
 #include <stddef.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
 
