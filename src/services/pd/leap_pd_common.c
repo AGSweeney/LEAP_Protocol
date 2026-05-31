@@ -7,7 +7,132 @@
 
 #include "leap/leap_pd_common.h"
 
+#include "leap/leap_dir_device.h"
+
 #include <string.h>
+
+void leap_pd_profile_map_init_default(LeapPdProfileMap* out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+
+    out->profile_id             = LEAP_PROFILE_DIGITAL_IO_16X16;
+    out->write_endpoint_id      = LEAP_ENDPOINT_DIGITAL_OUTPUTS;
+    out->read_endpoint_id       = LEAP_ENDPOINT_DIGITAL_INPUTS;
+    out->endpoint_payload_size  = sizeof(LeapProfileDigital16x16);
+    out->valid                  = 1;
+}
+
+LeapPdCommonStatus leap_pd_profile_map_from_profile_id(
+    uint32_t          profile_id,
+    LeapPdProfileMap* out)
+{
+    if (out == NULL)
+    {
+        return LEAP_PD_COMMON_ERROR;
+    }
+
+    leap_pd_profile_map_init_default(out);
+
+    if (profile_id == LEAP_PROFILE_DIGITAL_IO_16X16 ||
+        profile_id == LEAP_PROFILE_DIGITAL_IO_8X8 ||
+        profile_id == LEAP_PROFILE_DIGITAL_IO_32X32)
+    {
+        out->profile_id = profile_id;
+        return LEAP_PD_COMMON_OK;
+    }
+
+    out->valid = 0;
+    return LEAP_PD_COMMON_PROFILE_MISMATCH;
+}
+
+LeapPdCommonStatus leap_pd_profile_map_from_dir(
+    const LeapDirDeviceContext* dir,
+    LeapPdProfileMap*           out)
+{
+    const LeapDirDeviceProfile* profile;
+    uint32_t                    profile_id;
+    size_t                      i;
+
+    if (dir == NULL || out == NULL)
+    {
+        return LEAP_PD_COMMON_ERROR;
+    }
+
+    profile_id = dir->config.active_profile_id;
+    if (profile_id == 0u)
+    {
+        profile_id = dir->config.default_profile_id;
+    }
+    if (profile_id == 0u)
+    {
+        leap_pd_profile_map_init_default(out);
+        return LEAP_PD_COMMON_OK;
+    }
+
+    profile = NULL;
+    for (i = 0u; i < dir->config.profile_count; i++)
+    {
+        if (dir->config.profiles[i].descriptor.profile_id == profile_id)
+        {
+            profile = &dir->config.profiles[i];
+            break;
+        }
+    }
+
+    if (profile == NULL)
+    {
+        return leap_pd_profile_map_from_profile_id(profile_id, out);
+    }
+
+    memset(out, 0, sizeof(*out));
+    out->profile_id = profile_id;
+    out->valid      = 1;
+
+    for (i = 0u; i < profile->endpoint_count; i++)
+    {
+        const LeapEndpointDescriptor* ep = &profile->endpoints[i];
+        size_t                        payload_size;
+
+        payload_size = leap_pd_endpoint_payload_size(profile_id, ep->endpoint_id);
+        if (payload_size == 0u)
+        {
+            payload_size = (size_t)ep->byte_length;
+        }
+
+        if (ep->direction == (uint8_t)LEAP_ENDPOINT_DIR_CONTROLLER_TO_DEVICE)
+        {
+            out->write_endpoint_id = ep->endpoint_id;
+            if (payload_size > 0u)
+            {
+                out->endpoint_payload_size = payload_size;
+            }
+        }
+        else if (ep->direction == (uint8_t)LEAP_ENDPOINT_DIR_DEVICE_TO_CONTROLLER)
+        {
+            out->read_endpoint_id = ep->endpoint_id;
+            if (out->endpoint_payload_size == 0u && payload_size > 0u)
+            {
+                out->endpoint_payload_size = payload_size;
+            }
+        }
+    }
+
+    if (out->write_endpoint_id == 0u || out->read_endpoint_id == 0u)
+    {
+        leap_pd_profile_map_init_default(out);
+        out->profile_id = profile_id;
+    }
+
+    if (out->endpoint_payload_size == 0u)
+    {
+        out->endpoint_payload_size = sizeof(LeapProfileDigital16x16);
+    }
+
+    return LEAP_PD_COMMON_OK;
+}
 
 size_t leap_pd_endpoint_payload_size(uint32_t profile_id, uint16_t endpoint_id)
 {
@@ -173,6 +298,57 @@ size_t leap_pd_build_digital_write(
         sizeof(profile));
 }
 
+size_t leap_pd_build_digital_exchange_mapped(
+    uint8_t*                out,
+    size_t                  out_capacity,
+    uint32_t                process_sequence,
+    uint32_t                cycle_time_us,
+    const LeapPdProfileMap* profile,
+    uint16_t                digital_outputs)
+{
+    LeapPdProfileMap        local;
+    LeapExchangeHeader*     hdr;
+    LeapProfileDigital16x16 write_profile;
+    size_t                  payload_size;
+    size_t                  total;
+
+    if (profile == NULL || profile->valid == 0)
+    {
+        leap_pd_profile_map_init_default(&local);
+        profile = &local;
+    }
+
+    payload_size = profile->endpoint_payload_size;
+    if (payload_size == 0u)
+    {
+        payload_size = sizeof(LeapProfileDigital16x16);
+    }
+
+    total = sizeof(LeapExchangeHeader) + (payload_size * 2u);
+    if (out == NULL || out_capacity < total)
+    {
+        return 0u;
+    }
+
+    memset(out, 0, total);
+    hdr = (LeapExchangeHeader*)out;
+    hdr->write_endpoint_id  = profile->write_endpoint_id;
+    hdr->read_endpoint_id   = profile->read_endpoint_id;
+    hdr->write_length       = (uint16_t)payload_size;
+    hdr->read_length        = (uint16_t)payload_size;
+    hdr->process_sequence   = process_sequence;
+    hdr->cycle_time_us      = cycle_time_us;
+    hdr->profile_id         = profile->profile_id;
+    hdr->exchange_flags     = (uint16_t)LEAP_PD_FLAG_APPLY_OUTPUTS;
+
+    memset(&write_profile, 0, sizeof(write_profile));
+    write_profile.digital_outputs = digital_outputs;
+    write_profile.io_status       = LEAP_DIO_STATUS_OK;
+    memcpy(out + sizeof(LeapExchangeHeader), &write_profile, payload_size);
+
+    return total;
+}
+
 size_t leap_pd_build_digital_exchange(
     uint8_t* out,
     size_t   out_capacity,
@@ -181,38 +357,24 @@ size_t leap_pd_build_digital_exchange(
     uint32_t profile_id,
     uint16_t digital_outputs)
 {
-    LeapExchangeHeader*     hdr;
-    LeapProfileDigital16x16 write_profile;
-    size_t                    total;
+    LeapPdProfileMap profile;
 
-    if (profile_id == 0u)
+    if (leap_pd_profile_map_from_profile_id(profile_id, &profile) != LEAP_PD_COMMON_OK)
     {
-        profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+        leap_pd_profile_map_init_default(&profile);
+        if (profile_id != 0u)
+        {
+            profile.profile_id = profile_id;
+        }
     }
 
-    total = sizeof(LeapExchangeHeader) + (sizeof(LeapProfileDigital16x16) * 2u);
-    if (out == NULL || out_capacity < total)
-    {
-        return 0u;
-    }
-
-    memset(out, 0, total);
-    hdr = (LeapExchangeHeader*)out;
-    hdr->write_endpoint_id         = LEAP_ENDPOINT_DIGITAL_OUTPUTS;
-    hdr->read_endpoint_id          = LEAP_ENDPOINT_DIGITAL_INPUTS;
-    hdr->write_length              = (uint16_t)sizeof(LeapProfileDigital16x16);
-    hdr->read_length               = (uint16_t)sizeof(LeapProfileDigital16x16);
-    hdr->process_sequence          = process_sequence;
-    hdr->cycle_time_us             = cycle_time_us;
-    hdr->profile_id                = profile_id;
-    hdr->exchange_flags            = (uint16_t)LEAP_PD_FLAG_APPLY_OUTPUTS;
-
-    memset(&write_profile, 0, sizeof(write_profile));
-    write_profile.digital_outputs = digital_outputs;
-    write_profile.io_status       = LEAP_DIO_STATUS_OK;
-    memcpy(out + sizeof(LeapExchangeHeader), &write_profile, sizeof(write_profile));
-
-    return total;
+    return leap_pd_build_digital_exchange_mapped(
+        out,
+        out_capacity,
+        process_sequence,
+        cycle_time_us,
+        &profile,
+        digital_outputs);
 }
 
 size_t leap_pd_build_exchange_reply(

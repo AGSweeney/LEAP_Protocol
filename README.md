@@ -46,6 +46,31 @@ LEAP v1.0 assumes an isolated machine network. It is not appropriate for
 plant-wide or routed networks without an authentication extension — the owner
 lease is not an access control mechanism on open networks. See spec §17.
 
+## Roadmap
+
+### Done (reference stack)
+
+- Wire contract (`leap_protocol.h`), normative spec, golden frame vectors, manifest schema
+- Frame parser/serializer, CRC engines, fragment handling, fuzz/regression tests
+- Device-side **LEAP-MGMT** (sessions, ownership, lease/watchdog, state machine)
+- **LEAP-DISC** / **LEAP-DIR** device handlers and controller helpers
+- **LEAP-PD** pack/unpack, device I/O binding, controller cyclic exchange + lease maintenance
+- Integrated `leap_device_stack` (DISC + DIR + MGMT + PD dispatch and tick)
+- Linux `AF_PACKET` transport with partial-send retry, promisc/filter options, transport counters
+- Linux loopback examples (controller + device), WSL limitation documented
+- Automated comms-loss unit test (`leap_device_stack_tick` lease expiry)
+- CI: build, ctest, Linux example binaries, loopback wire smoke on `lo`
+
+### Next
+
+- Multi-device discovery and session isolation on a shared segment
+- Sequence/ACK window enforcement and replay hardening
+- **LEAP-DIAG** service (counters, timing, event log)
+- Wireshark dissector coverage for all v1.0 services and PD profiles
+- Embedded reference port (no Linux sockets; timer-driven tick)
+- Production EtherType registration path (beyond development `0x88B6`)
+- v0.9 / v1.0 release tag once independent implementations pass conformance vectors
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

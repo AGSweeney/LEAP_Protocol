@@ -26,6 +26,11 @@ jobs:
           test -x build/leap_linux_device
           test -x build/leap_tests
 
+      - name: Wire smoke (loopback)
+        run: |
+          chmod +x tools/ci/wire_smoke_lo.sh
+          LEAP_BUILD_DIR="$PWD/build" tools/ci/wire_smoke_lo.sh
+
   test-windows:
     runs-on: windows-latest
     steps:

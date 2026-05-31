@@ -82,6 +82,7 @@ static int pd_build_write_frame(
     size_t         out_capacity,
     size_t*        out_length,
     uint32_t       session_id,
+    uint32_t       process_sequence,
     uint16_t       digital_outputs)
 {
     LeapPdBuildParams params;
@@ -96,7 +97,7 @@ static int pd_build_write_frame(
 
     memset(&params, 0, sizeof(params));
     params.profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
-    params.process_sequence = 100u;
+    params.process_sequence = process_sequence;
     params.endpoint_flags   = LEAP_PD_FLAG_APPLY_OUTPUTS;
 
     payload_length = leap_pd_build_digital_write(
@@ -133,12 +134,14 @@ static int pd_build_write_frame(
 TEST(test_pd_rejects_without_op)
 {
     LeapMgmtDeviceContext ctx;
+    LeapPdDeviceContext   pd;
     LeapPdDeviceResult    result;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
 
     pd_setup_ready_op(&ctx, &session_id);
+    leap_pd_device_init(&pd, NULL);
     ctx.device_state = LEAP_STATE_SAFE;
 
     ASSERT_TRUE(
@@ -147,10 +150,12 @@ TEST(test_pd_rejects_without_op)
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
+            100u,
             0x0001u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, NULL, k_mac_a, 0u, frame, frame_length, &result),
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_REJECTED);
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_NOT_OWNER);
 }
@@ -158,6 +163,7 @@ TEST(test_pd_rejects_without_op)
 TEST(test_pd_accepts_owner_write_in_op)
 {
     LeapMgmtDeviceContext ctx;
+    LeapPdDeviceContext   pd;
     LeapPdDeviceResult    result;
     LeapPdDeviceIoBinding io;
     uint16_t              outputs = 0u;
@@ -166,6 +172,7 @@ TEST(test_pd_accepts_owner_write_in_op)
     uint32_t              session_id;
 
     pd_setup_ready_op(&ctx, &session_id);
+    leap_pd_device_init(&pd, NULL);
     memset(&io, 0, sizeof(io));
     io.digital_outputs = &outputs;
 
@@ -175,10 +182,12 @@ TEST(test_pd_accepts_owner_write_in_op)
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
+            100u,
             0x0015u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, &io, k_mac_a, 0u, frame, frame_length, &result),
+        leap_pd_device_process_frame(
+            &ctx, &pd, &io, k_mac_a, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_OK);
     ASSERT_EQ_U16(outputs, 0x0015u);
     ASSERT_TRUE((result.flags & LEAP_PD_DEVICE_FLAG_OUTPUTS_APPLIED) != 0u);
@@ -188,12 +197,14 @@ TEST(test_pd_accepts_owner_write_in_op)
 TEST(test_pd_spoof_forces_safe)
 {
     LeapMgmtDeviceContext ctx;
+    LeapPdDeviceContext   pd;
     LeapPdDeviceResult    result;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
 
     pd_setup_ready_op(&ctx, &session_id);
+    leap_pd_device_init(&pd, NULL);
 
     ASSERT_TRUE(
         pd_build_write_frame(
@@ -201,10 +212,12 @@ TEST(test_pd_spoof_forces_safe)
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
+            100u,
             0x0001u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, NULL, k_mac_b, 0u, frame, frame_length, &result),
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_b, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_REJECTED);
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_NOT_OWNER);
     ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
@@ -213,12 +226,14 @@ TEST(test_pd_spoof_forces_safe)
 TEST(test_pd_watchdog_refresh_survives_tick)
 {
     LeapMgmtDeviceContext ctx;
+    LeapPdDeviceContext   pd;
     LeapPdDeviceResult    result;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
 
     pd_setup_ready_op(&ctx, &session_id);
+    leap_pd_device_init(&pd, NULL);
     ctx.granted_watchdog_us = 100000u;
     leap_mgmt_device_refresh_process_watchdog(&ctx, 0u);
 
@@ -228,14 +243,108 @@ TEST(test_pd_watchdog_refresh_survives_tick)
             TEST_PD_FRAME_BUF_SIZE,
             &frame_length,
             session_id,
+            100u,
             0x0001u) == 0);
 
     ASSERT_EQ_INT(
-        leap_pd_device_process_frame(&ctx, NULL, k_mac_a, 80000u, frame, frame_length, &result),
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 80000u, frame, frame_length, &result),
         LEAP_PD_DEVICE_OK);
 
     leap_mgmt_device_tick(&ctx, 150000u);
     ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_OP);
+}
+
+TEST(test_pd_rejects_regressive_process_sequence)
+{
+    LeapMgmtDeviceContext ctx;
+    LeapPdDeviceContext   pd;
+    LeapPdDeviceResult    result;
+    uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
+    size_t                frame_length = 0u;
+    uint32_t              session_id;
+
+    pd_setup_ready_op(&ctx, &session_id);
+    leap_pd_device_init(&pd, NULL);
+
+    ASSERT_TRUE(
+        pd_build_write_frame(
+            frame, TEST_PD_FRAME_BUF_SIZE, &frame_length, session_id, 100u, 0x0001u) == 0);
+    ASSERT_EQ_INT(
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_PD_DEVICE_OK);
+
+    ASSERT_TRUE(
+        pd_build_write_frame(
+            frame, TEST_PD_FRAME_BUF_SIZE, &frame_length, session_id, 99u, 0x0002u) == 0);
+    ASSERT_EQ_INT(
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_PD_DEVICE_REJECTED);
+    ASSERT_EQ_U16(result.error_code, LEAP_STATUS_OUT_OF_ORDER);
+}
+
+TEST(test_pd_rejects_stale_process_sequence)
+{
+    LeapMgmtDeviceContext ctx;
+    LeapPdDeviceContext   pd;
+    LeapPdDeviceResult    result;
+    uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
+    size_t                frame_length = 0u;
+    uint32_t              session_id;
+
+    pd_setup_ready_op(&ctx, &session_id);
+    leap_pd_device_init(&pd, NULL);
+
+    ASSERT_TRUE(
+        pd_build_write_frame(
+            frame, TEST_PD_FRAME_BUF_SIZE, &frame_length, session_id, 100u, 0x0001u) == 0);
+    ASSERT_EQ_INT(
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_PD_DEVICE_OK);
+
+    ASSERT_TRUE(
+        pd_build_write_frame(
+            frame, TEST_PD_FRAME_BUF_SIZE, &frame_length, session_id, 100u, 0x0002u) == 0);
+    ASSERT_EQ_INT(
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_PD_DEVICE_REJECTED);
+    ASSERT_EQ_U16(result.error_code, LEAP_STATUS_DUPLICATE_SEQUENCE);
+    ASSERT_EQ_U32(pd.stale_rejections, 1u);
+}
+
+TEST(test_pd_accepts_sequence_gap)
+{
+    LeapMgmtDeviceContext ctx;
+    LeapPdDeviceContext   pd;
+    LeapPdDeviceResult    result;
+    uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
+    size_t                frame_length = 0u;
+    uint32_t              session_id;
+
+    pd_setup_ready_op(&ctx, &session_id);
+    leap_pd_device_init(&pd, NULL);
+
+    ASSERT_TRUE(
+        pd_build_write_frame(
+            frame, TEST_PD_FRAME_BUF_SIZE, &frame_length, session_id, 100u, 0x0001u) == 0);
+    ASSERT_EQ_INT(
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_PD_DEVICE_OK);
+
+    ASSERT_TRUE(
+        pd_build_write_frame(
+            frame, TEST_PD_FRAME_BUF_SIZE, &frame_length, session_id, 103u, 0x0003u) == 0);
+    ASSERT_EQ_INT(
+        leap_pd_device_process_frame(
+            &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
+        LEAP_PD_DEVICE_OK);
+    ASSERT_TRUE((result.flags & LEAP_PD_DEVICE_FLAG_SEQUENCE_GAP) != 0u);
+    ASSERT_EQ_U32(pd.sequence_gaps, 1u);
 }
 
 void leap_run_pd_device_tests(void)
@@ -245,4 +354,7 @@ void leap_run_pd_device_tests(void)
     RUN_TEST(test_pd_accepts_owner_write_in_op);
     RUN_TEST(test_pd_spoof_forces_safe);
     RUN_TEST(test_pd_watchdog_refresh_survives_tick);
+    RUN_TEST(test_pd_rejects_regressive_process_sequence);
+    RUN_TEST(test_pd_rejects_stale_process_sequence);
+    RUN_TEST(test_pd_accepts_sequence_gap);
 }

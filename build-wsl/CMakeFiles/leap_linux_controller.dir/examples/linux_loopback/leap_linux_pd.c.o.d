@@ -23,6 +23,10 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: 
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.h \
  /usr/include/string.h \

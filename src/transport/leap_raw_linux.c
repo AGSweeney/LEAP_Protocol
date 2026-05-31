@@ -159,14 +159,15 @@ static int leap_raw_linux_frame_dest_ok(
     return 0;
 }
 
-static ssize_t leap_raw_linux_send_all(int fd, const uint8_t* data, size_t length)
+static ssize_t leap_raw_linux_send_all(LeapRawLinuxSocket* sock, const uint8_t* data, size_t length)
 {
     size_t   offset = 0u;
     ssize_t  sent;
+    int      chunks = 0;
 
     while (offset < length)
     {
-        sent = send(fd, data + offset, length - offset, 0);
+        sent = send(sock->fd, data + offset, length - offset, 0);
         if (sent < 0)
         {
             if (errno == EINTR)
@@ -174,21 +175,54 @@ static ssize_t leap_raw_linux_send_all(int fd, const uint8_t* data, size_t lengt
                 continue;
             }
 
+            sock->stats.tx_errors++;
             leap_raw_linux_set_errno();
             return -1;
         }
 
         if (sent == 0)
         {
+            sock->stats.tx_errors++;
             errno = EIO;
             leap_raw_linux_set_errno();
             return -1;
         }
 
+        chunks++;
+        if (chunks > 1)
+        {
+            sock->stats.tx_partial_chunks++;
+        }
+
         offset += (size_t)sent;
     }
 
+    sock->stats.tx_frames_ok++;
+    sock->stats.tx_bytes += length;
+
     return (ssize_t)length;
+}
+
+void leap_raw_linux_get_stats(
+    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxStats*        out)
+{
+    if (sock == NULL || out == NULL)
+    {
+        return;
+    }
+
+    *out = sock->stats;
+}
+
+void leap_raw_linux_reset_stats(LeapRawLinuxSocket* sock)
+{
+    if (sock == NULL)
+    {
+        return;
+    }
+
+    memset(&sock->stats, 0, sizeof(sock->stats));
 }
 
 int leap_raw_linux_open_ex(
@@ -292,10 +326,10 @@ void leap_raw_linux_close(LeapRawLinuxSocket* sock)
 }
 
 int leap_raw_linux_send(
-    const LeapRawLinuxSocket* sock,
-    const uint8_t*            dst_mac,
-    const uint8_t*            payload,
-    size_t                    payload_length)
+    LeapRawLinuxSocket* sock,
+    const uint8_t*      dst_mac,
+    const uint8_t*      payload,
+    size_t              payload_length)
 {
     uint8_t  frame[LEAP_MAX_ETHERNET_PAYLOAD + 14u];
     size_t   total;
@@ -323,7 +357,7 @@ int leap_raw_linux_send(
     frame[13] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
     memcpy(frame + 14, payload, payload_length);
 
-    sent = leap_raw_linux_send_all(sock->fd, frame, total);
+    sent = leap_raw_linux_send_all(sock, frame, total);
     if (sent != (ssize_t)total)
     {
         return -1;
@@ -334,17 +368,18 @@ int leap_raw_linux_send(
 }
 
 int leap_raw_linux_recv(
-    const LeapRawLinuxSocket* sock,
-    uint8_t*                  src_mac,
-    uint8_t*                  payload,
-    size_t                    payload_capacity,
-    size_t*                   payload_length,
-    int                       timeout_ms)
+    LeapRawLinuxSocket* sock,
+    uint8_t*            src_mac,
+    uint8_t*            payload,
+    size_t              payload_capacity,
+    size_t*             payload_length,
+    int                 timeout_ms)
 {
-    uint8_t     frame[LEAP_MAX_ETHERNET_PAYLOAD + 14u];
+    uint8_t       frame[LEAP_MAX_ETHERNET_PAYLOAD + 14u];
     struct pollfd pfd;
-    ssize_t     received;
-    size_t      leap_len;
+    ssize_t       received;
+    size_t        leap_len;
+    LeapRawLinuxSocket* mutable_sock = sock;
 
     if (sock == NULL || sock->fd < 0 || payload == NULL || payload_length == NULL)
     {
@@ -365,6 +400,7 @@ int leap_raw_linux_recv(
 
                 if (poll_result == 0)
                 {
+                    mutable_sock->stats.rx_timeouts++;
                     leap_raw_linux_clear_errno();
                     return -1;
                 }
@@ -376,6 +412,7 @@ int leap_raw_linux_recv(
                         continue;
                     }
 
+                    mutable_sock->stats.rx_errors++;
                     leap_raw_linux_set_errno();
                     return -1;
                 }
@@ -389,6 +426,7 @@ int leap_raw_linux_recv(
                     continue;
                 }
 
+                mutable_sock->stats.rx_errors++;
                 leap_raw_linux_set_errno();
                 return -1;
             }
@@ -398,11 +436,13 @@ int leap_raw_linux_recv(
 
         if (received < 14)
         {
+            mutable_sock->stats.rx_short_frames++;
             continue;
         }
 
         if (!leap_raw_linux_frame_dest_ok(sock, frame))
         {
+            mutable_sock->stats.rx_filtered++;
             continue;
         }
 
@@ -417,6 +457,7 @@ int leap_raw_linux_recv(
     leap_len = (size_t)received - 14u;
     if (leap_len > payload_capacity)
     {
+        mutable_sock->stats.rx_errors++;
         errno = EMSGSIZE;
         leap_raw_linux_set_errno();
         return -1;
@@ -424,6 +465,8 @@ int leap_raw_linux_recv(
 
     memcpy(payload, frame + 14, leap_len);
     *payload_length = leap_len;
+    mutable_sock->stats.rx_frames_ok++;
+    mutable_sock->stats.rx_bytes += leap_len;
     leap_raw_linux_clear_errno();
     return 0;
 }
@@ -466,10 +509,10 @@ void leap_raw_linux_close(LeapRawLinuxSocket* sock)
 }
 
 int leap_raw_linux_send(
-    const LeapRawLinuxSocket* sock,
-    const uint8_t*            dst_mac,
-    const uint8_t*            payload,
-    size_t                    payload_length)
+    LeapRawLinuxSocket* sock,
+    const uint8_t*      dst_mac,
+    const uint8_t*      payload,
+    size_t              payload_length)
 {
     (void)sock;
     (void)dst_mac;
@@ -478,8 +521,24 @@ int leap_raw_linux_send(
     return -1;
 }
 
-int leap_raw_linux_recv(
+void leap_raw_linux_get_stats(
     const LeapRawLinuxSocket* sock,
+    LeapRawLinuxStats*        out)
+{
+    (void)sock;
+    if (out != NULL)
+    {
+        memset(out, 0, sizeof(*out));
+    }
+}
+
+void leap_raw_linux_reset_stats(LeapRawLinuxSocket* sock)
+{
+    (void)sock;
+}
+
+int leap_raw_linux_recv(
+    LeapRawLinuxSocket* sock,
     uint8_t*                  src_mac,
     uint8_t*                  payload,
     size_t                    payload_capacity,

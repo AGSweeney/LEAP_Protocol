@@ -404,7 +404,7 @@ int main(int argc, char** argv)
                 &mgmt,
                 &pd_io,
                 peer_mac,
-                (volatile int*)&g_controller_stop) != 0)
+                (volatile int*)&g_controller_stop) != LEAP_PD_CTRL_OK)
         {
             leap_raw_linux_close(&transport);
             return 1;
@@ -413,7 +413,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    if (leap_pd_controller_send_single_write(&pd, &mgmt, &pd_io, peer_mac, 0x0015u) != 0)
+    if (leap_pd_controller_send_single_write(&pd, &mgmt, &pd_io, peer_mac, 0x0015u) !=
+        LEAP_PD_CTRL_OK)
     {
         leap_raw_linux_close(&transport);
         return 1;
@@ -422,6 +423,9 @@ int main(int argc, char** argv)
     if (options.stats != 0)
     {
         leap_pd_controller_log_stats(&pd);
+        leap_linux_print_transport_stats(&transport);
+        printf("send retries (app): %llu\n",
+               (unsigned long long)leap_linux_send_retry_count());
     }
 
     printf("sent PD WRITE_ENDPOINT (outputs=0x0015, seq=1000)\n");

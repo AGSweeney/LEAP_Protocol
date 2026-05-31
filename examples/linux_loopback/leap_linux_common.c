@@ -17,6 +17,18 @@
 
 #define LEAP_LINUX_TX_BUF 1600u
 
+static uint64_t g_leap_linux_send_retries = 0u;
+
+uint64_t leap_linux_send_retry_count(void)
+{
+    return g_leap_linux_send_retries;
+}
+
+void leap_linux_reset_send_retry_count(void)
+{
+    g_leap_linux_send_retries = 0u;
+}
+
 void leap_linux_print_mac(const char* label, const uint8_t* mac)
 {
     if (label != NULL)
@@ -59,8 +71,31 @@ void leap_linux_print_transport_error(const char* action)
     }
 }
 
+void leap_linux_print_transport_stats(const LeapRawLinuxSocket* sock)
+{
+    LeapRawLinuxStats stats;
+
+    if (sock == NULL)
+    {
+        return;
+    }
+
+    leap_raw_linux_get_stats(sock, &stats);
+    printf(
+        "transport: tx_ok=%llu tx_err=%llu tx_partial=%llu "
+        "rx_ok=%llu rx_filtered=%llu rx_timeout=%llu rx_err=%llu rx_short=%llu\n",
+        (unsigned long long)stats.tx_frames_ok,
+        (unsigned long long)stats.tx_errors,
+        (unsigned long long)stats.tx_partial_chunks,
+        (unsigned long long)stats.rx_frames_ok,
+        (unsigned long long)stats.rx_filtered,
+        (unsigned long long)stats.rx_timeouts,
+        (unsigned long long)stats.rx_errors,
+        (unsigned long long)stats.rx_short_frames);
+}
+
 int leap_linux_send_leap(
-    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxSocket* sock,
     const uint8_t*            dst_mac,
     uint8_t                   flags,
     uint16_t                  service_id,
@@ -103,7 +138,7 @@ int leap_linux_send_leap(
 }
 
 int leap_linux_send_leap_retry(
-    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxSocket* sock,
     const uint8_t*            dst_mac,
     uint8_t                   flags,
     uint16_t                  service_id,
@@ -124,6 +159,11 @@ int leap_linux_send_leap_retry(
 
     for (attempt = 0; attempt < max_attempts; attempt++)
     {
+        if (attempt > 0)
+        {
+            g_leap_linux_send_retries++;
+        }
+
         if (leap_linux_send_leap(
                 sock,
                 dst_mac,
@@ -221,7 +261,7 @@ void leap_linux_controller_parse_args(
 }
 
 int leap_linux_recv_leap(
-    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxSocket* sock,
     uint8_t*                  src_mac,
     uint8_t*                  payload,
     size_t                    payload_capacity,

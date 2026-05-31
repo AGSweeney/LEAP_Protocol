@@ -31,8 +31,14 @@ void leap_linux_print_mac(const char* label, const uint8_t* mac);
 
 void leap_linux_print_transport_error(const char* action);
 
+void leap_linux_print_transport_stats(const LeapRawLinuxSocket* sock);
+
+uint64_t leap_linux_send_retry_count(void);
+
+void leap_linux_reset_send_retry_count(void);
+
 int leap_linux_send_leap(
-    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxSocket* sock,
     const uint8_t*            dst_mac,
     uint8_t                   flags,
     uint16_t                  service_id,
@@ -44,7 +50,7 @@ int leap_linux_send_leap(
     size_t                    payload_length);
 
 int leap_linux_send_leap_retry(
-    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxSocket* sock,
     const uint8_t*            dst_mac,
     uint8_t                   flags,
     uint16_t                  service_id,
@@ -57,7 +63,7 @@ int leap_linux_send_leap_retry(
     int                       max_attempts);
 
 int leap_linux_recv_leap(
-    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxSocket* sock,
     uint8_t*                  src_mac,
     uint8_t*                  payload,
     size_t                    payload_capacity,

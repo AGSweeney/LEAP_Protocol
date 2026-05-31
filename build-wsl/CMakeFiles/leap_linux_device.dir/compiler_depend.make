@@ -106,6 +106,7 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.o: 
 
 CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_io.c.o: /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_io.c \
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_io.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
   /usr/include/features-time64.h \
   /usr/include/features.h \
   /usr/include/stdc-predef.h \
@@ -152,6 +153,7 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o: /
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
   /usr/include/features-time64.h \
   /usr/include/features.h \
   /usr/include/stdc-predef.h \

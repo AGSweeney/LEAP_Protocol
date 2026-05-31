@@ -8,6 +8,7 @@
 #include "leap_linux_stats.h"
 
 #include "leap/leap_device_stack.h"
+#include "leap/leap_raw_linux.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -73,8 +74,12 @@ void leap_linux_device_stats_on_result(
     }
 }
 
-void leap_linux_device_stats_log(const LeapLinuxDeviceStats* stats)
+void leap_linux_device_stats_log(
+    const LeapLinuxDeviceStats* stats,
+    const LeapRawLinuxSocket*   transport)
 {
+    LeapRawLinuxStats tstats;
+
     if (stats == NULL)
     {
         return;
@@ -82,12 +87,27 @@ void leap_linux_device_stats_log(const LeapLinuxDeviceStats* stats)
 
     printf(
         "device stats: rx=%llu rejected=%llu pd_applied=%llu "
-        "pd_reply=%llu mgmt=%llu disc=%llu dir=%llu\n",
+        "pd_reply=%llu mgmt=%llu disc=%llu dir=%llu tx_retries=%llu\n",
         (unsigned long long)stats->frames_rx,
         (unsigned long long)stats->frames_rejected,
         (unsigned long long)stats->pd_applied,
         (unsigned long long)stats->pd_replies_sent,
         (unsigned long long)stats->mgmt_replies_sent,
         (unsigned long long)stats->disc_replies_sent,
-        (unsigned long long)stats->dir_replies_sent);
+        (unsigned long long)stats->dir_replies_sent,
+        (unsigned long long)stats->tx_send_retries);
+
+    if (transport != NULL)
+    {
+        leap_raw_linux_get_stats(transport, &tstats);
+        printf(
+            "transport: tx_ok=%llu tx_err=%llu rx_ok=%llu "
+            "rx_filtered=%llu rx_timeout=%llu rx_err=%llu\n",
+            (unsigned long long)tstats.tx_frames_ok,
+            (unsigned long long)tstats.tx_errors,
+            (unsigned long long)tstats.rx_frames_ok,
+            (unsigned long long)tstats.rx_filtered,
+            (unsigned long long)tstats.rx_timeouts,
+            (unsigned long long)tstats.rx_errors);
+    }
 }

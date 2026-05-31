@@ -250,6 +250,10 @@ CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.o: /mnt/d/LEAP_Pr
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
 CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o: /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_common.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
   /usr/include/features-time64.h \
@@ -276,8 +280,11 @@ CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o: /mnt/d/LEAP_Protoco
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
 CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o: /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_controller.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
@@ -325,6 +332,8 @@ CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o: /mnt/d/LEAP_Pro
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
 CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o: /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_device.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \

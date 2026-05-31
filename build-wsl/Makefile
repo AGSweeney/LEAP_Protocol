@@ -698,6 +698,30 @@ tests/leap_test_frame.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.s
 .PHONY : tests/leap_test_frame.c.s
 
+tests/test_comms_loss.o: tests/test_comms_loss.c.o
+.PHONY : tests/test_comms_loss.o
+
+# target to build an object file
+tests/test_comms_loss.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o
+.PHONY : tests/test_comms_loss.c.o
+
+tests/test_comms_loss.i: tests/test_comms_loss.c.i
+.PHONY : tests/test_comms_loss.i
+
+# target to preprocess a source file
+tests/test_comms_loss.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.i
+.PHONY : tests/test_comms_loss.c.i
+
+tests/test_comms_loss.s: tests/test_comms_loss.c.s
+.PHONY : tests/test_comms_loss.s
+
+# target to generate assembly for a file
+tests/test_comms_loss.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.s
+.PHONY : tests/test_comms_loss.c.s
+
 tests/test_crc.o: tests/test_crc.c.o
 .PHONY : tests/test_crc.o
 
@@ -1058,6 +1082,30 @@ tests/test_pd_common.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_pd_common.c.s
 .PHONY : tests/test_pd_common.c.s
 
+tests/test_pd_controller.o: tests/test_pd_controller.c.o
+.PHONY : tests/test_pd_controller.o
+
+# target to build an object file
+tests/test_pd_controller.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_pd_controller.c.o
+.PHONY : tests/test_pd_controller.c.o
+
+tests/test_pd_controller.i: tests/test_pd_controller.c.i
+.PHONY : tests/test_pd_controller.i
+
+# target to preprocess a source file
+tests/test_pd_controller.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_pd_controller.c.i
+.PHONY : tests/test_pd_controller.c.i
+
+tests/test_pd_controller.s: tests/test_pd_controller.c.s
+.PHONY : tests/test_pd_controller.s
+
+# target to generate assembly for a file
+tests/test_pd_controller.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_pd_controller.c.s
+.PHONY : tests/test_pd_controller.c.s
+
 tests/test_pd_device.o: tests/test_pd_device.c.o
 .PHONY : tests/test_pd_device.o
 
@@ -1081,6 +1129,30 @@ tests/test_pd_device.s: tests/test_pd_device.c.s
 tests/test_pd_device.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_pd_device.c.s
 .PHONY : tests/test_pd_device.c.s
+
+tests/test_raw_linux_stats.o: tests/test_raw_linux_stats.c.o
+.PHONY : tests/test_raw_linux_stats.o
+
+# target to build an object file
+tests/test_raw_linux_stats.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o
+.PHONY : tests/test_raw_linux_stats.c.o
+
+tests/test_raw_linux_stats.i: tests/test_raw_linux_stats.c.i
+.PHONY : tests/test_raw_linux_stats.i
+
+# target to preprocess a source file
+tests/test_raw_linux_stats.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.i
+.PHONY : tests/test_raw_linux_stats.c.i
+
+tests/test_raw_linux_stats.s: tests/test_raw_linux_stats.c.s
+.PHONY : tests/test_raw_linux_stats.s
+
+# target to generate assembly for a file
+tests/test_raw_linux_stats.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.s
+.PHONY : tests/test_raw_linux_stats.c.s
 
 tests/test_util.o: tests/test_util.c.o
 .PHONY : tests/test_util.o
@@ -1183,6 +1255,9 @@ help:
 	@echo "... tests/leap_test_frame.o"
 	@echo "... tests/leap_test_frame.i"
 	@echo "... tests/leap_test_frame.s"
+	@echo "... tests/test_comms_loss.o"
+	@echo "... tests/test_comms_loss.i"
+	@echo "... tests/test_comms_loss.s"
 	@echo "... tests/test_crc.o"
 	@echo "... tests/test_crc.i"
 	@echo "... tests/test_crc.s"
@@ -1228,9 +1303,15 @@ help:
 	@echo "... tests/test_pd_common.o"
 	@echo "... tests/test_pd_common.i"
 	@echo "... tests/test_pd_common.s"
+	@echo "... tests/test_pd_controller.o"
+	@echo "... tests/test_pd_controller.i"
+	@echo "... tests/test_pd_controller.s"
 	@echo "... tests/test_pd_device.o"
 	@echo "... tests/test_pd_device.i"
 	@echo "... tests/test_pd_device.s"
+	@echo "... tests/test_raw_linux_stats.o"
+	@echo "... tests/test_raw_linux_stats.i"
+	@echo "... tests/test_raw_linux_stats.s"
 	@echo "... tests/test_util.o"
 	@echo "... tests/test_util.i"
 	@echo "... tests/test_util.s"

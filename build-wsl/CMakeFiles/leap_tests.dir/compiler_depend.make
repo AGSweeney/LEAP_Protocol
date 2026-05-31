@@ -29,6 +29,59 @@ CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: /mnt/d/LEAP_Protocol/tests/
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
+CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o: /mnt/d/LEAP_Protocol/tests/test_comms_loss.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
+  /mnt/d/LEAP_Protocol/tests/test_harness.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdint.h \
+  /usr/include/stdio.h \
+  /usr/include/stdlib.h \
+  /usr/include/string.h \
+  /usr/include/x86_64-linux-gnu/bits/floatn-common.h \
+  /usr/include/x86_64-linux-gnu/bits/floatn.h \
+  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
+  /usr/include/x86_64-linux-gnu/bits/long-double.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
+  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+  /usr/include/x86_64-linux-gnu/bits/time64.h \
+  /usr/include/x86_64-linux-gnu/bits/timesize.h \
+  /usr/include/x86_64-linux-gnu/bits/types.h \
+  /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/typesizes.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar.h \
+  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+  /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
+
 CMakeFiles/leap_tests.dir/tests/test_crc.c.o: /mnt/d/LEAP_Protocol/tests/test_crc.c \
   /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
@@ -229,6 +282,8 @@ CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o: /mnt/d/LEAP_Protocol/tests
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
 CMakeFiles/leap_tests.dir/tests/test_frame_fragment.c.o: /mnt/d/LEAP_Protocol/tests/test_frame_fragment.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h \
@@ -685,7 +740,62 @@ CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.o: /mnt/d/LEAP_Protocol/test
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
 CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o: /mnt/d/LEAP_Protocol/tests/test_pd_common.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
+  /mnt/d/LEAP_Protocol/tests/test_harness.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdint.h \
+  /usr/include/stdio.h \
+  /usr/include/stdlib.h \
+  /usr/include/string.h \
+  /usr/include/x86_64-linux-gnu/bits/floatn-common.h \
+  /usr/include/x86_64-linux-gnu/bits/floatn.h \
+  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
+  /usr/include/x86_64-linux-gnu/bits/long-double.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
+  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+  /usr/include/x86_64-linux-gnu/bits/time64.h \
+  /usr/include/x86_64-linux-gnu/bits/timesize.h \
+  /usr/include/x86_64-linux-gnu/bits/types.h \
+  /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/typesizes.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar.h \
+  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+  /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
+
+CMakeFiles/leap_tests.dir/tests/test_pd_controller.c.o: /mnt/d/LEAP_Protocol/tests/test_pd_controller.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
   /mnt/d/LEAP_Protocol/tests/test_harness.h \
   /usr/include/features-time64.h \
@@ -731,11 +841,59 @@ CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o: /mnt/d/LEAP_Protocol/tests/t
 
 CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o: /mnt/d/LEAP_Protocol/tests/test_pd_device.c \
   /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
   /mnt/d/LEAP_Protocol/tests/test_harness.h \
   /mnt/d/LEAP_Protocol/tests/test_util.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdint.h \
+  /usr/include/stdio.h \
+  /usr/include/stdlib.h \
+  /usr/include/string.h \
+  /usr/include/x86_64-linux-gnu/bits/floatn-common.h \
+  /usr/include/x86_64-linux-gnu/bits/floatn.h \
+  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
+  /usr/include/x86_64-linux-gnu/bits/long-double.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio2.h \
+  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
+  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+  /usr/include/x86_64-linux-gnu/bits/time64.h \
+  /usr/include/x86_64-linux-gnu/bits/timesize.h \
+  /usr/include/x86_64-linux-gnu/bits/types.h \
+  /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
+  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
+  /usr/include/x86_64-linux-gnu/bits/typesizes.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar.h \
+  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+  /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
+
+CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o: /mnt/d/LEAP_Protocol/tests/test_raw_linux_stats.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
+  /mnt/d/LEAP_Protocol/tests/test_harness.h \
   /usr/include/features-time64.h \
   /usr/include/features.h \
   /usr/include/stdc-predef.h \
@@ -808,6 +966,10 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_u
 
 /mnt/d/LEAP_Protocol/tests/test_util.c:
 
+/mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h:
+
+/mnt/d/LEAP_Protocol/tests/test_raw_linux_stats.c:
+
 /mnt/d/LEAP_Protocol/tests/test_pd_device.c:
 
 /mnt/d/LEAP_Protocol/tests/test_mgmt_process.c:
@@ -822,9 +984,9 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_u
 
 /mnt/d/LEAP_Protocol/tests/test_harness.c:
 
-/mnt/d/LEAP_Protocol/tests/test_harness.h:
+/mnt/d/LEAP_Protocol/tests/test_frame_fragment.c:
 
-/mnt/d/LEAP_Protocol/tests/test_disc_device.c:
+/mnt/d/LEAP_Protocol/tests/test_comms_loss.c:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
@@ -868,7 +1030,17 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_u
 
 /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h:
 
+/mnt/d/LEAP_Protocol/tests/test_frame_roundtrip.c:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib.h:
+
+/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_crc.h:
+
 /mnt/d/LEAP_Protocol/tests/leap_test_frame.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h:
 
 /usr/include/x86_64-linux-gnu/bits/types.h:
 
@@ -878,13 +1050,13 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_u
 
 /usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
 
-/mnt/d/LEAP_Protocol/tests/test_crc.c:
-
-/usr/include/x86_64-linux-gnu/bits/long-double.h:
-
 /usr/include/features.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h:
+
+/usr/include/x86_64-linux-gnu/bits/typesizes.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h:
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
 
@@ -896,17 +1068,35 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_u
 
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
 
+/mnt/d/LEAP_Protocol/tests/test_pd_controller.c:
+
 /usr/include/stdint.h:
 
 /usr/include/features-time64.h:
 
-/usr/include/stdio.h:
+/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
 
-/usr/include/x86_64-linux-gnu/bits/floatn.h:
+/mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h:
+
+/mnt/d/LEAP_Protocol/tests/test_mgmt_boundaries.c:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_frame.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h:
 
+/usr/include/x86_64-linux-gnu/bits/floatn.h:
+
 /mnt/d/LEAP_Protocol/tests/test_util.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h:
+
+/mnt/d/LEAP_Protocol/tests/test_harness.h:
+
+/mnt/d/LEAP_Protocol/tests/test_disc_device.c:
+
+/usr/include/stdio.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/FILE.h:
 
@@ -922,34 +1112,12 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_u
 
 /mnt/d/LEAP_Protocol/tests/test_device_stack.c:
 
-/mnt/d/LEAP_Protocol/tests/test_frame_roundtrip.c:
-
-/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_crc.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
 
-/usr/include/x86_64-linux-gnu/bits/typesizes.h:
+/usr/include/x86_64-linux-gnu/bits/long-double.h:
 
-/mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h:
-
-/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h:
-
-/mnt/d/LEAP_Protocol/tests/test_mgmt_boundaries.c:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_frame.h:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h:
+/mnt/d/LEAP_Protocol/tests/test_crc.c:
 
 /usr/include/ctype.h:
 
 /mnt/d/LEAP_Protocol/tests/test_dir_device.c:
-
-/mnt/d/LEAP_Protocol/tests/test_frame_fragment.c:

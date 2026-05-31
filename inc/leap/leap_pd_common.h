@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "leap/leap_dir_device.h"
 #include "leap/leap_protocol.h"
 
 #ifdef __cplusplus
@@ -48,6 +49,18 @@ typedef struct LeapPdBuildParams
     uint16_t endpoint_flags;
 } LeapPdBuildParams;
 
+/*
+ * Resolved PD endpoint layout for the active profile (typically from LEAP-DIR).
+ */
+typedef struct LeapPdProfileMap
+{
+    uint32_t profile_id;
+    uint16_t write_endpoint_id;
+    uint16_t read_endpoint_id;
+    size_t   endpoint_payload_size;
+    int      valid;
+} LeapPdProfileMap;
+
 typedef enum LeapPdCommonStatus
 {
     LEAP_PD_COMMON_OK = 0,
@@ -56,6 +69,16 @@ typedef enum LeapPdCommonStatus
     LEAP_PD_COMMON_BUFFER_TOO_SMALL,
     LEAP_PD_COMMON_ERROR
 } LeapPdCommonStatus;
+
+void leap_pd_profile_map_init_default(LeapPdProfileMap* out);
+
+LeapPdCommonStatus leap_pd_profile_map_from_profile_id(
+    uint32_t          profile_id,
+    LeapPdProfileMap* out);
+
+LeapPdCommonStatus leap_pd_profile_map_from_dir(
+    const LeapDirDeviceContext* dir,
+    LeapPdProfileMap*           out);
 
 size_t leap_pd_endpoint_payload_size(uint32_t profile_id, uint16_t endpoint_id);
 
@@ -89,6 +112,14 @@ size_t leap_pd_build_digital_exchange(
     uint32_t                 cycle_time_us,
     uint32_t                 profile_id,
     uint16_t                 digital_outputs);
+
+size_t leap_pd_build_digital_exchange_mapped(
+    uint8_t*                      out,
+    size_t                        out_capacity,
+    uint32_t                      process_sequence,
+    uint32_t                      cycle_time_us,
+    const LeapPdProfileMap*       profile,
+    uint16_t                      digital_outputs);
 
 size_t leap_pd_build_exchange_reply(
     uint8_t*                      out,

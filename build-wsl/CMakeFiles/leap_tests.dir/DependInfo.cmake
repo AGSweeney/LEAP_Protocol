@@ -9,6 +9,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/mnt/d/LEAP_Protocol/tests/leap_test_frame.c" "CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_comms_loss.c" "CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_crc.c" "CMakeFiles/leap_tests.dir/tests/test_crc.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_crc.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_device_stack.c" "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_dir_device.c" "CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o.d"
@@ -24,7 +25,9 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/mnt/d/LEAP_Protocol/tests/test_mgmt_device.c" "CMakeFiles/leap_tests.dir/tests/test_mgmt_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_mgmt_device.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_mgmt_process.c" "CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_pd_common.c" "CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_pd_common.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_pd_controller.c" "CMakeFiles/leap_tests.dir/tests/test_pd_controller.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_pd_controller.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_pd_device.c" "CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_pd_device.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_raw_linux_stats.c" "CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_util.c" "CMakeFiles/leap_tests.dir/tests/test_util.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_util.c.o.d"
   )
 

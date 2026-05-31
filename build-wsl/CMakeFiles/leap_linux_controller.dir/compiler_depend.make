@@ -5,8 +5,12 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/controller_main.c.o
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.h \
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
@@ -113,8 +117,12 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_common.c
 CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.c \
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.h \
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
@@ -148,27 +156,11 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: 
 
 /usr/include/errno.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
+/usr/include/asm-generic/errno.h:
 
-/usr/include/string.h:
+/usr/include/asm-generic/errno-base.h:
 
-/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/wchar.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib.h:
-
-/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdint-least.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
-
-/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
-
-/usr/include/x86_64-linux-gnu/bits/unistd.h:
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h:
 
 /usr/include/x86_64-linux-gnu/bits/signum-arch.h:
 
@@ -182,9 +174,23 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: 
 
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
 
+/mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h:
+
 /usr/include/unistd.h:
 
-/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
+/usr/include/string.h:
+
+/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/wchar.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib.h:
+
+/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
 /usr/include/x86_64-linux-gnu/bits/signal_ext.h:
 
@@ -202,7 +208,19 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: 
 
 /usr/include/stdc-predef.h:
 
+/mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h:
+
+/usr/include/signal.h:
+
+/usr/include/x86_64-linux-gnu/bits/wordsize.h:
+
 /usr/include/stdint.h:
+
+/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.c:
+
+/usr/include/x86_64-linux-gnu/bits/timesize.h:
 
 /usr/include/features-time64.h:
 
@@ -214,29 +232,31 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: 
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h:
 
-/usr/include/signal.h:
-
-/usr/include/x86_64-linux-gnu/bits/wordsize.h:
-
 /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h:
-
-/usr/include/x86_64-linux-gnu/bits/unistd-decl.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h:
 
 /usr/include/features.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h:
 
-/usr/include/x86_64-linux-gnu/bits/timesize.h:
+/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
 
-/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.c:
+/mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h:
+
+/usr/include/x86_64-linux-gnu/bits/unistd-decl.h:
+
+/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
+
+/usr/include/x86_64-linux-gnu/bits/unistd.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdint-least.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/FILE.h:
 
@@ -273,7 +293,3 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: 
 /usr/include/x86_64-linux-gnu/bits/typesizes.h:
 
 /usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
-
-/usr/include/asm-generic/errno-base.h:
-
-/usr/include/asm-generic/errno.h:

@@ -315,7 +315,8 @@ int main(int argc, char** argv)
                 (g_stats.frames_rx % LEAP_DEVICE_STATS_INTERVAL) == 0u &&
                 g_stats.frames_rx > 0u)
             {
-                leap_linux_device_stats_log(&g_stats);
+                g_stats.tx_send_retries = leap_linux_send_retry_count();
+                leap_linux_device_stats_log(&g_stats, &transport);
             }
         }
 

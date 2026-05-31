@@ -816,6 +816,7 @@ the controller.
 Required behavior:
 
 - The device MUST track `highest_process_sequence` for each active owner session.
+  See §13.6 for the full acceptance table, status codes, and reset rules.
 - If incoming `process_sequence <= highest_process_sequence`, the frame is stale
   or out-of-order and MUST be dropped without output updates.
 - If incoming `process_sequence > highest_process_sequence`, the frame is
@@ -903,7 +904,8 @@ implemented through discovery or directory capability data.
 ### 13.5 Reliability Rules
 
 - The frame `sequence` detects duplicate Ethernet frames.
-- The `process_sequence` detects repeated or skipped application cycles.
+- The `process_sequence` detects repeated, regressive, or skipped application cycles.
+  Normative device enforcement rules are defined in §13.6.
 - A device MAY drop duplicate `LEAP-PD` frames after re-sending the previous
   response.
 - Cyclic `LEAP-PD` traffic SHOULD NOT block waiting for retransmission; the next
@@ -912,6 +914,130 @@ implemented through discovery or directory capability data.
   with bounded backoff.
 - Controllers MUST treat missing responses, stale process sequences, bad checks,
   and error responses as communication faults for watchdog purposes.
+
+### 13.6 Process Sequence Enforcement
+
+This section defines normative rules for the application-level `process_sequence`
+field in `WRITE_ENDPOINT` and `EXCHANGE_ENDPOINTS` payloads. These rules apply
+in addition to frame-level `sequence` / `ack_sequence` handling (§13.5) and
+independent of Category A/B stale-frame age checks (§13.4.1 and §13.4.2).
+
+#### 13.6.1 Scope
+
+- `process_sequence` is carried in `LeapEndpointDataHeader` (§13.2) and
+  `LeapExchangeHeader` (§13.3).
+- Devices MUST enforce process sequence only after the frame passes transport,
+  owner-session, state, profile, endpoint, and length validation.
+- A rejected process sequence MUST NOT apply outputs, MUST NOT advance
+  `highest_process_sequence`, and MUST NOT refresh the owner lease or process
+  watchdog.
+- An accepted process sequence MAY refresh the owner lease and process watchdog
+  when the device is in `OP` and the sender is the session owner (§10.2).
+
+#### 13.6.2 Per-session sequence state
+
+For each active owner session, the device MUST maintain:
+
+| State | Description |
+| --- | --- |
+| `highest_process_sequence` | Highest `process_sequence` value accepted for this owner session |
+| `sequence_active` | Whether at least one sequence-valid frame has been accepted since the last reset |
+
+The device MUST reset sequence state when:
+
+- A new owner lease is granted (`OPEN_SESSION` with owner reply).
+- The owner lease ends (`OWNER_RELEASE`, lease expiry, watchdog expiry, or
+  ownership violation).
+- The active profile changes (`SELECT_PROFILE` to a different profile ID).
+
+After reset, the first sequence-valid frame establishes the baseline:
+`highest_process_sequence` is set to that frame's `process_sequence` and
+`sequence_active` becomes true.
+
+#### 13.6.3 Acceptance decision
+
+Let `S` be the incoming `process_sequence` and `H` be `highest_process_sequence`
+after any prior accepts in the current owner session.
+
+| Condition | Device action | Typical status code |
+| --- | --- | --- |
+| First accept after reset (`sequence_active == false`) | Accept; set `H = S` | — |
+| `S < H` (regressive) | Reject; no output update | `OUT_OF_ORDER` (`0x000E`) |
+| `S == H` (duplicate cycle) | Reject; no output update | `DUPLICATE_SEQUENCE` (`0x000F`) |
+| `S == H + 1` (next cycle) | Accept; set `H = S` | — |
+| `S > H + 1` (gap) | See §13.6.4 | — or `OUT_OF_ORDER` |
+
+Devices MUST NOT apply outputs for any rejected row in this table.
+
+When a device returns an explicit error for a rejected cyclic frame, the
+`LeapErrorPayload.rejected_sequence` field SHOULD contain the failing
+`process_sequence` value.
+
+#### 13.6.4 Skipped sequence values (gaps)
+
+A gap occurs when `S > H + 1` after at least one prior accept.
+
+Default v1 behavior:
+
+- The device MUST accept the frame and set `H = S` unless the active profile or
+  the frame's process-data flags prohibit gap acceptance.
+- The device SHOULD count the gap (`S - H - 1` missed cycle indices) for
+  diagnostics.
+- Gap acceptance MUST NOT by itself force a state transition; missed-cycle and
+  watchdog rules in §13.4.1 still apply based on inter-arrival timing.
+
+If the `ALLOW_SKIP` flag (`0x0008`, §13.1) is clear in the endpoint or exchange
+flags and the active profile does not advertise gap tolerance, the device MAY
+reject gap frames with `OUT_OF_ORDER` instead of accepting them. Profiles that
+require strict consecutive sequencing MUST document that policy in the profile
+descriptor or directory capabilities.
+
+Controllers SHOULD monotonically increment `process_sequence` by one per cyclic
+cycle under normal operation. Controllers MUST NOT reuse a previously accepted
+`process_sequence` value while the same owner session remains active.
+
+#### 13.6.5 Exchange replies
+
+For `EXCHANGE_ENDPOINTS`, sequence enforcement is evaluated on the request
+before outputs are applied or inputs are sampled.
+
+`EXCHANGE_REPLY` payloads SHOULD populate `LeapExchangeStatus` with:
+
+- `latest_process_sequence_consumed` — the `process_sequence` from the accepted
+  request (or the rejected value when returning an error).
+- `device_process_sequence` — the device-side sequence counter after processing
+  (MAY equal the consumed value in v1).
+- `status_code` — `OK` when the exchange was accepted; otherwise the rejection
+  reason from §13.6.3.
+
+#### 13.6.6 Diagnostics
+
+Devices SHOULD increment standard counters (§14.1) on process-sequence events:
+
+| Event | Counter |
+| --- | --- |
+| Accepted cyclic frame | `PROCESS_CYCLES_ACCEPTED` |
+| Duplicate `process_sequence` | `DUPLICATE_SEQUENCES` |
+| Regressive or rejected ordering | `OUT_OF_ORDER_FRAMES` |
+| Age-based stale cyclic frame (Category B) | `STALE_PROCESS_FRAMES` |
+| Inter-arrival miss (Category A) | `PROCESS_CYCLES_MISSED` |
+
+Devices SHOULD emit `STALE_FRAME_REJECTED` (§14.2) when an age-based stale frame
+is dropped. Process-sequence rejections SHOULD be visible through counters and
+MAY be logged as vendor events until a dedicated process-sequence event ID is
+assigned.
+
+#### 13.6.7 Controller obligations
+
+- Controllers MUST increment `process_sequence` for each new cyclic command
+  intended to apply outputs or sample inputs.
+- Controllers MUST treat sustained `DUPLICATE_SEQUENCE`, `OUT_OF_ORDER`, or
+  missing replies as communication degradation and MUST continue lease refresh
+  only while policy allows remaining in `OP`.
+- After regaining a valid device following a gap or fault, controllers SHOULD
+  resume with a fresh `process_sequence` only after the management bootstrap
+  sequence completes (§10, §12); reusing pre-fault sequence values across owner
+  changes is forbidden.
 
 ## 14. Diagnostics Service
 

@@ -47,6 +47,7 @@ void leap_device_stack_init_full(LeapDeviceStack* stack, const LeapDeviceStackCo
     }
 
     leap_dir_device_sync_disc(&stack->dir, &stack->disc);
+    leap_pd_device_init(&stack->pd, NULL);
     stack->pd_io_bound = 0;
 }
 
@@ -205,6 +206,13 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         if (dir_status == LEAP_DIR_DEVICE_OK)
         {
             result->flags |= LEAP_DEVICE_STACK_FLAG_DIR_HAS_REPLY;
+            if ((dir_result.flags & LEAP_DIR_DEVICE_FLAG_PROFILE_SELECTED) != 0u)
+            {
+                leap_pd_device_sync_profile_from_dir(&stack->pd, &stack->dir);
+                leap_pd_device_reset_sequence(
+                    &stack->pd,
+                    stack->mgmt.owner_session_id);
+            }
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
         }
@@ -217,6 +225,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
     {
         pd_status = leap_pd_device_process_frame(
             &stack->mgmt,
+            &stack->pd,
             stack->pd_io_bound ? &stack->pd_io : NULL,
             source_mac,
             now_us,

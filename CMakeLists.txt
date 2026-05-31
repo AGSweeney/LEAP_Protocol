@@ -43,11 +43,14 @@ add_executable(leap_tests
   tests/test_mgmt_boundaries.c
   tests/test_mgmt_process.c
   tests/test_pd_device.c
+  tests/test_pd_controller.c
   tests/test_pd_common.c
   tests/test_disc_device.c
   tests/test_dir_device.c
   tests/test_mgmt_controller.c
   tests/test_device_stack.c
+  tests/test_comms_loss.c
+  tests/test_raw_linux_stats.c
   tests/test_util.c
   tests/leap_test_frame.c
 )

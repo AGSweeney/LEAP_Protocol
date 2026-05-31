@@ -30,6 +30,7 @@ typedef struct LeapDeviceStack
     LeapMgmtDeviceContext  mgmt;
     LeapDiscDeviceContext  disc;
     LeapDirDeviceContext   dir;
+    LeapPdDeviceContext    pd;
     LeapPdDeviceIoBinding  pd_io;
     int                    pd_io_bound;
 } LeapDeviceStack;

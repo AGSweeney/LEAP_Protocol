@@ -21,6 +21,151 @@ static int leap_pd_message_supported(uint16_t message_type)
     }
 }
 
+void leap_pd_device_init(
+    LeapPdDeviceContext*       ctx,
+    const LeapPdDeviceConfig* config)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->config.enforce_sequence = 1;
+
+    if (config != NULL)
+    {
+        ctx->config = *config;
+    }
+
+    if (ctx->config.profile.valid == 0)
+    {
+        leap_pd_profile_map_init_default(&ctx->config.profile);
+    }
+}
+
+void leap_pd_device_sync_profile_from_dir(
+    LeapPdDeviceContext*        pd,
+    const LeapDirDeviceContext* dir)
+{
+    LeapPdProfileMap map;
+
+    if (pd == NULL || dir == NULL)
+    {
+        return;
+    }
+
+    if (leap_pd_profile_map_from_dir(dir, &map) == LEAP_PD_COMMON_OK)
+    {
+        pd->config.profile = map;
+    }
+}
+
+void leap_pd_device_reset_sequence(LeapPdDeviceContext* pd, uint32_t session_id)
+{
+    if (pd == NULL)
+    {
+        return;
+    }
+
+    pd->last_process_sequence = 0u;
+    pd->sequence_active       = 0;
+    pd->bound_session_id      = session_id;
+}
+
+static const LeapPdProfileMap* leap_pd_device_profile(
+    const LeapPdDeviceContext* pd_ctx)
+{
+    static LeapPdProfileMap k_default;
+
+    if (pd_ctx != NULL && pd_ctx->config.profile.valid != 0)
+    {
+        return &pd_ctx->config.profile;
+    }
+
+    leap_pd_profile_map_init_default(&k_default);
+    return &k_default;
+}
+
+static int leap_pd_extract_process_sequence(
+    uint16_t       message_type,
+    const uint8_t* payload,
+    size_t         payload_length,
+    uint32_t*      sequence_out)
+{
+    if (sequence_out == NULL || payload == NULL)
+    {
+        return -1;
+    }
+
+    if (message_type == LEAP_PD_WRITE_ENDPOINT)
+    {
+        if (payload_length < sizeof(LeapEndpointDataHeader))
+        {
+            return -1;
+        }
+
+        *sequence_out = ((const LeapEndpointDataHeader*)payload)->process_sequence;
+        return 0;
+    }
+
+    if (message_type == LEAP_PD_EXCHANGE_ENDPOINTS)
+    {
+        if (payload_length < sizeof(LeapExchangeHeader))
+        {
+            return -1;
+        }
+
+        *sequence_out = ((const LeapExchangeHeader*)payload)->process_sequence;
+        return 0;
+    }
+
+    return -1;
+}
+
+static int leap_pd_check_process_sequence(
+    LeapPdDeviceContext* pd_ctx,
+    uint32_t             session_id,
+    uint32_t             process_sequence,
+    LeapPdDeviceResult*  result)
+{
+    if (pd_ctx == NULL || pd_ctx->config.enforce_sequence == 0)
+    {
+        return 0;
+    }
+
+    if (pd_ctx->bound_session_id != session_id)
+    {
+        leap_pd_device_reset_sequence(pd_ctx, session_id);
+    }
+
+    if (pd_ctx->sequence_active == 0)
+    {
+        pd_ctx->last_process_sequence = process_sequence;
+        pd_ctx->sequence_active       = 1;
+        return 0;
+    }
+
+    if (process_sequence <= pd_ctx->last_process_sequence)
+    {
+        pd_ctx->stale_rejections++;
+        result->status     = LEAP_PD_DEVICE_REJECTED;
+        result->error_code = (process_sequence == pd_ctx->last_process_sequence)
+                                 ? LEAP_STATUS_DUPLICATE_SEQUENCE
+                                 : LEAP_STATUS_OUT_OF_ORDER;
+        return -1;
+    }
+
+    if (process_sequence > pd_ctx->last_process_sequence + 1u)
+    {
+        pd_ctx->sequence_gaps++;
+        result->flags |= LEAP_PD_DEVICE_FLAG_SEQUENCE_GAP;
+    }
+
+    pd_ctx->last_process_sequence = process_sequence;
+    return 0;
+}
+
 static void leap_pd_apply_digital_outputs(
     const LeapPdDeviceIoBinding* io_binding,
     uint16_t                     outputs,
@@ -36,17 +181,13 @@ static void leap_pd_apply_digital_outputs(
 }
 
 static LeapPdDeviceStatus leap_pd_handle_write_endpoint(
-    LeapMgmtDeviceContext*       ctx,
+    const LeapPdProfileMap*      profile,
     const LeapPdDeviceIoBinding* io_binding,
-    uint64_t                     now_us,
     LeapPdDeviceResult*          result)
 {
     LeapPdEndpointView view;
     uint16_t           outputs;
     LeapPdCommonStatus parse_status;
-
-    (void)ctx;
-    (void)now_us;
 
     parse_status = leap_pd_endpoint_view(
         result->frame.payload,
@@ -56,6 +197,14 @@ static LeapPdDeviceStatus leap_pd_handle_write_endpoint(
     {
         result->status     = LEAP_PD_DEVICE_REJECTED;
         result->error_code = LEAP_STATUS_BAD_LENGTH;
+        return LEAP_PD_DEVICE_REJECTED;
+    }
+
+    if (view.header->profile_id != profile->profile_id ||
+        view.header->endpoint_id != profile->write_endpoint_id)
+    {
+        result->status     = LEAP_PD_DEVICE_REJECTED;
+        result->error_code = LEAP_STATUS_PROFILE_MISMATCH;
         return LEAP_PD_DEVICE_REJECTED;
     }
 
@@ -80,18 +229,16 @@ static LeapPdDeviceStatus leap_pd_handle_write_endpoint(
 }
 
 static LeapPdDeviceStatus leap_pd_handle_exchange(
+    const LeapPdProfileMap*      profile,
     const LeapPdDeviceIoBinding* io_binding,
-    uint64_t                     now_us,
     LeapPdDeviceResult*          result)
 {
-    LeapPdExchangeView   view;
-    LeapExchangeStatus   status;
-    uint8_t              read_profile[sizeof(LeapProfileDigital16x16)];
-    uint16_t             outputs = 0u;
-    uint16_t             inputs  = 0u;
-    size_t               reply_length;
-
-    (void)now_us;
+    LeapPdExchangeView view;
+    LeapExchangeStatus status;
+    uint8_t            read_profile[sizeof(LeapProfileDigital16x16)];
+    uint16_t           outputs = 0u;
+    uint16_t           inputs  = 0u;
+    size_t             reply_length;
 
     if (leap_pd_exchange_view(
             result->frame.payload,
@@ -100,6 +247,15 @@ static LeapPdDeviceStatus leap_pd_handle_exchange(
     {
         result->status     = LEAP_PD_DEVICE_REJECTED;
         result->error_code = LEAP_STATUS_BAD_LENGTH;
+        return LEAP_PD_DEVICE_REJECTED;
+    }
+
+    if (view.header->profile_id != profile->profile_id ||
+        view.header->write_endpoint_id != profile->write_endpoint_id ||
+        view.header->read_endpoint_id != profile->read_endpoint_id)
+    {
+        result->status     = LEAP_PD_DEVICE_REJECTED;
+        result->error_code = LEAP_STATUS_PROFILE_MISMATCH;
         return LEAP_PD_DEVICE_REJECTED;
     }
 
@@ -161,16 +317,19 @@ static LeapPdDeviceStatus leap_pd_handle_exchange(
 }
 
 LeapPdDeviceStatus leap_pd_device_process_frame(
-    LeapMgmtDeviceContext*     ctx,
+    LeapMgmtDeviceContext*       mgmt,
+    LeapPdDeviceContext*         pd_ctx,
     const LeapPdDeviceIoBinding* io_binding,
-    const uint8_t*             source_mac,
-    uint64_t                   now_us,
-    const uint8_t*             data,
-    size_t                     length,
-    LeapPdDeviceResult*        result)
+    const uint8_t*               source_mac,
+    uint64_t                     now_us,
+    const uint8_t*               data,
+    size_t                       length,
+    LeapPdDeviceResult*          result)
 {
     LeapFrameParseResult parse_result;
     LeapPdDeviceStatus   handler_status;
+    const LeapPdProfileMap* profile;
+    uint32_t             process_sequence;
 
     if (result == NULL)
     {
@@ -179,7 +338,7 @@ LeapPdDeviceStatus leap_pd_device_process_frame(
 
     memset(result, 0, sizeof(*result));
 
-    if (ctx == NULL || source_mac == NULL || data == NULL)
+    if (mgmt == NULL || source_mac == NULL || data == NULL)
     {
         result->status     = LEAP_PD_DEVICE_REJECTED;
         result->error_code = LEAP_STATUS_INVALID_STATE;
@@ -220,13 +379,13 @@ LeapPdDeviceStatus leap_pd_device_process_frame(
     }
 
     if (!leap_mgmt_device_session_allows_owner_pd(
-            ctx,
+            mgmt,
             result->frame.header.session_id,
             source_mac))
     {
-        if (ctx->device_state == LEAP_STATE_OP && ctx->owner_active != 0u)
+        if (mgmt->device_state == LEAP_STATE_OP && mgmt->owner_active != 0u)
         {
-            leap_mgmt_device_force_safe(ctx);
+            leap_mgmt_device_force_safe(mgmt);
         }
 
         result->status     = LEAP_PD_DEVICE_REJECTED;
@@ -234,22 +393,40 @@ LeapPdDeviceStatus leap_pd_device_process_frame(
         return LEAP_PD_DEVICE_REJECTED;
     }
 
+    if (leap_pd_extract_process_sequence(
+            result->frame.header.message_type,
+            result->frame.payload,
+            result->frame.payload_length,
+            &process_sequence) != 0)
+    {
+        result->status     = LEAP_PD_DEVICE_REJECTED;
+        result->error_code = LEAP_STATUS_BAD_LENGTH;
+        return LEAP_PD_DEVICE_REJECTED;
+    }
+
+    if (leap_pd_check_process_sequence(
+            pd_ctx,
+            result->frame.header.session_id,
+            process_sequence,
+            result) != 0)
+    {
+        return LEAP_PD_DEVICE_REJECTED;
+    }
+
     result->flags |= LEAP_PD_DEVICE_FLAG_PROCESSED;
-    leap_mgmt_device_refresh_owner_lease(ctx, now_us);
-    leap_mgmt_device_refresh_process_watchdog(ctx, now_us);
+    leap_mgmt_device_refresh_owner_lease(mgmt, now_us);
+    leap_mgmt_device_refresh_process_watchdog(mgmt, now_us);
     result->flags |= (uint32_t)(LEAP_PD_DEVICE_FLAG_LEASE_REFRESHED);
+
+    profile = leap_pd_device_profile(pd_ctx);
 
     if (result->frame.header.message_type == LEAP_PD_WRITE_ENDPOINT)
     {
-        handler_status = leap_pd_handle_write_endpoint(
-            ctx,
-            io_binding,
-            now_us,
-            result);
+        handler_status = leap_pd_handle_write_endpoint(profile, io_binding, result);
     }
     else
     {
-        handler_status = leap_pd_handle_exchange(io_binding, now_us, result);
+        handler_status = leap_pd_handle_exchange(profile, io_binding, result);
     }
 
     if (handler_status == LEAP_PD_DEVICE_OK &&

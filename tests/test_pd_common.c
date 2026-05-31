@@ -7,6 +7,7 @@
 
 #include "test_harness.h"
 
+#include "leap/leap_dir_device.h"
 #include "leap/leap_pd_common.h"
 #include "leap/leap_protocol.h"
 
@@ -58,9 +59,28 @@ TEST(test_pd_build_digital_exchange_layout)
     ASSERT_TRUE(view.read_length == sizeof(LeapProfileDigital16x16));
 }
 
+TEST(test_pd_profile_map_from_dir)
+{
+    LeapDirDeviceContext dir;
+    LeapDirDeviceConfig  config;
+    LeapPdProfileMap     map;
+
+    memset(&config, 0, sizeof(config));
+    config.default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+    config.active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    leap_dir_device_init(&dir, &config);
+
+    ASSERT_EQ_INT(leap_pd_profile_map_from_dir(&dir, &map), LEAP_PD_COMMON_OK);
+    ASSERT_TRUE(map.valid != 0);
+    ASSERT_EQ_U32(map.profile_id, LEAP_PROFILE_DIGITAL_IO_16X16);
+    ASSERT_EQ_U16(map.write_endpoint_id, LEAP_ENDPOINT_DIGITAL_OUTPUTS);
+    ASSERT_EQ_U16(map.read_endpoint_id, LEAP_ENDPOINT_DIGITAL_INPUTS);
+}
+
 void leap_run_pd_common_tests(void)
 {
     printf("pd common\n");
     RUN_TEST(test_pd_build_and_parse_digital_write);
     RUN_TEST(test_pd_build_digital_exchange_layout);
+    RUN_TEST(test_pd_profile_map_from_dir);
 }
