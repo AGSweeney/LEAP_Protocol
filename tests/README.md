@@ -11,7 +11,7 @@ ctest --test-dir build --output-on-failure
 # or: ./build/leap_tests
 ```
 
-**112 tests** on Windows; **111 on Linux** (Linux skips the two Windows monotonic-clock tests; Windows skips the live `lo` link-query test). Last verified May 2026.
+**116 tests** on Windows; **115 on Linux** (Linux skips the two Windows monotonic-clock tests; Windows skips the live `lo` link-query test). Last verified May 2026.
 
 ## Test suites
 
@@ -27,7 +27,7 @@ ctest --test-dir build --output-on-failure
 | MGMT process | `test_mgmt_process.c` | 7 | Frame parse → MGMT dispatch integration |
 | MGMT controller | `test_mgmt_controller.c` | 3 | Controller-side MGMT builders and helpers |
 | PD device | `test_pd_device.c` | 8 | LEAP-PD ownership gate and lease refresh |
-| PD controller | `test_pd_controller.c` | 3 | Cyclic runner, exchange validation, stats |
+| PD controller | `test_pd_controller.c` | 4 | Cyclic runner, random output bit, exchange validation, stats |
 | PD common | `test_pd_common.c` | 6 | Pack/unpack, profile map validation |
 | DISC device | `test_disc_device.c` | 3 | HELLO/IDENTIFY replies without state mutation |
 | DISC controller | `test_disc_controller.c` | 2 | HELLO broadcast and reply parsing |
@@ -37,7 +37,7 @@ ctest --test-dir build --output-on-failure
 | Controller stack | `test_controller_stack.c` | 9 | Bootstrap FSM, release, replay, session bind, `read_diag` |
 | Controller peer | `test_controller_peer.c` | 6 | Discovery table, early exit, MAC parse, foreign-owner |
 | Controller sequence | `test_controller_sequence.c` | 5 | Per-peer Ethernet sequence / replay window |
-| Session hub | `test_controller_session_hub.c` | 7 | Multi-peer bootstrap, round-robin, cross-peer isolation |
+| Session hub | `test_controller_session_hub.c` | 9 | Multi-peer bootstrap, round-robin, parallel, random-peer indexing, isolation |
 | Device stack | `test_device_stack.c` | 3 | End-to-end MGMT + PD dispatch, exchange via `leap_frame_write` |
 | Comms loss | `test_comms_loss.c` | 2 | Heartbeat prevents lease expiry; loss → SAFE |
 | Raw Linux stats | `test_raw_linux_stats.c` | 1–2 | Transport counter reset; live `lo` link query (Linux only) |
@@ -63,7 +63,7 @@ ctest --test-dir build --output-on-failure
 | Padding boundary | Minimum Ethernet payload (vector 6) |
 | Fragment policy | Rejected until reassembly engine exists |
 | Discovery | HELLO reply identity, early exit at `min_peers`, MAC parse |
-| Multi-peer | Session hub round-robin, foreign-owner skip, bootstrap isolation |
+| Multi-peer | Session hub round-robin, parallel, random-peer lap, foreign-owner skip, bootstrap isolation |
 | DIAG | Device handlers + controller read path round-trip |
 | Logging | Relative T+ timestamps via injectable monotonic clock |
 | Transport | Link stats reset (`leap_raw_linux`; stubs compile on Windows) |

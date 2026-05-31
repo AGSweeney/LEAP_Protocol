@@ -155,7 +155,7 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 ### Done (reference stack)
 
 - Wire contract, normative spec, golden vectors (incl. DIAG §10), manifest schema
-- Frame parser/serializer, CRC, fragment rejection policy, fuzz/regression tests (111–112)
+- Frame parser/serializer, CRC, fragment rejection policy, fuzz/regression tests (115–116)
 - All five v1 services: device handlers + controller helpers (where applicable)
 - **`leap_device_stack`** — DISC + DIR + MGMT + PD + DIAG + tick
 - **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`, `read_diag`
@@ -166,7 +166,7 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 - Timestamped example logging (`leap_log_printf`) across Linux and Windows examples
 - ClearCore device firmware port (`platforms/clearcore`)
 - Wireshark dissector: v1 services, PD exchange, DIAG message types
-- CI: Linux build + unit tests (111) + example binary checks; Windows build + unit tests (112)
+- CI: Linux build + unit tests (115) + example binary checks; Windows build + unit tests (116)
 
 ### Next (see [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md))
 
@@ -201,7 +201,7 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 | [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller notes |
 | [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md) | Link monitoring and reconnect policy |
 | [examples/README.md](examples/README.md) | Example index and porting path |
-| [tests/README.md](tests/README.md) | Unit test suite index (111–112 tests) |
+| [tests/README.md](tests/README.md) | Unit test suite index (115–116 tests) |
 | [platforms/clearcore/README.md](platforms/clearcore/README.md) | ClearCore firmware setup and build |
 
 ## License

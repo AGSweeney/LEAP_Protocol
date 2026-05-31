@@ -91,7 +91,10 @@ Embedded ports should:
 1. `leap_controller_peer_table_discover_ex()` — broadcast HELLO; stop early at `min_peers`, or use `probe_peer()` / `--peer-mac` for known MACs
 2. Skip or defer peers where `leap_controller_peer_owned_by_other()` is true
 3. `leap_controller_session_hub_bootstrap_peer()` per target (or `_bootstrap_table()`)
-4. `leap_controller_session_hub_run_round_robin()` for cyclic PD
+4. Cyclic PD via one of:
+   - `leap_controller_session_hub_run_round_robin()` — visit every OP peer each lap
+   - `leap_controller_session_hub_run_parallel_lap()` / `_run_parallel()` — all peers per lap
+   - `leap_controller_session_hub_run_random_peer_lap()` — one random OP peer per cycle (Windows `leap_win_hub --random-peer`)
 5. `leap_controller_session_hub_on_frame()` from a recv thread for async MGMT
 6. `leap_controller_session_hub_release_all()` on shutdown
 
@@ -107,7 +110,7 @@ Reference binaries: `examples/linux_loopback/hub_main.c` (`leap_linux_hub`), `ex
 | --- | --- |
 | Discover | Broadcast HELLO; table holds one row per device MAC + profile/state/owner |
 | Bootstrap | Hub allocates one `LeapControllerStack` slot per peer; independent `session_id` and MGMT sequence |
-| Cyclic PD | Round-robin calls `run_one_cycle` per OP slot; Linux transport demuxes replies by peer MAC |
+| Cyclic PD | Round-robin, parallel lap, or random-peer lap; Linux transport demuxes replies by peer MAC |
 | Async recv | `on_frame` routes by `src_mac`; frame sequence + session binding per slot |
 
 ### Failure modes

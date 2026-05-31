@@ -87,12 +87,12 @@ examples/linux_loopback/
   controller_main.c           # transport + stack only
   leap_linux_controller_io.c
   discover_main.c             # multi-device HELLO scan demo
-  hub_main.c                  # session hub round-robin demo
+  hub_main.c                  # session hub: round-robin, parallel, random-peer
 
 examples/win_l2/
   controller_main.c           # Windows Npcap transport + stack
   device_main.c
-  hub_main.c                  # session hub round-robin
+  hub_main.c                  # session hub: round-robin, parallel, random-peer
   discover_main.c             # HELLO scan utility
 
 examples/win_smoke/

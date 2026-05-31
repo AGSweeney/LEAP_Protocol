@@ -8,10 +8,10 @@ Reference implementations for controller and device bring-up.
 | --- | --- | --- |
 | `linux_loopback/leap_linux_device` | `leap_device_stack` only | **Porting template** — recv loop + tick + I/O shadow |
 | `linux_loopback/leap_linux_controller` | `leap_controller_stack` only | **Porting template** — bootstrap + PD + `--diag` |
-| `linux_loopback/leap_linux_hub` | `leap_controller_session_hub` | **Multi-peer template** — discover → bootstrap_table → round-robin |
+| `linux_loopback/leap_linux_hub` | `leap_controller_session_hub` | **Multi-peer template** — discover → bootstrap_table → round-robin (parallel/random via API) |
 | `win_l2/leap_win_controller` | `leap_controller_stack` | **Windows Npcap** — bootstrap + PD + `--diag` (pair with `leap_win_device` on LAN) |
 | `win_l2/leap_win_device` | `leap_device_stack` | **Windows Npcap** — recv loop + tick + I/O shadow |
-| `win_l2/leap_win_hub` | `leap_controller_session_hub` | **Multi-peer Windows** — discover → bootstrap_table → round-robin PD |
+| `win_l2/leap_win_hub` | `leap_controller_session_hub` | **Multi-peer Windows** — round-robin, `--parallel`, or `--random-peer` PD |
 | `win_l2/leap_win_discover` | peer table only | HELLO scan utility (Windows Npcap) |
 | `win_smoke/leap_win_smoke` | cooperative single-handle | **Windows validation** — in-process device + relay on Npcap loopback |
 | `linux_loopback/leap_linux_discover` | peer table only | HELLO scan utility |

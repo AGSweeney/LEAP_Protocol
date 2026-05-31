@@ -72,9 +72,9 @@ Legend: **done** · **partial** · **open**
 
 | Milestone | Criteria |
 | --- | --- |
-| **Core locked** | Examples use stacks only; `ctest` green (111–112 tests); porting gate signed off |
+| **Core locked** | Examples use stacks only; `ctest` green (115–116 tests); porting gate signed off |
 | **DIAG complete** | Device + controller read path + example/test round-trip + golden vectors |
-| **Multi-peer confident** | Hub round-robin + foreign-owner tests; multi-peer notes match behavior |
+| **Multi-peer confident** | Hub round-robin, parallel, random-peer + foreign-owner tests; multi-peer notes match behavior |
 | **v1.0 candidate** | Golden vectors updated; dissector covers v1 services; manual wire smoke passed on Linux |
 
 ---
