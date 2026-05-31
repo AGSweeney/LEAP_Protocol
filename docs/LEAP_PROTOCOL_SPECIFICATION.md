@@ -1012,6 +1012,29 @@ When the `FRAGMENTED` flag is set, the payload begins with `LeapFragmentHeader`.
 | `8` | `4` | `total_length` | Complete unfragmented payload bytes |
 | `12` | `4` | `total_crc32c` | CRC-32C over complete payload |
 
+**CRC coverage for fragmented frames:**
+
+Two independent CRC fields protect fragmented transfers. Receivers MUST validate
+both in sequence and MUST NOT act on the payload until both pass.
+
+- `LeapHeader.payload_crc32c` covers the fragment payload bytes carried by the
+  current individual Ethernet frame — the bytes following `LeapFragmentHeader`.
+  This allows each fragment to be validated before it is copied into the
+  reassembly buffer, preventing buffer pollution from corrupt wire data.
+- `LeapFragmentHeader.total_crc32c` covers the complete reassembled payload
+  after all fragments have been received and concatenated. This is the integrity
+  gate that must pass before any application-visible action is taken.
+
+**LEAP-PD fragmentation prohibition:**
+
+Frames with `service_id == LEAP_SERVICE_PD` MUST NOT have the `FRAGMENTED` flag
+set and MUST NOT contain a `LeapFragmentHeader`. If a receiver encounters a
+fragmented process-data frame it MUST immediately discard the frame, MUST NOT
+update any process sequence state, and MUST increment `RX_FRAMES_REJECTED`.
+Process-data handlers MUST be free of all reassembly logic; the cyclic I/O path
+requires deterministic, bounded execution time and must not be blocked or
+delayed by a concurrent background reassembly operation.
+
 ### 16.1 Reassembly Rules
 
 Receivers MUST enforce all of the following rules. Failure to do so creates
@@ -1044,10 +1067,14 @@ malformed or adversarial fragment streams.
   session. Groups that would exceed this limit MUST be silently dropped.
 - Receivers MUST reject any fragment group whose `fragment_count` exceeds `255`.
 - Receivers MUST reject any fragment group whose `total_length` exceeds
-  `LEAP_MAX_ETHERNET_PAYLOAD` (`1500` bytes). This prevents fragmented reassembly
-  from being used to bypass the protocol's normal MTU discipline.
+  `LEAP_MAX_REASSEMBLY_SIZE` (`4096` bytes by default). Implementations MUST
+  allocate reassembly buffers as static arrays bounded by this constant; dynamic
+  heap allocation for reassembly is not required and SHOULD be avoided on
+  resource-constrained devices. Groups exceeding the limit MUST be rejected with
+  `BAD_LENGTH`.
 - Receivers MUST discard incomplete fragment groups when their reassembly timer
-  expires. The normative minimum reassembly timeout is `5` seconds.
+  expires. The timer MUST be started on receipt of the first fragment of any
+  index in a new group. The normative minimum reassembly timeout is `5` seconds.
 
 **CRC gate and state-change prohibition:**
 

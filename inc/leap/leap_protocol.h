@@ -91,6 +91,15 @@ extern "C" {
 #define LEAP_MIN_PAYLOAD_WITHOUT_PADDING_V1 (LEAP_MIN_ETHERNET_PAYLOAD - LEAP_HEADER_LENGTH_V1)
 
 /*
+ * Maximum allowed total_length for a fragmented reassembly group.
+ * Implementations MUST NOT accept a fragment group whose total_length exceeds
+ * this value; the group MUST be rejected with BAD_LENGTH. Implementations may
+ * reduce this limit at build time but MUST NOT increase it without a
+ * corresponding increase in static reassembly buffer allocation.
+ */
+#define LEAP_MAX_REASSEMBLY_SIZE           4096u
+
+/*
  * Development and experimental EtherTypes.
  * A production LEAP EtherType requires formal assignment.
  */
