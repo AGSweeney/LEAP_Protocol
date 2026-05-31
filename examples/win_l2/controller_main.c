@@ -172,6 +172,14 @@ int main(int argc, char** argv)
     {
         fprintf(stderr, "bootstrap failed (phase=%u)\n",
                 (unsigned)leap_controller_stack_get_phase(&stack));
+        if (leap_controller_stack_get_phase(&stack) ==
+            LEAP_CTRL_STACK_SELECT_PROFILE)
+        {
+            fprintf(
+                stderr,
+                "hint: device may be in SAFE/OP from a prior session; "
+                "rebuild controller or power-cycle ClearCore\n");
+        }
         leap_win_print_transport_stats(&transport);
         fprintf(
             stderr,

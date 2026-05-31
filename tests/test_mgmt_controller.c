@@ -52,7 +52,7 @@ TEST(test_mgmt_controller_bootstrap_to_op)
     ASSERT_EQ_INT(leap_mgmt_controller_get_state(&ctx), LEAP_MGMT_CTRL_DISCOVERED);
 
     payload_length = leap_mgmt_controller_build_open_session(
-        &ctx, payload, sizeof(payload), 1000000u, 200000u);
+        &ctx, payload, sizeof(payload), 1000000u, 200000u, 0u);
     ASSERT_TRUE(payload_length == sizeof(LeapOpenSessionRequest));
 
     memset(&open_reply, 0, sizeof(open_reply));

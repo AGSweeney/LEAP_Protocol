@@ -116,7 +116,8 @@ size_t leap_mgmt_controller_build_open_session(
     uint8_t*                   payload,
     size_t                     payload_capacity,
     uint32_t                   lease_us,
-    uint32_t                   watchdog_us);
+    uint32_t                   watchdog_us,
+    uint16_t                   extra_open_flags);
 
 LeapMgmtControllerStatus leap_mgmt_controller_on_open_session_reply(
     LeapMgmtControllerContext* ctx,

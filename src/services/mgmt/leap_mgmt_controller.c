@@ -139,7 +139,8 @@ size_t leap_mgmt_controller_build_open_session(
     uint8_t*                   payload,
     size_t                     payload_capacity,
     uint32_t                   lease_us,
-    uint32_t                   watchdog_us)
+    uint32_t                   watchdog_us,
+    uint16_t                   extra_open_flags)
 {
     LeapOpenSessionRequest* req;
 
@@ -159,7 +160,8 @@ size_t leap_mgmt_controller_build_open_session(
     memset(payload, 0, sizeof(LeapOpenSessionRequest));
     req = (LeapOpenSessionRequest*)payload;
     memcpy(req->controller_mac, ctx->config.controller_mac, LEAP_MGMT_CONTROLLER_MAC_LEN);
-    req->open_flags                 = LEAP_OPEN_FLAG_REQUEST_OWNER;
+    req->open_flags                 =
+        (uint16_t)(LEAP_OPEN_FLAG_REQUEST_OWNER | extra_open_flags);
     req->requested_lease_time_us    = (lease_us != 0u) ? lease_us : ctx->config.default_lease_us;
     req->requested_watchdog_time_us =
         (watchdog_us != 0u) ? watchdog_us : ctx->config.default_watchdog_us;
