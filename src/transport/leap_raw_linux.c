@@ -9,6 +9,8 @@
 
 #if defined(__linux__)
 
+#include "leap/leap_protocol.h"
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <net/if.h>

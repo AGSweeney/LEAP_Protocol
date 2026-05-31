@@ -15,15 +15,16 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --config Release -j
+        run: cmake --build build -j
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
-      - name: Build Linux examples
+      - name: Verify Linux examples
         run: |
           test -x build/leap_linux_controller
           test -x build/leap_linux_device
+          test -x build/leap_tests
 
   test-windows:
     runs-on: windows-latest
