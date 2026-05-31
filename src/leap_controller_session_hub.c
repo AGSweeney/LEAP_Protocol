@@ -79,6 +79,8 @@ void leap_controller_session_hub_init(
     {
         hub->config.default_peer.frame_sequence.enforce_session_match = 1;
         hub->config.default_peer.pd.validate_exchange_reply         = 1;
+        hub->config.default_peer.pd.enforce_reply_frame_age         = 1;
+        hub->config.skip_foreign_owned_peers                        = 1;
     }
 }
 
@@ -245,6 +247,14 @@ LeapControllerSessionHubStatus leap_controller_session_hub_bootstrap_table(
         int                              slot;
 
         if (entry == NULL || entry->reachable == 0)
+        {
+            continue;
+        }
+
+        if (hub->config.skip_foreign_owned_peers != 0 &&
+            leap_controller_peer_owned_by_other(
+                entry,
+                hub->config.default_peer.mgmt.controller_mac) != 0)
         {
             continue;
         }

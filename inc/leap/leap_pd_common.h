@@ -68,6 +68,7 @@ typedef enum LeapPdCommonStatus
     LEAP_PD_COMMON_PROFILE_MISMATCH,
     LEAP_PD_COMMON_BUFFER_TOO_SMALL,
     LEAP_PD_COMMON_SEQUENCE_MISMATCH,
+    LEAP_PD_COMMON_STALE_FRAME,
     LEAP_PD_COMMON_ERROR
 } LeapPdCommonStatus;
 
@@ -120,7 +121,9 @@ size_t leap_pd_build_digital_exchange_mapped(
     uint32_t                      process_sequence,
     uint32_t                      cycle_time_us,
     const LeapPdProfileMap*       profile,
-    uint16_t                      digital_outputs);
+    uint16_t                      digital_outputs,
+    uint64_t                      controller_timestamp_us,
+    uint32_t                      max_frame_age_us);
 
 size_t leap_pd_build_exchange_reply(
     uint8_t*                      out,
@@ -160,12 +163,37 @@ LeapPdCommonStatus leap_pd_profile_validate_exchange(
  * Pass expected_process_sequence=0 to skip sequence check.
  */
 LeapPdCommonStatus leap_pd_validate_exchange_reply(
-    const uint8_t*            payload,
-    size_t                    payload_length,
-    const LeapPdProfileMap*   profile,
-    uint32_t                  expected_process_sequence,
-    LeapPdExchangeView*       view_out,
-    LeapExchangeStatus*       status_out);
+    const uint8_t*          payload,
+    size_t                  payload_length,
+    const LeapPdProfileMap* profile,
+    uint32_t                expected_process_sequence,
+    LeapPdExchangeView*     view_out,
+    LeapExchangeStatus*     status_out);
+
+/*
+ * Category A frame age (§13.4.1): unsigned wrap of (now_us - timestamp_us).
+ * Returns LEAP_PD_COMMON_STALE_FRAME when age exceeds max_frame_age_us + margin.
+ * max_frame_age_us == 0 disables the check.
+ */
+uint64_t leap_pd_frame_age_us(
+    uint64_t now_us,
+    uint64_t controller_timestamp_us);
+
+LeapPdCommonStatus leap_pd_check_frame_age(
+    uint64_t now_us,
+    uint64_t controller_timestamp_us,
+    uint32_t max_frame_age_us,
+    uint32_t jitter_margin_us);
+
+LeapPdCommonStatus leap_pd_validate_exchange_reply_at(
+    const uint8_t*          payload,
+    size_t                  payload_length,
+    const LeapPdProfileMap* profile,
+    uint32_t                expected_process_sequence,
+    uint64_t                recv_now_us,
+    uint32_t                jitter_margin_us,
+    LeapPdExchangeView*     view_out,
+    LeapExchangeStatus*     status_out);
 
 LeapPdCommonStatus leap_pd_pack_digital16x16(
     uint8_t*  out,

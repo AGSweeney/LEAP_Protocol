@@ -28,6 +28,7 @@ typedef struct LeapControllerPeerEntry
     uint32_t active_profile_id;
     uint32_t default_profile_id;
     uint16_t device_state;
+    uint8_t  active_owner_mac[6];
     int      reachable;
 } LeapControllerPeerEntry;
 
@@ -64,6 +65,14 @@ int leap_controller_peer_table_find(
 const LeapControllerPeerEntry* leap_controller_peer_table_get(
     const LeapControllerPeerTable* table,
     unsigned                       index);
+
+/*
+ * Non-zero when HELLO reported an active owner MAC other than controller_mac.
+ * Does not block bootstrap — use before OPEN_SESSION to avoid owner races.
+ */
+int leap_controller_peer_owned_by_other(
+    const LeapControllerPeerEntry* entry,
+    const uint8_t*                 controller_mac);
 
 #ifdef __cplusplus
 }

@@ -201,6 +201,15 @@ static LeapControllerStackStatus leap_ctrl_stack_track_sequence(
         return LEAP_CTRL_STACK_UNEXPECTED_REPLY;
     }
 
+    if (seq_result == LEAP_CTRL_FRAME_SEQ_GAP)
+    {
+        if (event != NULL)
+        {
+            event->flags |= LEAP_CTRL_STACK_FLAG_FAULT;
+        }
+        return LEAP_CTRL_STACK_UNEXPECTED_REPLY;
+    }
+
     if (seq_result == LEAP_CTRL_FRAME_SEQ_OK &&
         stack->frame_seq.sequence_gaps > gaps_before && event != NULL)
     {

@@ -31,6 +31,7 @@ typedef struct LeapPdControllerStats
     uint64_t recv_timeouts;
     uint64_t reply_rejects;
     uint64_t reply_sequence_mismatches;
+    uint64_t reply_stale_rejects;
     uint64_t last_latency_us;
     uint64_t max_latency_us;
     uint64_t total_latency_us;
@@ -57,6 +58,13 @@ typedef struct LeapPdControllerConfig
      * process_sequence before accepting inputs (multi-peer safety).
      */
     int              validate_exchange_reply;
+    /*
+     * Stale-frame guard on inbound EXCHANGE_REPLY (§13.4 echoed timestamp).
+     * max_frame_age_us == 0 derives 2 * cycle_period_ms from cycle config.
+     */
+    int              enforce_reply_frame_age;
+    uint32_t         max_frame_age_us;
+    uint32_t         reply_jitter_margin_us;
 } LeapPdControllerConfig;
 
 typedef enum LeapPdControllerStatus

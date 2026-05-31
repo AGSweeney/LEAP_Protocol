@@ -193,6 +193,22 @@ static const LeapPdProfileMap* leap_pd_ctrl_profile(
     return &k_default;
 }
 
+static uint32_t leap_pd_ctrl_max_frame_age_us(
+    const LeapPdControllerContext* ctx)
+{
+    if (ctx == NULL)
+    {
+        return 0u;
+    }
+
+    if (ctx->config.max_frame_age_us != 0u)
+    {
+        return ctx->config.max_frame_age_us;
+    }
+
+    return ctx->config.cycle_period_ms * 2000u;
+}
+
 void leap_pd_controller_init(
     LeapPdControllerContext*       ctx,
     const LeapPdControllerConfig* config)
@@ -240,7 +256,8 @@ void leap_pd_controller_init(
 
     if (config == NULL)
     {
-        ctx->config.validate_exchange_reply = 1;
+        ctx->config.validate_exchange_reply  = 1;
+        ctx->config.enforce_reply_frame_age  = 1;
     }
 
     ctx->pd_sequence = 1000u;
@@ -434,6 +451,10 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
     if (pd->config.use_exchange != 0)
     {
         uint32_t sent_process_sequence;
+        uint32_t max_frame_age_us;
+        uint64_t recv_now_us;
+
+        max_frame_age_us = leap_pd_ctrl_max_frame_age_us(pd);
 
         payload_length = leap_pd_build_digital_exchange_mapped(
             payload,
@@ -441,7 +462,9 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
             pd->pd_sequence++,
             pd->config.cycle_period_ms * 1000u,
             profile,
-            outputs);
+            outputs,
+            cycle_start_us,
+            (pd->config.enforce_reply_frame_age != 0) ? max_frame_age_us : 0u);
 
         if (payload_length == 0u)
         {
@@ -488,11 +511,22 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
 
                 if (pd->config.validate_exchange_reply != 0)
                 {
-                    validate_status = leap_pd_validate_exchange_reply(
+                    recv_now_us = (io->monotonic_us != NULL)
+                                      ? io->monotonic_us(io->user_ctx)
+                                      : 0u;
+                    if (pd->config.enforce_reply_frame_age != 0 && recv_now_us == 0u)
+                    {
+                        recv_now_us = cycle_start_us;
+                    }
+
+                    validate_status = leap_pd_validate_exchange_reply_at(
                         reply,
                         reply_length,
                         profile,
                         sent_process_sequence,
+                        (pd->config.enforce_reply_frame_age != 0) ? recv_now_us
+                                                                    : 0u,
+                        pd->config.reply_jitter_margin_us,
                         &reply_view,
                         &reply_status);
                 }
@@ -511,6 +545,11 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
                 if (validate_status == LEAP_PD_COMMON_SEQUENCE_MISMATCH)
                 {
                     pd->stats.reply_sequence_mismatches++;
+                    pd->stats.reply_rejects++;
+                }
+                else if (validate_status == LEAP_PD_COMMON_STALE_FRAME)
+                {
+                    pd->stats.reply_stale_rejects++;
                     pd->stats.reply_rejects++;
                 }
                 else if (validate_status != LEAP_PD_COMMON_OK)
@@ -542,6 +581,11 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
         params.process_sequence = pd->pd_sequence++;
         params.cycle_time_us    = pd->config.cycle_period_ms * 1000u;
         params.endpoint_flags   = LEAP_PD_FLAG_APPLY_OUTPUTS;
+        if (pd->config.enforce_reply_frame_age != 0)
+        {
+            params.controller_timestamp_us = cycle_start_us;
+            params.max_frame_age_us          = leap_pd_ctrl_max_frame_age_us(pd);
+        }
 
         payload_length = leap_pd_build_digital_write(
             payload,

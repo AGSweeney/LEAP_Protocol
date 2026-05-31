@@ -45,6 +45,7 @@ static LeapControllerPeerStatus leap_ctrl_peer_table_upsert(
             table->peers[i].active_profile_id  = hello->active_profile_id;
             table->peers[i].default_profile_id = hello->default_profile_id;
             table->peers[i].device_state       = hello->current_state;
+            memcpy(table->peers[i].active_owner_mac, hello->active_owner_mac, 6);
             table->peers[i].reachable          = 1;
             return LEAP_CTRL_PEER_OK;
         }
@@ -59,6 +60,7 @@ static LeapControllerPeerStatus leap_ctrl_peer_table_upsert(
     table->peers[table->count].active_profile_id  = hello->active_profile_id;
     table->peers[table->count].default_profile_id = hello->default_profile_id;
     table->peers[table->count].device_state       = hello->current_state;
+    memcpy(table->peers[table->count].active_owner_mac, hello->active_owner_mac, 6);
     table->peers[table->count].reachable          = 1;
     table->count++;
     return LEAP_CTRL_PEER_OK;
@@ -236,4 +238,28 @@ const LeapControllerPeerEntry* leap_controller_peer_table_get(
     }
 
     return &table->peers[index];
+}
+
+int leap_controller_peer_owned_by_other(
+    const LeapControllerPeerEntry* entry,
+    const uint8_t*                 controller_mac)
+{
+    static const uint8_t k_zero[6] = { 0u, 0u, 0u, 0u, 0u, 0u };
+
+    if (entry == NULL)
+    {
+        return 0;
+    }
+
+    if (memcmp(entry->active_owner_mac, k_zero, 6) == 0)
+    {
+        return 0;
+    }
+
+    if (controller_mac == NULL)
+    {
+        return 1;
+    }
+
+    return (memcmp(entry->active_owner_mac, controller_mac, 6) != 0) ? 1 : 0;
 }

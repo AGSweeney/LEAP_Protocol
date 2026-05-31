@@ -304,7 +304,9 @@ size_t leap_pd_build_digital_exchange_mapped(
     uint32_t                process_sequence,
     uint32_t                cycle_time_us,
     const LeapPdProfileMap* profile,
-    uint16_t                digital_outputs)
+    uint16_t                digital_outputs,
+    uint64_t                controller_timestamp_us,
+    uint32_t                max_frame_age_us)
 {
     LeapPdProfileMap        local;
     LeapExchangeHeader*     hdr;
@@ -340,6 +342,8 @@ size_t leap_pd_build_digital_exchange_mapped(
     hdr->cycle_time_us      = cycle_time_us;
     hdr->profile_id         = profile->profile_id;
     hdr->exchange_flags     = (uint16_t)LEAP_PD_FLAG_APPLY_OUTPUTS;
+    hdr->controller_timestamp_us = controller_timestamp_us;
+    hdr->max_frame_age_us        = max_frame_age_us;
 
     memset(&write_profile, 0, sizeof(write_profile));
     write_profile.digital_outputs = digital_outputs;
@@ -374,7 +378,9 @@ size_t leap_pd_build_digital_exchange(
         process_sequence,
         cycle_time_us,
         &profile,
-        digital_outputs);
+        digital_outputs,
+        0u,
+        0u);
 }
 
 size_t leap_pd_build_exchange_reply(
@@ -496,11 +502,63 @@ LeapPdCommonStatus leap_pd_profile_validate_exchange(
     return LEAP_PD_COMMON_OK;
 }
 
+uint64_t leap_pd_frame_age_us(
+    uint64_t now_us,
+    uint64_t controller_timestamp_us)
+{
+    return now_us - controller_timestamp_us;
+}
+
+LeapPdCommonStatus leap_pd_check_frame_age(
+    uint64_t now_us,
+    uint64_t controller_timestamp_us,
+    uint32_t max_frame_age_us,
+    uint32_t jitter_margin_us)
+{
+    uint64_t age;
+    uint64_t limit;
+
+    if (max_frame_age_us == 0u)
+    {
+        return LEAP_PD_COMMON_OK;
+    }
+
+    age   = leap_pd_frame_age_us(now_us, controller_timestamp_us);
+    limit = (uint64_t)max_frame_age_us + (uint64_t)jitter_margin_us;
+    if (age > limit)
+    {
+        return LEAP_PD_COMMON_STALE_FRAME;
+    }
+
+    return LEAP_PD_COMMON_OK;
+}
+
 LeapPdCommonStatus leap_pd_validate_exchange_reply(
     const uint8_t*          payload,
     size_t                  payload_length,
     const LeapPdProfileMap* profile,
     uint32_t                expected_process_sequence,
+    LeapPdExchangeView*     view_out,
+    LeapExchangeStatus*     status_out)
+{
+    return leap_pd_validate_exchange_reply_at(
+        payload,
+        payload_length,
+        profile,
+        expected_process_sequence,
+        0u,
+        0u,
+        view_out,
+        status_out);
+}
+
+LeapPdCommonStatus leap_pd_validate_exchange_reply_at(
+    const uint8_t*          payload,
+    size_t                  payload_length,
+    const LeapPdProfileMap* profile,
+    uint32_t                expected_process_sequence,
+    uint64_t                recv_now_us,
+    uint32_t                jitter_margin_us,
     LeapPdExchangeView*     view_out,
     LeapExchangeStatus*     status_out)
 {
@@ -530,6 +588,19 @@ LeapPdCommonStatus leap_pd_validate_exchange_reply(
     if (status != LEAP_PD_COMMON_OK)
     {
         return status;
+    }
+
+    if (recv_now_us != 0u)
+    {
+        status = leap_pd_check_frame_age(
+            recv_now_us,
+            view.header->controller_timestamp_us,
+            view.header->max_frame_age_us,
+            jitter_margin_us);
+        if (status != LEAP_PD_COMMON_OK)
+        {
+            return status;
+        }
     }
 
     status_offset = sizeof(LeapExchangeHeader) +

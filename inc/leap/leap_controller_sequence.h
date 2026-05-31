@@ -32,9 +32,10 @@ typedef struct LeapControllerFrameSequenceConfig
      */
     int reject_out_of_window;
     /*
-     * When non-zero, reject frames whose LEAP session_id differs from the
-     * bound owner session (prevents cross-peer frame confusion).
+     * When non-zero, reject inbound frames with sequence > highest + 1 (gap).
+     * Default off; cyclic integrity still enforced via process_sequence (§13.6).
      */
+    int reject_sequence_gaps;
     int enforce_session_match;
 } LeapControllerFrameSequenceConfig;
 
@@ -44,6 +45,7 @@ typedef struct LeapControllerFrameSequenceState
     uint32_t bound_session_id;
     uint32_t duplicate_frames;
     uint32_t sequence_gaps;
+    uint32_t gap_rejects;
     uint32_t out_of_window_rejects;
     uint32_t session_mismatches;
     int      sequence_active;
@@ -53,6 +55,7 @@ typedef enum LeapControllerFrameSequenceResult
 {
     LEAP_CTRL_FRAME_SEQ_OK = 0,
     LEAP_CTRL_FRAME_SEQ_DUPLICATE,
+    LEAP_CTRL_FRAME_SEQ_GAP,
     LEAP_CTRL_FRAME_SEQ_OUT_OF_WINDOW,
     LEAP_CTRL_FRAME_SEQ_SESSION_MISMATCH,
     LEAP_CTRL_FRAME_SEQ_INVALID_ARG
@@ -67,9 +70,9 @@ void leap_controller_frame_sequence_bind_session(
     uint32_t                          session_id);
 
 /*
- * Validate an inbound peer frame sequence (§13.5). Updates counters on reject.
  * Forward gaps (sequence > highest + 1) are accepted but counted in
- * sequence_gaps — PD process_sequence is the authoritative cyclic guard.
+ * sequence_gaps unless reject_sequence_gaps is set — PD process_sequence is
+ * the authoritative cyclic guard (§13.6).
  */
 LeapControllerFrameSequenceResult leap_controller_frame_sequence_accept(
     LeapControllerFrameSequenceState*           state,

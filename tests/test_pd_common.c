@@ -128,6 +128,74 @@ TEST(test_pd_validate_exchange_reply_sequence)
         LEAP_PD_COMMON_SEQUENCE_MISMATCH);
 }
 
+TEST(test_pd_frame_age_unsigned_wrap)
+{
+    ASSERT_TRUE(leap_pd_frame_age_us(1000000u, 900000u) == 100000u);
+    ASSERT_EQ_INT(
+        leap_pd_check_frame_age(1000000u, 960000u, 50000u, 0u),
+        LEAP_PD_COMMON_OK);
+    ASSERT_EQ_INT(
+        leap_pd_check_frame_age(1000000u, 900000u, 50000u, 0u),
+        LEAP_PD_COMMON_STALE_FRAME);
+    ASSERT_EQ_INT(
+        leap_pd_check_frame_age(1000000u, 940000u, 50000u, 10000u),
+        LEAP_PD_COMMON_OK);
+    ASSERT_EQ_INT(
+        leap_pd_check_frame_age(1000000u, 900000u, 0u, 0u),
+        LEAP_PD_COMMON_OK);
+}
+
+TEST(test_pd_validate_exchange_reply_stale)
+{
+    LeapPdProfileMap     profile;
+    LeapPdExchangeView   request_view;
+    uint8_t              request[256];
+    uint8_t              reply[256];
+    size_t               request_length;
+    size_t               reply_length;
+    LeapExchangeStatus   status;
+
+    leap_pd_profile_map_init_default(&profile);
+
+    request_length = leap_pd_build_digital_exchange_mapped(
+        request,
+        sizeof(request),
+        10u,
+        100000u,
+        &profile,
+        0x0001u,
+        1000000u,
+        50000u);
+    ASSERT_TRUE(request_length > 0u);
+    ASSERT_EQ_INT(
+        leap_pd_exchange_view(request, request_length, &request_view),
+        LEAP_PD_COMMON_OK);
+
+    memset(&status, 0, sizeof(status));
+    status.latest_process_sequence_consumed = 10u;
+    status.status_code                      = (uint16_t)LEAP_STATUS_OK;
+
+    reply_length = leap_pd_build_exchange_reply(
+        reply,
+        sizeof(reply),
+        request_view.header,
+        request_view.write_data,
+        request_view.write_length,
+        request_view.read_reservation,
+        request_view.read_length,
+        &status);
+    ASSERT_TRUE(reply_length > 0u);
+
+    ASSERT_EQ_INT(
+        leap_pd_validate_exchange_reply_at(
+            reply, reply_length, &profile, 10u, 1040000u, 0u, NULL, NULL),
+        LEAP_PD_COMMON_OK);
+    ASSERT_EQ_INT(
+        leap_pd_validate_exchange_reply_at(
+            reply, reply_length, &profile, 10u, 1060001u, 0u, NULL, NULL),
+        LEAP_PD_COMMON_STALE_FRAME);
+}
+
 void leap_run_pd_common_tests(void)
 {
     printf("pd common\n");
@@ -135,4 +203,6 @@ void leap_run_pd_common_tests(void)
     RUN_TEST(test_pd_build_digital_exchange_layout);
     RUN_TEST(test_pd_profile_map_from_dir);
     RUN_TEST(test_pd_validate_exchange_reply_sequence);
+    RUN_TEST(test_pd_frame_age_unsigned_wrap);
+    RUN_TEST(test_pd_validate_exchange_reply_stale);
 }

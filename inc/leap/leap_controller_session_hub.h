@@ -25,6 +25,11 @@ extern "C" {
 typedef struct LeapControllerSessionHubConfig
 {
     LeapControllerStackConfig default_peer;
+    /*
+     * When non-zero, bootstrap_table skips peers whose HELLO active_owner_mac
+     * is set and differs from default_peer.mgmt.controller_mac.
+     */
+    int skip_foreign_owned_peers;
 } LeapControllerSessionHubConfig;
 
 typedef struct LeapControllerPeerSlot

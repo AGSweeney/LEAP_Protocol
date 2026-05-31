@@ -79,6 +79,25 @@ TEST(test_frame_sequence_out_of_window_reject)
     ASSERT_EQ_U32(state.out_of_window_rejects, 1u);
 }
 
+TEST(test_frame_sequence_gap_rejected)
+{
+    LeapControllerFrameSequenceState    state;
+    LeapControllerFrameSequenceConfig config;
+
+    leap_controller_frame_sequence_init(&state);
+    memset(&config, 0, sizeof(config));
+    config.reject_sequence_gaps = 1;
+
+    ASSERT_EQ_INT(
+        leap_controller_frame_sequence_accept(&state, &config, 0u, 1u),
+        LEAP_CTRL_FRAME_SEQ_OK);
+    ASSERT_EQ_INT(
+        leap_controller_frame_sequence_accept(&state, &config, 0u, 4u),
+        LEAP_CTRL_FRAME_SEQ_GAP);
+    ASSERT_EQ_U32(state.gap_rejects, 1u);
+    ASSERT_EQ_U32(state.highest_peer_sequence, 1u);
+}
+
 void leap_run_controller_sequence_tests(void)
 {
     printf("controller sequence\n");
@@ -86,4 +105,5 @@ void leap_run_controller_sequence_tests(void)
     RUN_TEST(test_frame_sequence_gap_counted);
     RUN_TEST(test_frame_sequence_session_mismatch);
     RUN_TEST(test_frame_sequence_out_of_window_reject);
+    RUN_TEST(test_frame_sequence_gap_rejected);
 }

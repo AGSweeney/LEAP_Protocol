@@ -30,6 +30,7 @@ void leap_controller_frame_sequence_reset(LeapControllerFrameSequenceState* stat
     state->bound_session_id      = 0u;
     state->duplicate_frames      = 0u;
     state->sequence_gaps         = 0u;
+    state->gap_rejects           = 0u;
     state->out_of_window_rejects   = 0u;
     state->session_mismatches      = 0u;
     state->sequence_active         = 0;
@@ -101,6 +102,12 @@ LeapControllerFrameSequenceResult leap_controller_frame_sequence_accept(
     if (gap > 0u)
     {
         state->sequence_gaps += gap;
+
+        if (config != NULL && config->reject_sequence_gaps != 0)
+        {
+            state->gap_rejects++;
+            return LEAP_CTRL_FRAME_SEQ_GAP;
+        }
     }
 
     if (config != NULL && config->reject_out_of_window != 0 &&
