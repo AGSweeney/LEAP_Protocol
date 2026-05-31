@@ -3,6 +3,8 @@
 Reference-stack guidance for controlling multiple devices on one Ethernet
 segment, and known gaps for true multi-controller coexistence.
 
+Status as of May 2026.
+
 ## What the reference stack provides today
 
 | Mechanism | Location | Purpose |

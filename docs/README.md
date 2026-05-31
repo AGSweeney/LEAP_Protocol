@@ -21,6 +21,9 @@ in this repository.
 | [LEAP_MULTI_PEER_NOTES.md](LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller behavior, config knobs, failure modes |
 | [LEAP_TRANSPORT_RECONNECT.md](LEAP_TRANSPORT_RECONNECT.md) | Link monitoring (`leap_raw_linux`) and reconnect policy |
 | [../examples/linux_loopback/README.md](../examples/linux_loopback/README.md) | Native Linux wire example (transport + stacks) |
+| [../examples/win_smoke/README.md](../examples/win_smoke/README.md) | Windows Npcap single-process wire smoke |
+| [../examples/win_l2/README.md](../examples/win_l2/README.md) | Windows Npcap two-process L2 pair |
+| [../platforms/clearcore/README.md](../platforms/clearcore/README.md) | ClearCore embedded device firmware |
 
 ## Reference stack module map
 
@@ -34,6 +37,8 @@ inc/leap/                          Public API
   leap_controller_peer.h           Discovery peer table
   leap_controller_sequence.h       Per-peer Ethernet sequence / replay
   leap_log.h                       Optional LEAP_LOG_SECURITY field diagnostics
+  leap_raw_linux.h                 Linux AF_PACKET transport
+  leap_raw_winpcap.h               Windows Npcap transport
 
 src/services/
   disc/   leap_disc_device.c, leap_disc_controller.c
@@ -48,11 +53,14 @@ src/
   leap_controller_session_hub.c
   leap_controller_peer.c
   leap_controller_sequence.c
+  leap_log.c
   transport/leap_raw_linux.c       Linux AF_PACKET (examples + tests)
+  transport/leap_raw_winpcap.c     Windows Npcap (examples; optional in CI)
 ```
 
 Link monitoring: `leap_raw_linux_query_link`, `leap_raw_linux_poll_link` — see
-[LEAP_TRANSPORT_RECONNECT.md](LEAP_TRANSPORT_RECONNECT.md).
+[LEAP_TRANSPORT_RECONNECT.md](LEAP_TRANSPORT_RECONNECT.md). Windows transport
+stats are available via `leap_raw_winpcap_get_stats()`.
 
 ## Service coverage (reference stack)
 
@@ -62,14 +70,18 @@ Link monitoring: `leap_raw_linux_query_link`, `leap_raw_linux_poll_link` — see
 | DIR | yes | yes | yes | bootstrap |
 | MGMT | yes | yes | yes | bootstrap + `on_frame` |
 | PD | yes | yes (cyclic engine) | yes | `run_cyclic_pd`, single write |
-| DIAG | yes | yes (builders/parsers) | yes | `read_diag`, `--diag` in Linux example |
+| DIAG | yes | yes (builders/parsers + `read_diag`) | yes | `read_diag`, `--diag` (Linux + Windows controller) |
 
 ## Testing and CI
 
-- **Unit tests:** `cmake --build build && ctest --test-dir build` (105 tests at last count)
-- **CI (GitHub Actions):** configure, build, `ctest`, verify Linux example binaries
-- **Wire smoke:** `tools/ci/wire_smoke_*.sh` — run manually on native Linux with
-  `sudo`; not executed on GitHub-hosted runners (network namespace limits)
+- **Unit tests:** `cmake --build build && ctest --test-dir build` — **105 tests** (106 on Linux)
+- **CI (GitHub Actions):**
+  - **Linux:** configure, build, `ctest`, verify Linux example binaries exist
+  - **Windows:** configure, build, `ctest` (core + tests only; Npcap examples not built in CI)
+- **Wire smoke (manual):**
+  - Linux: `tools/ci/wire_smoke_*.sh` — native Linux with `sudo`
+  - Windows: `tools/ci/wire_smoke_win.ps1` — requires `-DLEAP_BUILD_WIN_SMOKE=ON`
+  - Not executed on GitHub-hosted runners (network namespace / Npcap limits)
 
 ## Porting gate (before hardware targets)
 
@@ -84,7 +96,7 @@ Sign off before starting an embedded or alternate-OS port:
 
 | Check | How to verify |
 | --- | --- |
-| Unit tests green | `ctest --test-dir build --output-on-failure` (105 tests) |
+| Unit tests green | `ctest --test-dir build --output-on-failure` (105 on Windows, 106 on Linux) |
 | Linux wire path (manual) | `sudo ./build/leap_linux_device lo` + `sudo ./build/leap_linux_controller lo` on native Linux |
 | Stack-only examples | `leap_linux_device` / `leap_linux_controller` use `leap_*_stack` — no hand-rolled MGMT/PD FSM in `device_main.c` |
 | Multi-peer behavior | Hub tests cover foreign-owner skip + round-robin PD; see [LEAP_MULTI_PEER_NOTES.md](LEAP_MULTI_PEER_NOTES.md) |

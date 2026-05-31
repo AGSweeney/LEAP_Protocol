@@ -142,6 +142,9 @@ sudo ./build/leap_linux_hub --scan-ms 5000 --cyclic-ms 100 --exchange lo
 Foreign-owned peers (another controller’s `active_owner_mac` in HELLO) are skipped
 by default. Ctrl+C stops round-robin and releases all hub sessions.
 
+Hub does not yet expose a `--diag` flag; use `leap_linux_controller --diag` for
+single-peer DIAG reads.
+
 ## Example device output
 
 ```text

@@ -36,7 +36,15 @@ After import, Solution Explorer should show **ClearCore**, **LwIP**, and **LeapD
 
 ## Test with PC controller
 
+On the same LAN segment (Linux or Windows):
+
+```bash
+# Linux
+sudo ./build/leap_linux_controller eth0
+```
+
 ```powershell
+# Windows
 $adp = '\Device\NPF_{your-nic-guid}'
 .\build-win\Release\leap_win_controller.exe $adp
 ```

@@ -149,6 +149,13 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
                 mgmt_result.device_state,
                 now_us);
             leap_diag_device_on_frame_accepted(&stack->diag);
+            if (mgmt_result.reply.message_type == LEAP_MGMT_OPEN_SESSION_REPLY &&
+                mgmt_result.handle_status == LEAP_MGMT_DEVICE_HANDLE_OK)
+            {
+                leap_pd_device_reset_sequence(
+                    &stack->pd,
+                    stack->mgmt.owner_session_id);
+            }
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
         }
@@ -277,6 +284,10 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         if (pd_status == LEAP_PD_DEVICE_OK)
         {
             leap_diag_device_on_frame_accepted(&stack->diag);
+            if (pd_result.reply_payload_length > 0u)
+            {
+                result->flags |= LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY;
+            }
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
         }

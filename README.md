@@ -20,11 +20,14 @@ inc/leap/leap_protocol.h              wire contract — packed structs, constant
                                       service/profile IDs, static size checks
 docs/                                 spec, stack guides, golden vectors (see docs/README.md)
 schemas/leap-manifest-schema.json     JSON Schema for device/profile manifests
-tools/wireshark/leap_dissector.lua    Wireshark dissector (initial)
-tools/ci/wire_smoke_*.sh              manual end-to-end tests (native Linux)
-src/                                  reference stack (see docs/README.md)
-tests/                                conformance and regression tests (99+)
-examples/linux_loopback/              device, controller, discover binaries
+tools/wireshark/leap_dissector.lua    Wireshark dissector (v1 services + PD exchange)
+tools/ci/wire_smoke_*                 manual end-to-end tests (Linux shell, Windows PS1)
+src/                                  reference stack (see src/README.md)
+tests/                                conformance and regression tests (105–106)
+examples/linux_loopback/              Linux AF_PACKET device, controller, hub, discover
+examples/win_l2/                        Windows Npcap two-process L2 pair
+examples/win_smoke/                     Windows Npcap single-process wire smoke
+examples/device_minimal/              learning / fuzz harness (not porting template)
 platforms/clearcore/                  ClearCore LEAP device firmware (ProjectTemplate)
 ```
 
@@ -64,6 +67,7 @@ lease is not an access control mechanism on open networks. See spec §17.
 - `bootstrap()` / `bootstrap_peer()` → OP
 - `on_frame()` for async MGMT; frame sequence + session binding
 - `run_cyclic_pd()` / `pd_single_write()` after OP
+- `read_diag()` / `log_diag()` — post-OP DIAG counters and timing
 - `release()` — graceful OWNER_RELEASE
 
 **`leap_controller_session_hub`** — N concurrent device sessions (independent
@@ -119,6 +123,19 @@ sudo ./build/leap_linux_controller lo
 
 See [examples/linux_loopback/README.md](examples/linux_loopback/README.md).
 
+### Windows examples (Npcap)
+
+Build with `-DLEAP_BUILD_WIN_SMOKE=ON` and/or `-DLEAP_BUILD_WIN_L2=ON`:
+
+```powershell
+cmake -S . -B build-win -DLEAP_BUILD_WIN_SMOKE=ON -DLEAP_BUILD_WIN_L2=ON
+cmake --build build-win --config Release
+.\build-win\Release\leap_win_smoke.exe
+```
+
+See [examples/win_smoke/README.md](examples/win_smoke/README.md) and
+[examples/win_l2/README.md](examples/win_l2/README.md).
+
 ### ClearCore LEAP device (ProjectTemplate)
 
 Pair a ClearCore on the wire with `leap_win_controller` or `leap_linux_controller`:
@@ -136,45 +153,54 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 
 ### Done (reference stack)
 
-- Wire contract, normative spec, golden vectors, manifest schema
-- Frame parser/serializer, CRC, fragmentation, fuzz/regression tests
+- Wire contract, normative spec, golden vectors (incl. DIAG §10), manifest schema
+- Frame parser/serializer, CRC, fragment rejection policy, fuzz/regression tests (105)
 - All five v1 services: device handlers + controller helpers (where applicable)
 - **`leap_device_stack`** — DISC + DIR + MGMT + PD + DIAG + tick
 - **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`, `read_diag`
 - **`leap_controller_session_hub`** + peer discovery table + `leap_linux_hub` example
 - Multi-peer hardening (sequence, session bind, PD validation, frame age, security log)
-- Linux AF_PACKET transport, loopback examples, discover demo
-- CI: build + unit tests + example binary checks
+- Linux AF_PACKET transport + Windows Npcap transport (`leap_raw_winpcap`)
+- Linux loopback/hub/discover examples; Windows `leap_win_smoke` + `leap_win_device`/`leap_win_controller`
+- ClearCore device firmware port (`platforms/clearcore`)
+- Wireshark dissector: v1 services, PD exchange, DIAG message types
+- CI: Linux build + unit tests (106) + example binary checks; Windows build + unit tests (105)
 
 ### Next (see [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md))
 
 **Near term (core lock-down)**
 
-- Finish PD/example audit (`device_minimal` stays low-level by design)
-- ~~Controller DIAG read helper + `--diag` flag~~ **done**
+- ~~PD/example audit~~ **done** — porting path is `linux_loopback/*` and `win_l2/*`; `device_minimal` stays learning-only
+- ~~Controller DIAG read helper + `--diag` flag~~ **done** (Linux + Windows controllers)
 - ~~Hub integration tests (round-robin, foreign-owner skip)~~ **done**
-- Manual wire smoke on native Linux before platform ports
+- Manual wire smoke on native Linux (`tools/ci/wire_smoke_*.sh`) and Windows (`wire_smoke_win.ps1`) before platform ports
 
 **Medium term (3–4 weeks)**
 
-- Transport link monitoring and reconnect policy — see [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md)
-- DIAG golden vectors + Wireshark coverage
-- Multi-device hub example or documented pattern
+- ~~Transport link monitoring and reconnect policy~~ **done** — see [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md)
+- ~~DIAG golden vectors + Wireshark coverage~~ **done**
+- ~~Multi-device hub example~~ **done** — `leap_linux_hub`; hub `--diag` variant still open
+- Expand transport stats in periodic example logs (drops, retries, parse errors)
 - v1.0 conformance / release readiness review
 
 **Later**
 
-- Rolling sequence bitmap, embedded port, production EtherType, release tag
+- Rolling 64-bit sequence bitmap, fragment reassembly, multi-controller election
+- Production EtherType assignment, release tag
 
 ## Documentation
 
 | Doc | Description |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Documentation index + module map |
-| [docs/LEAP_FORWARD_PLAN.md](LEAP_FORWARD_PLAN.md) | Prioritized 7–10 day and 3–4 week plan vs current status |
+| [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md) | Prioritized 7–10 day and 3–4 week plan vs current status |
 | [docs/LEAP_PROTOCOL_SPECIFICATION.md](docs/LEAP_PROTOCOL_SPECIFICATION.md) | Normative spec |
 | [docs/LEAP_CONTROLLER_STACK_PLAN.md](docs/LEAP_CONTROLLER_STACK_PLAN.md) | Controller stack design + status |
 | [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller notes |
+| [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md) | Link monitoring and reconnect policy |
+| [examples/README.md](examples/README.md) | Example index and porting path |
+| [tests/README.md](tests/README.md) | Unit test suite index (105–106 tests) |
+| [platforms/clearcore/README.md](platforms/clearcore/README.md) | ClearCore firmware setup and build |
 
 ## License
 

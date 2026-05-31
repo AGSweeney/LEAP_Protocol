@@ -29,7 +29,7 @@ Legend: **done** · **partial** · **open**
 
 | Goal | Status | Notes |
 | --- | --- | --- |
-| Implement LEAP-DIAG | **partial** | Device handler + stack dispatch + controller builders/parsers + unit tests + stack `read_diag` + Linux `--diag`. Hub variant and FSM poll **open**. |
+| Implement LEAP-DIAG | **partial** | Device handler + stack dispatch + controller builders/parsers + unit tests + stack `read_diag` + Linux/Windows `--diag`. Hub DIAG variant and FSM auto-poll **open**. |
 | Transport (link monitoring, reconnect) | **partial** | `query_link` / `poll_link` + `link_transitions` stat; reconnect policy doc; example poll in device recv loop. Auto-reconnect FSM **open**. |
 | Multi-device test coverage | **partial** | Peer table, session hub, discover mock, foreign-owner skip, round-robin PD, end-to-end `table_bootstrap_round_robin` test. |
 | Spec + golden vectors | **partial** | DIAG counters + timing golden frames (§10); Wireshark DIAG + PD exchange decode. |
@@ -46,14 +46,14 @@ Legend: **done** · **partial** · **open**
 
 - ~~`LeapRawLinux` link state hook (carrier up/down) surfaced to examples.~~ **done**
 - ~~Document reconnect policy: rediscover vs `bootstrap_peer` vs full stack reset.~~ **done** — [LEAP_TRANSPORT_RECONNECT.md](LEAP_TRANSPORT_RECONNECT.md)
-- Expand transport stats in periodic log (drops, retries, parse errors).
+- Expand transport stats in periodic example logs (drops, retries, parse errors) — **partial** (`--stats` on exit; not yet periodic during cyclic PD).
 
 ### Week 4 — Conformance & release prep
 
 - ~~Golden vector(s) for DIAG `READ_COUNTERS` / `COUNTERS_REPLY` round-trip.~~ **done** (§10)
 - ~~Golden vector(s) for DIAG `READ_TIMING` / `TIMING_REPLY`.~~ **done** (§10.7)
 - ~~Wireshark dissector: DIAG message types + PD exchange layout.~~ **done**
-- Multi-device integration test in `ctest` (hub + 2 mock peers, no sockets).
+- ~~Multi-device integration test in `ctest` (hub + 2 mock peers, no sockets).~~ **done** — `test_session_hub_table_bootstrap_round_robin`
 - Tag readiness review: spec freeze candidate, manifest schema, independent implementer checklist.
 
 ---
@@ -71,7 +71,7 @@ Legend: **done** · **partial** · **open**
 
 | Milestone | Criteria |
 | --- | --- |
-| **Core locked** | Examples use stacks only; `ctest` ≥105 tests green; porting gate signed off |
+| **Core locked** | Examples use stacks only; `ctest` green (105–106 tests); porting gate signed off |
 | **DIAG complete** | Device + controller read path + example/test round-trip + golden vectors |
 | **Multi-peer confident** | Hub round-robin + foreign-owner tests; multi-peer notes match behavior |
 | **v1.0 candidate** | Golden vectors updated; dissector covers v1 services; manual wire smoke passed on Linux |

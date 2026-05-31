@@ -2,6 +2,8 @@
 
 Reference-stack guidance for Linux `AF_PACKET` examples and embedded ports.
 
+Status as of May 2026. Auto-reconnect FSM is **not** implemented — policy only.
+
 ## Link state (`leap_raw_linux`)
 
 | API | Purpose |

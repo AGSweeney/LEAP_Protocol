@@ -254,6 +254,16 @@ static void clearcore_leap_log_rx(const LeapDeviceStackResult *result)
 
         }
 
+        else if (result->frame.header.message_type == LEAP_PD_EXCHANGE_ENDPOINTS)
+
+        {
+
+            (void)snprintf(line, sizeof(line), "LEAP: received PD EXCHANGE");
+
+            clearcore_leap_trace_queue(line);
+
+        }
+
         break;
 
     default:
@@ -384,9 +394,20 @@ static void clearcore_leap_handle_result(
 
         }
 
-        else if ((result->flags & LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY) != 0u)
+        else if ((result->flags & LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY) != 0u ||
+                 result->pd_reply_payload_length > 0u)
 
         {
+
+            if (result->pd_reply_message_type == LEAP_PD_EXCHANGE_REPLY)
+
+            {
+
+                clearcore_leap_trace_queue("LEAP: sending PD EXCHANGE_REPLY");
+
+            }
+
+
 
             clearcore_leap_send_reply(
 
@@ -420,7 +441,9 @@ static void clearcore_leap_handle_result(
 
             sizeof(line),
 
-            "LEAP: PD rejected (status=0x%04X)",
+            "LEAP: PD rejected msg=0x%04X status=0x%04X",
+
+            result->frame.header.message_type,
 
             result->error_code);
 

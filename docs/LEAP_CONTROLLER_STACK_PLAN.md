@@ -26,8 +26,10 @@ leap_controller_stack_release()
 | Multi-peer discover | `leap_controller_peer` | done |
 | Concurrent sessions | `leap_controller_session_hub` | done |
 | Cyclic PD entry | `leap_controller_stack_run_cyclic_pd` | done |
+| DIAG read (post-OP) | `leap_controller_stack_read_diag`, `log_diag` | done |
 | Linux IO adapter | `leap_linux_controller_io` | done |
-| DIAG in controller FSM | — | **not done** (device + builders only) |
+| Windows IO adapter | `leap_win_io` + `win_l2/controller_main.c` | done |
+| DIAG auto-poll in FSM | — | **open** (use `read_diag()` explicitly; Linux/Windows `--diag` flag) |
 
 Multi-peer hardening (sequence window, session bind, exchange validation, frame
 age, foreign-owner skip) is documented in `LEAP_MULTI_PEER_NOTES.md`.
@@ -85,6 +87,14 @@ examples/linux_loopback/
   controller_main.c           # transport + stack only
   leap_linux_controller_io.c
   discover_main.c             # multi-device HELLO scan demo
+  hub_main.c                  # session hub round-robin demo
+
+examples/win_l2/
+  controller_main.c           # Windows Npcap transport + stack
+  device_main.c
+
+examples/win_smoke/
+  wire_smoke_main.c           # single-process cooperative smoke
 ```
 
 ---
@@ -133,6 +143,8 @@ typedef struct LeapControllerStack
 | `leap_controller_stack_release` | OWNER_RELEASE + reset |
 | `leap_controller_stack_run_cyclic_pd` | Cyclic PD via bound peer |
 | `leap_controller_stack_pd_single_write` | One-shot PD write |
+| `leap_controller_stack_read_diag` | Post-OP READ_COUNTERS + READ_TIMING |
+| `leap_controller_stack_log_diag` | Print DIAG counters/timing to stdout |
 
 Session hub wraps multiple `LeapControllerStack` slots — see
 `leap_controller_session_hub.h`.
@@ -177,8 +189,9 @@ Session hub wraps multiple `LeapControllerStack` slots — see
 
 ## 12. Non-Goals (v1)
 
-- DIAG polling wired into controller FSM (builders exist; use manually or add helper)
-- Fragment transmission
+- Automatic DIAG polling inside controller bootstrap FSM (use `read_diag()` or `--diag`)
+- Hub-level `--diag` across all peers (session hub has no DIAG helper yet)
+- Fragment transmission or reassembly (inbound fragments rejected)
 - IP/routed transport
 - Controller-side DIR `read_directory` polling in FSM
 - Full redundant controller failover / election
