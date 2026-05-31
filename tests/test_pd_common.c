@@ -77,10 +77,62 @@ TEST(test_pd_profile_map_from_dir)
     ASSERT_EQ_U16(map.read_endpoint_id, LEAP_ENDPOINT_DIGITAL_INPUTS);
 }
 
+TEST(test_pd_validate_exchange_reply_sequence)
+{
+    LeapPdProfileMap     profile;
+    LeapPdExchangeView   request_view;
+    uint8_t              request[256];
+    uint8_t              reply[256];
+    size_t               request_length;
+    size_t               reply_length;
+    LeapExchangeStatus   status;
+    LeapExchangeStatus   reply_status;
+
+    leap_pd_profile_map_init_default(&profile);
+
+    request_length = leap_pd_build_digital_exchange(
+        request,
+        sizeof(request),
+        55u,
+        100000u,
+        LEAP_PROFILE_DIGITAL_IO_16X16,
+        0x0007u);
+    ASSERT_TRUE(request_length > 0u);
+    ASSERT_EQ_INT(
+        leap_pd_exchange_view(request, request_length, &request_view),
+        LEAP_PD_COMMON_OK);
+
+    memset(&status, 0, sizeof(status));
+    status.latest_process_sequence_consumed = 55u;
+    status.status_code                      = (uint16_t)LEAP_STATUS_OK;
+
+    reply_length = leap_pd_build_exchange_reply(
+        reply,
+        sizeof(reply),
+        request_view.header,
+        request_view.write_data,
+        request_view.write_length,
+        request_view.read_reservation,
+        request_view.read_length,
+        &status);
+    ASSERT_TRUE(reply_length > 0u);
+
+    ASSERT_EQ_INT(
+        leap_pd_validate_exchange_reply(
+            reply, reply_length, &profile, 55u, NULL, &reply_status),
+        LEAP_PD_COMMON_OK);
+
+    ASSERT_EQ_INT(
+        leap_pd_validate_exchange_reply(
+            reply, reply_length, &profile, 54u, NULL, NULL),
+        LEAP_PD_COMMON_SEQUENCE_MISMATCH);
+}
+
 void leap_run_pd_common_tests(void)
 {
     printf("pd common\n");
     RUN_TEST(test_pd_build_and_parse_digital_write);
     RUN_TEST(test_pd_build_digital_exchange_layout);
     RUN_TEST(test_pd_profile_map_from_dir);
+    RUN_TEST(test_pd_validate_exchange_reply_sequence);
 }

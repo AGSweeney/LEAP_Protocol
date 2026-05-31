@@ -29,6 +29,7 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controll
  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.h \
  /usr/include/string.h \

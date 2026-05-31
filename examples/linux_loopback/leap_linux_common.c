@@ -60,9 +60,18 @@ void leap_linux_print_transport_error(const char* action)
         fprintf(stderr, "%s failed: %s\n", action, strerror(err));
         if (err == ENODEV && strcmp(action, "open") == 0)
         {
-            fprintf(stderr,
-                    "hint: WSL2 cannot bind AF_PACKET — use native Linux or a VM "
-                    "(see examples/linux_loopback/README.md)\n");
+            if (getenv("CI") != NULL)
+            {
+                fprintf(stderr,
+                        "hint: this host rejects AF_PACKET on loopback (ENODEV); "
+                        "CI smoke tests use an isolated veth bridge\n");
+            }
+            else
+            {
+                fprintf(stderr,
+                        "hint: AF_PACKET bind failed (ENODEV) — common on WSL2; "
+                        "use native Linux, a VM, or veth (see examples/linux_loopback/README.md)\n");
+            }
         }
     }
     else

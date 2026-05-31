@@ -67,6 +67,7 @@ typedef enum LeapPdCommonStatus
     LEAP_PD_COMMON_BAD_LENGTH,
     LEAP_PD_COMMON_PROFILE_MISMATCH,
     LEAP_PD_COMMON_BUFFER_TOO_SMALL,
+    LEAP_PD_COMMON_SEQUENCE_MISMATCH,
     LEAP_PD_COMMON_ERROR
 } LeapPdCommonStatus;
 
@@ -138,6 +139,33 @@ LeapPdCommonStatus leap_pd_unpack_digital16x16_outputs(
 LeapPdCommonStatus leap_pd_unpack_digital16x16_inputs(
     const LeapPdEndpointView* view,
     uint16_t*                 digital_inputs);
+
+LeapPdCommonStatus leap_pd_profile_validate_write(
+    const LeapPdProfileMap* profile,
+    uint32_t                profile_id,
+    uint16_t                endpoint_id,
+    uint16_t                data_length);
+
+LeapPdCommonStatus leap_pd_profile_validate_exchange(
+    const LeapPdProfileMap* profile,
+    uint32_t                profile_id,
+    uint16_t                write_endpoint_id,
+    uint16_t                read_endpoint_id,
+    uint16_t                write_length,
+    uint16_t                read_length);
+
+/*
+ * Parse and validate an EXCHANGE_REPLY: profile/endpoints/lengths plus optional
+ * process_sequence match against the command the controller just sent.
+ * Pass expected_process_sequence=0 to skip sequence check.
+ */
+LeapPdCommonStatus leap_pd_validate_exchange_reply(
+    const uint8_t*            payload,
+    size_t                    payload_length,
+    const LeapPdProfileMap*   profile,
+    uint32_t                  expected_process_sequence,
+    LeapPdExchangeView*       view_out,
+    LeapExchangeStatus*       status_out);
 
 LeapPdCommonStatus leap_pd_pack_digital16x16(
     uint8_t*  out,

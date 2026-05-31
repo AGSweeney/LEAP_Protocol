@@ -501,6 +501,30 @@ src/leap_controller_peer.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_peer.c.s
 .PHONY : src/leap_controller_peer.c.s
 
+src/leap_controller_sequence.o: src/leap_controller_sequence.c.o
+.PHONY : src/leap_controller_sequence.o
+
+# target to build an object file
+src/leap_controller_sequence.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.o
+.PHONY : src/leap_controller_sequence.c.o
+
+src/leap_controller_sequence.i: src/leap_controller_sequence.c.i
+.PHONY : src/leap_controller_sequence.i
+
+# target to preprocess a source file
+src/leap_controller_sequence.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.i
+.PHONY : src/leap_controller_sequence.c.i
+
+src/leap_controller_sequence.s: src/leap_controller_sequence.c.s
+.PHONY : src/leap_controller_sequence.s
+
+# target to generate assembly for a file
+src/leap_controller_sequence.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.s
+.PHONY : src/leap_controller_sequence.c.s
+
 src/leap_controller_session_hub.o: src/leap_controller_session_hub.c.o
 .PHONY : src/leap_controller_session_hub.o
 
@@ -908,6 +932,30 @@ tests/test_controller_peer.s: tests/test_controller_peer.c.s
 tests/test_controller_peer.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.s
 .PHONY : tests/test_controller_peer.c.s
+
+tests/test_controller_sequence.o: tests/test_controller_sequence.c.o
+.PHONY : tests/test_controller_sequence.o
+
+# target to build an object file
+tests/test_controller_sequence.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o
+.PHONY : tests/test_controller_sequence.c.o
+
+tests/test_controller_sequence.i: tests/test_controller_sequence.c.i
+.PHONY : tests/test_controller_sequence.i
+
+# target to preprocess a source file
+tests/test_controller_sequence.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.i
+.PHONY : tests/test_controller_sequence.c.i
+
+tests/test_controller_sequence.s: tests/test_controller_sequence.c.s
+.PHONY : tests/test_controller_sequence.s
+
+# target to generate assembly for a file
+tests/test_controller_sequence.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.s
+.PHONY : tests/test_controller_sequence.c.s
 
 tests/test_controller_session_hub.o: tests/test_controller_session_hub.c.o
 .PHONY : tests/test_controller_session_hub.o
@@ -1488,6 +1536,9 @@ help:
 	@echo "... src/leap_controller_peer.o"
 	@echo "... src/leap_controller_peer.i"
 	@echo "... src/leap_controller_peer.s"
+	@echo "... src/leap_controller_sequence.o"
+	@echo "... src/leap_controller_sequence.i"
+	@echo "... src/leap_controller_sequence.s"
 	@echo "... src/leap_controller_session_hub.o"
 	@echo "... src/leap_controller_session_hub.i"
 	@echo "... src/leap_controller_session_hub.s"
@@ -1539,6 +1590,9 @@ help:
 	@echo "... tests/test_controller_peer.o"
 	@echo "... tests/test_controller_peer.i"
 	@echo "... tests/test_controller_peer.s"
+	@echo "... tests/test_controller_sequence.o"
+	@echo "... tests/test_controller_sequence.i"
+	@echo "... tests/test_controller_sequence.s"
 	@echo "... tests/test_controller_session_hub.o"
 	@echo "... tests/test_controller_session_hub.i"
 	@echo "... tests/test_controller_session_hub.s"

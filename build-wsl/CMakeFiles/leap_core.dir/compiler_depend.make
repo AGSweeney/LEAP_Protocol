@@ -54,6 +54,7 @@ CMakeFiles/leap_core.dir/src/frame/leap_frame.c.o: /mnt/d/LEAP_Protocol/src/fram
 
 CMakeFiles/leap_core.dir/src/leap_controller_peer.c.o: /mnt/d/LEAP_Protocol/src/leap_controller_peer.c \
   /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_controller_stack.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
@@ -88,7 +89,67 @@ CMakeFiles/leap_core.dir/src/leap_controller_peer.c.o: /mnt/d/LEAP_Protocol/src/
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
 
+CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.o: /mnt/d/LEAP_Protocol/src/leap_controller_sequence.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdint.h \
+  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
+  /usr/include/x86_64-linux-gnu/bits/long-double.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/include/x86_64-linux-gnu/bits/time64.h \
+  /usr/include/x86_64-linux-gnu/bits/timesize.h \
+  /usr/include/x86_64-linux-gnu/bits/types.h \
+  /usr/include/x86_64-linux-gnu/bits/typesizes.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar.h \
+  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+  /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
+
+CMakeFiles/leap_core.dir/src/leap_controller_session_hub.c.o: /mnt/d/LEAP_Protocol/src/leap_controller_session_hub.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_session_hub.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_stack.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdint.h \
+  /usr/include/string.h \
+  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
+  /usr/include/x86_64-linux-gnu/bits/long-double.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+  /usr/include/x86_64-linux-gnu/bits/time64.h \
+  /usr/include/x86_64-linux-gnu/bits/timesize.h \
+  /usr/include/x86_64-linux-gnu/bits/types.h \
+  /usr/include/x86_64-linux-gnu/bits/typesizes.h \
+  /usr/include/x86_64-linux-gnu/bits/wchar.h \
+  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+  /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+  /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
+
 CMakeFiles/leap_core.dir/src/leap_controller_stack.c.o: /mnt/d/LEAP_Protocol/src/leap_controller_stack.c \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_controller_stack.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
@@ -628,8 +689,6 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
 
-/usr/include/x86_64-linux-gnu/bits/struct_mutex.h:
-
 /usr/include/x86_64-linux-gnu/sys/ttydefaults.h:
 
 /usr/include/x86_64-linux-gnu/bits/socket2.h:
@@ -643,6 +702,14 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 /usr/include/x86_64-linux-gnu/bits/select-decl.h:
 
 /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_osockaddr.h:
+
+/usr/include/x86_64-linux-gnu/bits/poll2.h:
+
+/usr/include/x86_64-linux-gnu/bits/poll.h:
+
+/usr/include/x86_64-linux-gnu/bits/ioctls.h:
 
 /usr/include/x86_64-linux-gnu/bits/confname.h:
 
@@ -660,12 +727,6 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
-/usr/include/x86_64-linux-gnu/bits/select2.h:
-
-/usr/include/linux/types.h:
-
-/usr/include/linux/ioctl.h:
-
 /mnt/d/LEAP_Protocol/src/services/mgmt/leap_mgmt_process.c:
 
 /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h:
@@ -678,15 +739,9 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /usr/include/x86_64-linux-gnu/bits/typesizes.h:
 
-/mnt/d/LEAP_Protocol/src/leap_device_stack.c:
+/mnt/d/LEAP_Protocol/inc/leap/leap_controller_session_hub.h:
 
 /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
-
-/usr/include/x86_64-linux-gnu/bits/floatn.h:
-
-/usr/include/endian.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h:
 
@@ -696,9 +751,25 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /mnt/d/LEAP_Protocol/src/services/dir/leap_dir_controller.c:
 
+/usr/include/x86_64-linux-gnu/bits/ioctl-types.h:
+
+/mnt/d/LEAP_Protocol/src/leap_controller_peer.c:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h:
+
+/mnt/d/LEAP_Protocol/src/leap_device_stack.c:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h:
+
+/usr/include/net/if.h:
+
 /usr/include/x86_64-linux-gnu/bits/environments.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h:
+
+/usr/include/endian.h:
+
+/mnt/d/LEAP_Protocol/src/leap_controller_session_hub.c:
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
 
@@ -721,12 +792,6 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 /usr/include/x86_64-linux-gnu/asm/sockios.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/FILE.h:
-
-/mnt/d/LEAP_Protocol/src/services/disc/leap_disc_controller.c:
-
-/usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
 
 /usr/include/asm-generic/ioctl.h:
 
@@ -752,11 +817,15 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /usr/include/x86_64-linux-gnu/bits/byteswap.h:
 
+/usr/include/x86_64-linux-gnu/bits/struct_mutex.h:
+
+/mnt/d/LEAP_Protocol/src/leap_controller_sequence.c:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h:
+
+/usr/include/x86_64-linux-gnu/bits/in.h:
+
 /mnt/d/LEAP_Protocol/src/crc/leap_crc.c:
-
-/usr/include/x86_64-linux-gnu/asm/byteorder.h:
-
-/mnt/d/LEAP_Protocol/src/leap_controller_stack.c:
 
 /usr/include/x86_64-linux-gnu/bits/getopt_core.h:
 
@@ -788,12 +857,6 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h:
 
-/mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h:
-
-/mnt/d/LEAP_Protocol/src/leap_controller_peer.c:
-
-/usr/include/x86_64-linux-gnu/bits/ioctl-types.h:
-
 /usr/include/x86_64-linux-gnu/sys/select.h:
 
 /usr/include/unistd.h:
@@ -804,13 +867,17 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /usr/include/x86_64-linux-gnu/bits/wchar.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdio.h:
-
-/usr/include/string.h:
-
 /usr/include/x86_64-linux-gnu/gnu/stubs.h:
 
 /usr/include/x86_64-linux-gnu/bits/endian.h:
+
+/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
+
+/usr/include/x86_64-linux-gnu/bits/errno.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
+
+/usr/include/x86_64-linux-gnu/bits/floatn.h:
 
 /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_controller.c:
 
@@ -818,9 +885,25 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
-/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
+/usr/include/string.h:
 
-/usr/include/x86_64-linux-gnu/bits/errno.h:
+/usr/include/x86_64-linux-gnu/bits/stdio.h:
+
+/mnt/d/LEAP_Protocol/src/services/disc/leap_disc_controller.c:
+
+/usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/FILE.h:
+
+/usr/include/x86_64-linux-gnu/bits/select2.h:
+
+/usr/include/linux/ioctl.h:
+
+/usr/include/linux/types.h:
+
+/mnt/d/LEAP_Protocol/src/leap_controller_stack.c:
+
+/usr/include/x86_64-linux-gnu/asm/byteorder.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
 
@@ -854,10 +937,6 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 
 /mnt/d/LEAP_Protocol/src/transport/leap_raw_linux.c:
 
-/mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h:
-
-/usr/include/x86_64-linux-gnu/bits/in.h:
-
 /usr/include/asm-generic/errno.h:
 
 /usr/include/x86_64-linux-gnu/bits/socket_type.h:
@@ -881,8 +960,6 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 /usr/include/linux/swab.h:
 
 /usr/include/linux/stddef.h:
-
-/usr/include/net/if.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
 
@@ -917,11 +994,3 @@ CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o: /mnt/d/LEAP_Protocol/
 /usr/include/x86_64-linux-gnu/asm/swab.h:
 
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
-
-/usr/include/x86_64-linux-gnu/bits/ioctls.h:
-
-/usr/include/x86_64-linux-gnu/bits/poll.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_osockaddr.h:
-
-/usr/include/x86_64-linux-gnu/bits/poll2.h:

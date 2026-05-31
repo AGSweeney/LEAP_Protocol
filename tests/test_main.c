@@ -23,6 +23,7 @@ void leap_run_disc_controller_tests(void);
 void leap_run_dir_device_tests(void);
 void leap_run_controller_stack_tests(void);
 void leap_run_controller_peer_tests(void);
+void leap_run_controller_sequence_tests(void);
 void leap_run_controller_session_hub_tests(void);
 void leap_run_mgmt_controller_tests(void);
 void leap_run_device_stack_tests(void);
@@ -49,6 +50,7 @@ int main(void)
     leap_run_dir_device_tests();
     leap_run_controller_stack_tests();
     leap_run_controller_peer_tests();
+    leap_run_controller_sequence_tests();
     leap_run_controller_session_hub_tests();
     leap_run_mgmt_controller_tests();
     leap_run_device_stack_tests();

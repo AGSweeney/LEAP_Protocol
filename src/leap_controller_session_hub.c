@@ -75,6 +75,11 @@ void leap_controller_session_hub_init(
     {
         hub->config = *config;
     }
+    else
+    {
+        hub->config.default_peer.frame_sequence.enforce_session_match = 1;
+        hub->config.default_peer.pd.validate_exchange_reply         = 1;
+    }
 }
 
 void leap_controller_session_hub_reset(LeapControllerSessionHub* hub)

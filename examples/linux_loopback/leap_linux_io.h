@@ -19,6 +19,7 @@ typedef struct LeapLinuxIoShadow
     uint16_t safe_outputs;
     uint16_t io_status;
     int      safe_active;
+    int      outputs_dirty;
 } LeapLinuxIoShadow;
 
 void leap_linux_io_init(LeapLinuxIoShadow* io);

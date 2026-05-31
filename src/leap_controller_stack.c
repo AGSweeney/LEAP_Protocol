@@ -7,6 +7,7 @@
 
 #include "leap/leap_controller_stack.h"
 
+#include "leap/leap_controller_sequence.h"
 #include "leap/leap_disc_controller.h"
 
 #include <string.h>
@@ -72,7 +73,7 @@ static LeapControllerStackStatus leap_ctrl_stack_send(
             message_type,
             session_id,
             sequence,
-            stack->highest_peer_sequence,
+            stack->frame_seq.highest_peer_sequence,
             payload,
             payload_length) != 0)
     {
@@ -135,25 +136,46 @@ static int leap_ctrl_stack_peer_matches(
     return (memcmp(stack->peer_mac, src_mac, 6) == 0) ? 1 : 0;
 }
 
+static void leap_ctrl_stack_on_op_entered(LeapControllerStack* stack)
+{
+    if (stack == NULL)
+    {
+        return;
+    }
+
+    /*
+     * Multi-peer: bind frame-sequence state to this owner session so replies
+     * from a stale or foreign session_id are dropped in on_frame().
+     */
+    leap_controller_frame_sequence_bind_session(
+        &stack->frame_seq,
+        leap_mgmt_controller_session_id(&stack->mgmt));
+}
+
 static LeapControllerStackStatus leap_ctrl_stack_track_sequence(
     LeapControllerStack*      stack,
+    uint32_t                  frame_session_id,
     uint32_t                  sequence,
     LeapControllerStackEvent* event)
 {
+    LeapControllerFrameSequenceResult seq_result;
+    uint32_t                          gaps_before;
+
     if (stack == NULL)
     {
         return LEAP_CTRL_STACK_INVALID_ARG;
     }
 
-    if (sequence == 0u)
-    {
-        return LEAP_CTRL_STACK_OK;
-    }
+    gaps_before = stack->frame_seq.sequence_gaps;
 
-    if (stack->highest_peer_sequence != 0u &&
-        sequence <= stack->highest_peer_sequence)
+    seq_result = leap_controller_frame_sequence_accept(
+        &stack->frame_seq,
+        &stack->config.frame_sequence,
+        frame_session_id,
+        sequence);
+
+    if (seq_result == LEAP_CTRL_FRAME_SEQ_DUPLICATE)
     {
-        stack->duplicate_frames++;
         if (event != NULL)
         {
             event->flags |= LEAP_CTRL_STACK_FLAG_DUPLICATE_FRAME;
@@ -161,9 +183,28 @@ static LeapControllerStackStatus leap_ctrl_stack_track_sequence(
         return LEAP_CTRL_STACK_IGNORED;
     }
 
-    if (sequence > stack->highest_peer_sequence)
+    if (seq_result == LEAP_CTRL_FRAME_SEQ_SESSION_MISMATCH)
     {
-        stack->highest_peer_sequence = sequence;
+        if (event != NULL)
+        {
+            event->flags |= LEAP_CTRL_STACK_FLAG_SESSION_MISMATCH;
+        }
+        return LEAP_CTRL_STACK_IGNORED;
+    }
+
+    if (seq_result == LEAP_CTRL_FRAME_SEQ_OUT_OF_WINDOW)
+    {
+        if (event != NULL)
+        {
+            event->flags |= LEAP_CTRL_STACK_FLAG_FAULT;
+        }
+        return LEAP_CTRL_STACK_UNEXPECTED_REPLY;
+    }
+
+    if (seq_result == LEAP_CTRL_FRAME_SEQ_OK &&
+        stack->frame_seq.sequence_gaps > gaps_before && event != NULL)
+    {
+        event->flags |= LEAP_CTRL_STACK_FLAG_SEQUENCE_GAP;
     }
 
     return LEAP_CTRL_STACK_OK;
@@ -436,6 +477,12 @@ void leap_controller_stack_init(
 
     leap_mgmt_controller_init(&stack->mgmt, &stack->config.mgmt);
     leap_pd_controller_init(&stack->pd, &stack->config.pd);
+    leap_controller_frame_sequence_init(&stack->frame_seq);
+
+    if (config == NULL)
+    {
+        stack->config.frame_sequence.enforce_session_match = 1;
+    }
 }
 
 void leap_controller_stack_reset(LeapControllerStack* stack)
@@ -883,6 +930,7 @@ LeapControllerStackStatus leap_controller_stack_step(
 
         stack->phase       = LEAP_CTRL_STACK_OP;
         stack->last_status = LEAP_CTRL_STACK_OK;
+        leap_ctrl_stack_on_op_entered(stack);
         if (event != NULL)
         {
             event->status = LEAP_CTRL_STACK_OK;
@@ -957,6 +1005,7 @@ LeapControllerStackStatus leap_controller_stack_on_frame(
 
     seq_status = leap_ctrl_stack_track_sequence(
         stack,
+        view->header.session_id,
         view->header.sequence,
         event);
     if (seq_status == LEAP_CTRL_STACK_IGNORED)

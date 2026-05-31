@@ -5,6 +5,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o.d"
   "CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.o"
   "CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.o.d"
+  "CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o"
+  "CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o.d"
   "CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o"
   "CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o.d"
   "CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.o"

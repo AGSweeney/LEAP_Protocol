@@ -238,6 +238,11 @@ void leap_pd_controller_init(
         }
     }
 
+    if (config == NULL)
+    {
+        ctx->config.validate_exchange_reply = 1;
+    }
+
     ctx->pd_sequence = 1000u;
 }
 
@@ -285,6 +290,7 @@ void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
 
     printf(
         "PD stats: cycles=%llu ok=%llu fail=%llu hb=%llu timeouts=%llu "
+        "replies=%llu reply_reject=%llu seq_mismatch=%llu "
         "latency last=%llu avg=%llu max=%llu us "
         "period last=%llu avg=%llu min=%llu max=%llu us "
         "work last=%llu max=%llu overruns=%llu inputs=0x%04X\n",
@@ -293,6 +299,9 @@ void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
         (unsigned long long)ctx->stats.pd_sent_fail,
         (unsigned long long)ctx->stats.heartbeats_sent,
         (unsigned long long)ctx->stats.recv_timeouts,
+        (unsigned long long)ctx->stats.exchange_replies,
+        (unsigned long long)ctx->stats.reply_rejects,
+        (unsigned long long)ctx->stats.reply_sequence_mismatches,
         (unsigned long long)ctx->stats.last_latency_us,
         (unsigned long long)avg_latency,
         (unsigned long long)ctx->stats.max_latency_us,
@@ -424,6 +433,8 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
 
     if (pd->config.use_exchange != 0)
     {
+        uint32_t sent_process_sequence;
+
         payload_length = leap_pd_build_digital_exchange_mapped(
             payload,
             sizeof(payload),
@@ -437,6 +448,8 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
             pd->stats.pd_sent_fail++;
             return LEAP_PD_CTRL_BUILD_FAILED;
         }
+
+        sent_process_sequence = pd->pd_sequence - 1u;
 
         sequence = leap_mgmt_controller_next_sequence(mgmt);
         if (io->send_pd(
@@ -465,16 +478,57 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
             {
                 pd->stats.recv_timeouts++;
             }
-            else if (reply_length >=
-                     sizeof(LeapExchangeHeader) + read_payload_size + read_payload_size)
+            else
             {
-                const uint8_t* read_data =
-                    reply + sizeof(LeapExchangeHeader) + read_payload_size;
-                const LeapProfileDigital16x16* inputs =
-                    (const LeapProfileDigital16x16*)read_data;
+                LeapPdExchangeView   reply_view;
+                LeapExchangeStatus   reply_status;
+                LeapPdCommonStatus   validate_status;
+                const uint8_t*       read_data;
+                const LeapProfileDigital16x16* inputs;
 
-                pd->stats.exchange_replies++;
-                pd->stats.last_digital_inputs = inputs->digital_inputs;
+                if (pd->config.validate_exchange_reply != 0)
+                {
+                    validate_status = leap_pd_validate_exchange_reply(
+                        reply,
+                        reply_length,
+                        profile,
+                        sent_process_sequence,
+                        &reply_view,
+                        &reply_status);
+                }
+                else
+                {
+                    validate_status = leap_pd_exchange_view(
+                        reply,
+                        reply_length,
+                        &reply_view);
+                    if (validate_status == LEAP_PD_COMMON_OK)
+                    {
+                        memset(&reply_status, 0, sizeof(reply_status));
+                    }
+                }
+
+                if (validate_status == LEAP_PD_COMMON_SEQUENCE_MISMATCH)
+                {
+                    pd->stats.reply_sequence_mismatches++;
+                    pd->stats.reply_rejects++;
+                }
+                else if (validate_status != LEAP_PD_COMMON_OK)
+                {
+                    pd->stats.reply_rejects++;
+                }
+                else if (reply_length >=
+                         sizeof(LeapExchangeHeader) + read_payload_size +
+                             read_payload_size)
+                {
+                    read_data = reply + sizeof(LeapExchangeHeader) +
+                                read_payload_size;
+                    inputs =
+                        (const LeapProfileDigital16x16*)read_data;
+
+                    pd->stats.exchange_replies++;
+                    pd->stats.last_digital_inputs = inputs->digital_inputs;
+                }
             }
         }
     }

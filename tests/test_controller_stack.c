@@ -352,12 +352,12 @@ TEST(test_controller_stack_on_frame_duplicate_ignored)
     ASSERT_EQ_INT(
         leap_controller_stack_on_frame(&stack, k_device_mac, &view, &event),
         LEAP_CTRL_STACK_OK);
-    ASSERT_EQ_U32(stack.highest_peer_sequence, 7u);
+    ASSERT_EQ_U32(stack.frame_seq.highest_peer_sequence, 7u);
 
     ASSERT_EQ_INT(
         leap_controller_stack_on_frame(&stack, k_device_mac, &view, &event),
         LEAP_CTRL_STACK_IGNORED);
-    ASSERT_EQ_U32(stack.duplicate_frames, 1u);
+    ASSERT_EQ_U32(stack.frame_seq.duplicate_frames, 1u);
     ASSERT_TRUE((event.flags & LEAP_CTRL_STACK_FLAG_DUPLICATE_FRAME) != 0u);
 }
 
@@ -369,7 +369,7 @@ TEST(test_controller_stack_send_acks_peer_sequence)
 
     leap_controller_stack_init(&stack, NULL);
     ctrl_stack_put_op_state(&stack);
-    stack.highest_peer_sequence = 12u;
+    stack.frame_seq.highest_peer_sequence = 12u;
 
     memset(&mock, 0, sizeof(mock));
     memset(&io, 0, sizeof(io));

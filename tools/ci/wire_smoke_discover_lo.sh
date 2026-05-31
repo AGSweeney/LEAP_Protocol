@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #
 # Multi-device LEAP discovery smoke test (requires CAP_NET_RAW / sudo).
-# Creates a bridge with two veth peers, runs one device on each, scans from bridge.
 #
 # Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
 # SPDX-License-Identifier: MIT
@@ -23,11 +22,11 @@ MAC_B="${LEAP_DISCOVER_MAC_B:-02:aa:00:00:00:02}"
 DEVICE="$BUILD/leap_linux_device"
 DISCOVER="$BUILD/leap_linux_discover"
 
-if sudo -n true 2>/dev/null; then
-    SUDO=(sudo -n)
-else
-    SUDO=(sudo)
-fi
+# shellcheck source=tools/ci/wire_smoke_common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/wire_smoke_common.sh"
+
+wire_smoke_common_init_sudo
+SUDO=("${WIRE_SMOKE_SUDO[@]}")
 
 wire_smoke_skip() {
     echo "discover smoke: skipped — $*"
@@ -39,16 +38,12 @@ wire_smoke_fail() {
     exit 1
 }
 
-wire_smoke_is_wsl2() {
-    grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null
-}
-
 wire_smoke_preflight() {
     if [[ "${LEAP_SKIP_WIRE_SMOKE:-0}" == "1" ]]; then
         wire_smoke_skip "LEAP_SKIP_WIRE_SMOKE=1"
     fi
 
-    if wire_smoke_is_wsl2; then
+    if wire_smoke_common_is_wsl2; then
         wire_smoke_skip "WSL2 cannot bind AF_PACKET (use native Linux or CI)"
     fi
 
@@ -85,29 +80,9 @@ wire_smoke_wait_for_device() {
     return 1
 }
 
-wire_smoke_setup_bridge() {
-    "${SUDO[@]}" ip link del "$VETH_A" 2>/dev/null || true
-    "${SUDO[@]}" ip link del "$BRIDGE" 2>/dev/null || true
-
-    "${SUDO[@]}" ip link add "$VETH_A" type veth peer name "$VETH_B"
-    "${SUDO[@]}" ip link set "$VETH_A" address "$MAC_A"
-    "${SUDO[@]}" ip link set "$VETH_B" address "$MAC_B"
-    "${SUDO[@]}" ip link set "$VETH_A" up
-    "${SUDO[@]}" ip link set "$VETH_B" up
-
-    "${SUDO[@]}" ip link add "$BRIDGE" type bridge
-    "${SUDO[@]}" ip link set "$VETH_A" master "$BRIDGE"
-    "${SUDO[@]}" ip link set "$VETH_B" master "$BRIDGE"
-    "${SUDO[@]}" ip link set "$BRIDGE" up
-}
-
-wire_smoke_teardown_bridge() {
-    "${SUDO[@]}" ip link del "$VETH_A" 2>/dev/null || true
-    "${SUDO[@]}" ip link del "$BRIDGE" 2>/dev/null || true
-}
-
 wire_smoke_preflight
-wire_smoke_setup_bridge
+
+wire_smoke_common_veth_setup "$BRIDGE" "$VETH_A" "$VETH_B" "$MAC_A" "$MAC_B"
 
 DEV_LOG_A="$(mktemp)"
 DEV_LOG_B="$(mktemp)"
@@ -117,7 +92,7 @@ cleanup() {
     "${SUDO[@]}" kill "$DEV_PID_A" "$DEV_PID_B" 2>/dev/null || true
     wait "$DEV_PID_A" 2>/dev/null || true
     wait "$DEV_PID_B" 2>/dev/null || true
-    wire_smoke_teardown_bridge
+    wire_smoke_common_veth_teardown
     rm -f "$DEV_LOG_A" "$DEV_LOG_B" "$DISC_LOG"
 }
 trap cleanup EXIT
@@ -135,6 +110,8 @@ fi
 if ! wire_smoke_wait_for_device "$DEV_LOG_B" "$DEV_PID_B"; then
     wire_smoke_fail "device B startup failed"
 fi
+
+sleep 0.5
 
 echo "discover smoke: scanning for peers (${SCAN_MS} ms)"
 set +e

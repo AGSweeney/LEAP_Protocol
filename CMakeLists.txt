@@ -27,6 +27,7 @@ add_library(leap_core STATIC
   src/leap_device_stack.c
   src/leap_controller_stack.c
   src/leap_controller_peer.c
+  src/leap_controller_sequence.c
   src/leap_controller_session_hub.c
   src/transport/leap_raw_linux.c
 )
@@ -54,6 +55,7 @@ add_executable(leap_tests
   tests/test_dir_device.c
   tests/test_controller_stack.c
   tests/test_controller_peer.c
+  tests/test_controller_sequence.c
   tests/test_controller_session_hub.c
   tests/test_mgmt_controller.c
   tests/test_device_stack.c

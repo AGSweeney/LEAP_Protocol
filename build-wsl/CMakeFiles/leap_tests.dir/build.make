@@ -321,10 +321,24 @@ CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_controller_peer.c -o CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.s
 
+CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o: CMakeFiles/leap_tests.dir/flags.make
+CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o: /mnt/d/LEAP_Protocol/tests/test_controller_sequence.c
+CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building C object CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o -MF CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o -c /mnt/d/LEAP_Protocol/tests/test_controller_sequence.c
+
+CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/tests/test_controller_sequence.c > CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.i
+
+CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_controller_sequence.c -o CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.s
+
 CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o: /mnt/d/LEAP_Protocol/tests/test_controller_session_hub.c
 CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building C object CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building C object CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o -MF CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o -c /mnt/d/LEAP_Protocol/tests/test_controller_session_hub.c
 
 CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.i: cmake_force
@@ -338,7 +352,7 @@ CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o: /mnt/d/LEAP_Protocol/tests/test_mgmt_controller.c
 CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building C object CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building C object CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o -MF CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o -c /mnt/d/LEAP_Protocol/tests/test_mgmt_controller.c
 
 CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.i: cmake_force
@@ -352,7 +366,7 @@ CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o: /mnt/d/LEAP_Protocol/tests/test_device_stack.c
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building C object CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building C object CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o -MF CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o -c /mnt/d/LEAP_Protocol/tests/test_device_stack.c
 
 CMakeFiles/leap_tests.dir/tests/test_device_stack.c.i: cmake_force
@@ -366,7 +380,7 @@ CMakeFiles/leap_tests.dir/tests/test_device_stack.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o: /mnt/d/LEAP_Protocol/tests/test_comms_loss.c
 CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building C object CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building C object CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o -MF CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o -c /mnt/d/LEAP_Protocol/tests/test_comms_loss.c
 
 CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.i: cmake_force
@@ -380,7 +394,7 @@ CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o: /mnt/d/LEAP_Protocol/tests/test_raw_linux_stats.c
 CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building C object CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Building C object CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o -MF CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o -c /mnt/d/LEAP_Protocol/tests/test_raw_linux_stats.c
 
 CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.i: cmake_force
@@ -394,7 +408,7 @@ CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/test_util.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/test_util.c.o: /mnt/d/LEAP_Protocol/tests/test_util.c
 CMakeFiles/leap_tests.dir/tests/test_util.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Building C object CMakeFiles/leap_tests.dir/tests/test_util.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_25) "Building C object CMakeFiles/leap_tests.dir/tests/test_util.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_util.c.o -MF CMakeFiles/leap_tests.dir/tests/test_util.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_util.c.o -c /mnt/d/LEAP_Protocol/tests/test_util.c
 
 CMakeFiles/leap_tests.dir/tests/test_util.c.i: cmake_force
@@ -408,7 +422,7 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.s: cmake_force
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: /mnt/d/LEAP_Protocol/tests/leap_test_frame.c
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_25) "Building C object CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_26) "Building C object CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o -MF CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o.d -o CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o -c /mnt/d/LEAP_Protocol/tests/leap_test_frame.c
 
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.i: cmake_force
@@ -439,6 +453,7 @@ leap_tests_OBJECTS = \
 "CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.o" \
+"CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o" \
@@ -468,6 +483,7 @@ leap_tests: CMakeFiles/leap_tests.dir/tests/test_disc_controller.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.o
+leap_tests: CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_controller_session_hub.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_mgmt_controller.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o
@@ -478,7 +494,7 @@ leap_tests: CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o
 leap_tests: CMakeFiles/leap_tests.dir/build.make
 leap_tests: libleap_core.a
 leap_tests: CMakeFiles/leap_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_26) "Linking C executable leap_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl/CMakeFiles --progress-num=$(CMAKE_PROGRESS_27) "Linking C executable leap_tests"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/leap_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

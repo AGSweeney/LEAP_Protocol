@@ -29,6 +29,8 @@ typedef struct LeapPdControllerStats
     uint64_t heartbeats_sent;
     uint64_t exchange_replies;
     uint64_t recv_timeouts;
+    uint64_t reply_rejects;
+    uint64_t reply_sequence_mismatches;
     uint64_t last_latency_us;
     uint64_t max_latency_us;
     uint64_t total_latency_us;
@@ -50,6 +52,11 @@ typedef struct LeapPdControllerConfig
     uint32_t         profile_id;
     uint32_t         heartbeat_every_n_cycles;
     LeapPdProfileMap profile;
+    /*
+     * When non-zero (default), validate EXCHANGE_REPLY profile, endpoints, and
+     * process_sequence before accepting inputs (multi-peer safety).
+     */
+    int              validate_exchange_reply;
 } LeapPdControllerConfig;
 
 typedef enum LeapPdControllerStatus

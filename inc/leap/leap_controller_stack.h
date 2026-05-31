@@ -18,6 +18,7 @@
 #include "leap/leap_frame.h"
 #include "leap/leap_mgmt_controller.h"
 #include "leap/leap_pd_controller.h"
+#include "leap/leap_controller_sequence.h"
 #include "leap/leap_protocol.h"
 
 #ifdef __cplusplus
@@ -43,6 +44,7 @@ typedef struct LeapControllerStackConfig
      */
     int                      single_peer_auto_select;
     uint8_t                  target_peer_mac[6];
+    LeapControllerFrameSequenceConfig frame_sequence;
 } LeapControllerStackConfig;
 
 typedef enum LeapControllerStackPhase
@@ -78,6 +80,8 @@ typedef enum LeapControllerStackStatus
 #define LEAP_CTRL_STACK_FLAG_FAULT            (1u << 4)
 #define LEAP_CTRL_STACK_FLAG_DUPLICATE_FRAME  (1u << 5)
 #define LEAP_CTRL_STACK_FLAG_MGMT_PROCESSED   (1u << 6)
+#define LEAP_CTRL_STACK_FLAG_SEQUENCE_GAP     (1u << 7)
+#define LEAP_CTRL_STACK_FLAG_SESSION_MISMATCH (1u << 8)
 
 typedef struct LeapControllerStackIo
 {
@@ -119,9 +123,7 @@ typedef struct LeapControllerStack
     uint8_t peer_mac[6];
     int     peer_bound;
 
-    /* Highest inbound sequence seen from peer (ack on next send). */
-    uint32_t highest_peer_sequence;
-    uint32_t duplicate_frames;
+    LeapControllerFrameSequenceState frame_seq;
 } LeapControllerStack;
 
 typedef struct LeapControllerStackEvent

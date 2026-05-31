@@ -35,16 +35,17 @@ network stack. The CI wire-smoke script auto-skips on WSL2.
 
 ### CI wire smoke
 
-GitHub Actions (`ubuntu-latest`) runs the end-to-end loopback test after unit
-tests:
+GitHub Actions runs end-to-end tests after unit tests. Hosted runners expose
+`lo` but often reject `AF_PACKET` bind with `ENODEV`, so CI smoke scripts
+create an isolated **veth + bridge** pair automatically when `CI=true`:
 
 ```bash
 LEAP_BUILD_DIR=build tools/ci/wire_smoke_lo.sh
+LEAP_BUILD_DIR=build tools/ci/wire_smoke_discover_lo.sh
 ```
 
-Set `LEAP_SKIP_WIRE_SMOKE=1` to skip locally. CI sets `LEAP_WIRE_SMOKE_REQUIRED=1`
-so the job fails if AF_PACKET on `lo` is unavailable (this should not happen on
-standard GitHub-hosted Linux runners).
+Set `LEAP_SKIP_WIRE_SMOKE=1` to skip locally. Set `LEAP_FORCE_VETH=1` to use
+the veth bridge on any host (useful when `lo` fails outside CI).
 
 ## Build
 

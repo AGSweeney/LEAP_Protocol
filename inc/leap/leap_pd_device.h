@@ -66,6 +66,10 @@ typedef struct LeapPdDeviceIoBinding
     uint16_t* digital_outputs;
     uint16_t* digital_inputs;
     uint16_t* io_status;
+    /*
+     * Optional: set to 1 when digital_outputs changes (skip redundant I/O work).
+     */
+    int*      outputs_dirty;
 } LeapPdDeviceIoBinding;
 
 typedef struct LeapPdDeviceResult

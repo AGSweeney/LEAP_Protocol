@@ -45,5 +45,7 @@ CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.o: \
  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h /usr/include/string.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
+ /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

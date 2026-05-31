@@ -173,7 +173,14 @@ static void leap_pd_apply_digital_outputs(
 {
     if (io_binding != NULL && io_binding->digital_outputs != NULL)
     {
-        *io_binding->digital_outputs = outputs;
+        if (*io_binding->digital_outputs != outputs)
+        {
+            *io_binding->digital_outputs = outputs;
+            if (io_binding->outputs_dirty != NULL)
+            {
+                *io_binding->outputs_dirty = 1;
+            }
+        }
     }
 
     result->digital_outputs_applied = outputs;
@@ -200,8 +207,11 @@ static LeapPdDeviceStatus leap_pd_handle_write_endpoint(
         return LEAP_PD_DEVICE_REJECTED;
     }
 
-    if (view.header->profile_id != profile->profile_id ||
-        view.header->endpoint_id != profile->write_endpoint_id)
+    if (leap_pd_profile_validate_write(
+            profile,
+            view.header->profile_id,
+            view.header->endpoint_id,
+            view.header->data_length) != LEAP_PD_COMMON_OK)
     {
         result->status     = LEAP_PD_DEVICE_REJECTED;
         result->error_code = LEAP_STATUS_PROFILE_MISMATCH;
@@ -250,9 +260,13 @@ static LeapPdDeviceStatus leap_pd_handle_exchange(
         return LEAP_PD_DEVICE_REJECTED;
     }
 
-    if (view.header->profile_id != profile->profile_id ||
-        view.header->write_endpoint_id != profile->write_endpoint_id ||
-        view.header->read_endpoint_id != profile->read_endpoint_id)
+    if (leap_pd_profile_validate_exchange(
+            profile,
+            view.header->profile_id,
+            view.header->write_endpoint_id,
+            view.header->read_endpoint_id,
+            view.header->write_length,
+            view.header->read_length) != LEAP_PD_COMMON_OK)
     {
         result->status     = LEAP_PD_DEVICE_REJECTED;
         result->error_code = LEAP_STATUS_PROFILE_MISMATCH;

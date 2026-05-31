@@ -31,6 +31,7 @@ CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/discover_main.c.o: \
  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h \
  /usr/include/stdio.h /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \

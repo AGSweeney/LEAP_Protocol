@@ -68,8 +68,9 @@ collect up to 16 peers). Known peers can be brought to OP with
 
 Concurrent multi-peer control uses `leap_controller_session_hub`: each bound peer
 gets an independent `LeapControllerStack` (session ID, sequence, lease, PD state).
-Use `leap_controller_session_hub_run_round_robin()` for cyclic I/O across all OP
-peers on one shared transport.
+Frame-level replay protection (`leap_controller_sequence`), profile-based PD
+endpoint validation, and exchange-reply sequence checks harden multi-peer I/O.
+See `docs/LEAP_MULTI_PEER_NOTES.md` for remaining multi-controller risks.
 
 ## Roadmap
 

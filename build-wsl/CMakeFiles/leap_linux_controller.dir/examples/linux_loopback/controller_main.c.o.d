@@ -31,6 +31,7 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/controller_main.c.o
  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.h \
  /usr/include/signal.h \
  /usr/include/x86_64-linux-gnu/bits/signum-generic.h \
