@@ -87,6 +87,11 @@ typedef int (*leap_pcap_set_immediate_mode_fn)(pcap_t*, int);
 typedef int (*leap_pcap_setbuff_fn)(pcap_t*, int);
 typedef int (*leap_pcap_setnonblock_fn)(pcap_t*, int, char*);
 typedef int (*leap_pcap_setdirection_fn)(pcap_t*, int);
+typedef int (*leap_pcap_set_tstamp_type_fn)(pcap_t*, int);
+
+/* libpcap PCAP_TSTAMP_* values (stable across Npcap releases). */
+#define LEAP_PCAP_TSTAMP_HOST_HIPREC 2
+#define LEAP_PCAP_TSTAMP_ADAPTER     3
 
 #define LEAP_PCAP_D_INOUT 0
 #define LEAP_PCAP_D_IN    1
@@ -109,6 +114,7 @@ typedef struct LeapWinpcapApi
     leap_pcap_setbuff_fn           setbuff;
     leap_pcap_setnonblock_fn       setnonblock;
     leap_pcap_setdirection_fn      setdirection;
+    leap_pcap_set_tstamp_type_fn   set_tstamp_type;
 } LeapWinpcapApi;
 
 static LeapWinpcapApi g_winpcap;
@@ -303,6 +309,23 @@ static void leap_winpcap_tune_capture_handle(pcap_t* handle, int physical_nic)
     {
         (void)g_winpcap.setmintocopy(handle, 0);
     }
+
+    if (g_winpcap.set_tstamp_type != NULL)
+    {
+        static const int k_tstamp_prefs[] = {
+            LEAP_PCAP_TSTAMP_HOST_HIPREC,
+            LEAP_PCAP_TSTAMP_ADAPTER,
+        };
+        unsigned ti;
+
+        for (ti = 0u; ti < (sizeof(k_tstamp_prefs) / sizeof(k_tstamp_prefs[0])); ti++)
+        {
+            if (g_winpcap.set_tstamp_type(handle, k_tstamp_prefs[ti]) == 0)
+            {
+                break;
+            }
+        }
+    }
 }
 
 static int leap_winpcap_is_loopback_device(const char* device_name)
@@ -495,6 +518,7 @@ loaded:
     LOAD_OPT(setbuff);
     LOAD_OPT(setnonblock);
     LOAD_OPT(setdirection);
+    LOAD_OPT(set_tstamp_type);
 
 #undef LOAD_REQ
 #undef LOAD_OPT
@@ -1108,6 +1132,63 @@ static int leap_winpcap_process_packet(
     return 1;
 }
 
+static uint64_t leap_winpcap_pkthdr_us(const struct pcap_pkthdr* header)
+{
+    if (header == NULL)
+    {
+        return 0u;
+    }
+
+    return ((uint64_t)(unsigned long)header->ts.tv_sec * 1000000u) +
+           (uint64_t)(unsigned long)header->ts.tv_usec;
+}
+
+static uint64_t leap_winpcap_capture_mono_us(
+    LeapRawWinpcapSocket*     sock,
+    const struct pcap_pkthdr* header)
+{
+    uint64_t pcap_us;
+    uint64_t mono_now;
+    int64_t  delta_us;
+    int64_t  mapped_us;
+
+    if (sock == NULL || header == NULL)
+    {
+        return leap_win_monotonic_us();
+    }
+
+    pcap_us  = leap_winpcap_pkthdr_us(header);
+    mono_now = leap_win_monotonic_us();
+
+    if (sock->capture_time_synced == 0)
+    {
+        sock->capture_base_pcap_us   = pcap_us;
+        sock->capture_base_mono_us   = mono_now;
+        sock->capture_time_synced    = 1;
+        return mono_now;
+    }
+
+    delta_us = (int64_t)pcap_us - (int64_t)sock->capture_base_pcap_us;
+    mapped_us =
+        (int64_t)sock->capture_base_mono_us + delta_us;
+    if (mapped_us < 0)
+    {
+        return mono_now;
+    }
+
+    /*
+     * Default HOST timestamps on some Windows/Npcap NIC paths quantize to
+     * ~10 ms. Mapped pcap time can sit far ahead of QPC at read time; clamp
+     * so wire recv never exceeds when userspace actually read the packet.
+     */
+    if ((uint64_t)mapped_us > mono_now)
+    {
+        return mono_now;
+    }
+
+    return (uint64_t)mapped_us;
+}
+
 static int leap_winpcap_next_ex_any(
     LeapRawWinpcapSocket* sock,
     struct pcap_pkthdr**  header_out,
@@ -1161,7 +1242,8 @@ int leap_raw_winpcap_recv(
     uint8_t*              payload,
     size_t                payload_capacity,
     size_t*               payload_length,
-    int                   timeout_ms)
+    int                   timeout_ms,
+    uint64_t*             capture_mono_us_out)
 {
     struct pcap_pkthdr* header;
     const u_char*      packet;
@@ -1176,6 +1258,10 @@ int leap_raw_winpcap_recv(
     }
 
     *payload_length = 0u;
+    if (capture_mono_us_out != NULL)
+    {
+        *capture_mono_us_out = 0u;
+    }
 
     if (timeout_ms < 0)
     {
@@ -1199,6 +1285,10 @@ int leap_raw_winpcap_recv(
                 sock->stats.rx_frames_ok++;
                 sock->stats.rx_bytes += *payload_length;
                 leap_winpcap_clear_errno();
+                if (capture_mono_us_out != NULL)
+                {
+                    *capture_mono_us_out = leap_win_monotonic_us();
+                }
                 return 0;
             }
 
@@ -1231,6 +1321,11 @@ int leap_raw_winpcap_recv(
                 payload_length);
             if (result == 1)
             {
+                if (capture_mono_us_out != NULL)
+                {
+                    *capture_mono_us_out =
+                        leap_winpcap_capture_mono_us(sock, header);
+                }
                 return 0;
             }
 
@@ -1253,6 +1348,10 @@ int leap_raw_winpcap_recv(
             sock->stats.rx_frames_ok++;
             sock->stats.rx_bytes += *payload_length;
             leap_winpcap_clear_errno();
+            if (capture_mono_us_out != NULL)
+            {
+                *capture_mono_us_out = leap_win_monotonic_us();
+            }
             return 0;
         }
 
@@ -1298,6 +1397,11 @@ int leap_raw_winpcap_recv(
             payload_length);
         if (result == 1)
         {
+            if (capture_mono_us_out != NULL)
+            {
+                *capture_mono_us_out =
+                    leap_winpcap_capture_mono_us(sock, header);
+            }
             return 0;
         }
 
@@ -1448,7 +1552,8 @@ int leap_raw_winpcap_recv(
     uint8_t*              payload,
     size_t                payload_capacity,
     size_t*               payload_length,
-    int                   timeout_ms)
+    int                   timeout_ms,
+    uint64_t*             capture_mono_us_out)
 {
     (void)sock;
     (void)src_mac;
@@ -1456,6 +1561,7 @@ int leap_raw_winpcap_recv(
     (void)payload_capacity;
     (void)payload_length;
     (void)timeout_ms;
+    (void)capture_mono_us_out;
     return -1;
 }
 

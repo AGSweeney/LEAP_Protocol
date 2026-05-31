@@ -638,6 +638,11 @@ LeapPdControllerStatus leap_controller_session_hub_run_parallel_lap(
         ran_any = 1;
     }
 
+    if (ran_any != 0 && io->drain_pending_replies != NULL)
+    {
+        io->drain_pending_replies(io->user_ctx);
+    }
+
     for (i = 0u; i < LEAP_CTRL_MAX_PEERS; i++)
     {
         if (hub->slots[i].in_use == 0)
@@ -649,6 +654,11 @@ LeapPdControllerStatus leap_controller_session_hub_run_parallel_lap(
             LEAP_CTRL_STACK_OP)
         {
             continue;
+        }
+
+        if (io->drain_pending_replies != NULL)
+        {
+            io->drain_pending_replies(io->user_ctx);
         }
 
         status = leap_controller_session_hub_pd_finish(

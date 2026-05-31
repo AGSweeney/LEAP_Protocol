@@ -258,7 +258,8 @@ int main(int argc, char** argv)
                 rx,
                 sizeof(rx),
                 &rx_len,
-                100) == 0)
+                100,
+                NULL) == 0)
         {
             LeapDeviceStackStatus status;
 

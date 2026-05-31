@@ -189,7 +189,8 @@ static int win_smoke_coop_recv(
                 payload,
                 payload_capacity,
                 payload_length,
-                chunk_ms) != 0)
+                chunk_ms,
+                NULL) != 0)
         {
             if (timeout_ms == 0)
             {
@@ -313,7 +314,8 @@ static void win_smoke_pump_pending(WinSmokeCoopCtx* ctx, unsigned max_frames)
                 payload,
                 sizeof(payload),
                 &payload_length,
-                10) != 0)
+                10,
+                NULL) != 0)
         {
             break;
         }

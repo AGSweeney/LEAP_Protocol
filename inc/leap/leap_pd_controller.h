@@ -139,6 +139,12 @@ typedef struct LeapPdControllerIo
         int            timeout_ms,
         uint64_t*      reply_recv_us_out);
 
+    /*
+     * Optional: pull buffered inbound PD replies into a mailbox before finish
+     * slots run (parallel hub). NULL on transports without buffering.
+     */
+    void (*drain_pending_replies)(void* user_ctx);
+
     uint64_t (*monotonic_us)(void* user_ctx);
 } LeapPdControllerIo;
 

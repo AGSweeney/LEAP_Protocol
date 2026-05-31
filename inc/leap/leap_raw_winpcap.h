@@ -62,6 +62,9 @@ typedef struct LeapRawWinpcapSocket
     size_t                last_rx_payload_len;
     uint32_t              last_rx_eth_caplen;
     uint8_t               last_rx_payload[512];
+    int                   capture_time_synced;
+    uint64_t              capture_base_pcap_us;
+    uint64_t              capture_base_mono_us;
     LeapRawWinpcapStats   stats;
 } LeapRawWinpcapSocket;
 
@@ -88,7 +91,8 @@ int leap_raw_winpcap_recv(
     uint8_t*              payload,
     size_t                payload_capacity,
     size_t*               payload_length,
-    int                   timeout_ms);
+    int                   timeout_ms,
+    uint64_t*             capture_mono_us_out);
 
 uint64_t leap_raw_winpcap_monotonic_us(void);
 

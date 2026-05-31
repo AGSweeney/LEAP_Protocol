@@ -56,7 +56,8 @@ int leap_win_recv_leap(
     uint8_t*              payload,
     size_t                payload_capacity,
     size_t*               payload_length,
-    int                   timeout_ms);
+    int                   timeout_ms,
+    uint64_t*             capture_mono_us_out);
 
 void leap_win_print_mac(const char* label, const uint8_t* mac);
 
@@ -102,6 +103,9 @@ int leap_win_shared_recv_leap(
     uint8_t*                payload,
     size_t                  payload_capacity,
     size_t*                 payload_length,
-    int                     timeout_ms);
+    int                     timeout_ms,
+    uint64_t*               capture_mono_us_out);
+
+void leap_win_shared_pd_mailbox_drain(LeapWinSharedTransport* transport);
 
 #endif /* LEAP_WIN_IO_H */

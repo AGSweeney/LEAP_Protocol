@@ -74,6 +74,66 @@ static void leap_pd_ctrl_update_latency(
     }
 }
 
+#define LEAP_PD_PCAP_QUANT_RTT_LO_US 7500u
+#define LEAP_PD_PCAP_QUANT_RTT_HI_US 11000u
+#define LEAP_PD_PARALLEL_WIRE_RTT_DEFAULT_US 1500u
+
+static int leap_pd_ctrl_rtt_looks_pcap_quantized(uint64_t rtt_us)
+{
+    return (rtt_us >= LEAP_PD_PCAP_QUANT_RTT_LO_US &&
+            rtt_us <= LEAP_PD_PCAP_QUANT_RTT_HI_US) ? 1 : 0;
+}
+
+/*
+ * Windows Npcap can stamp ~10 ms HOST timestamps on replies read after the
+ * wire event. Parallel finish slots >= 1 see the reply before finish_start;
+ * rewrite obvious quant buckets to a sub-ms wire time.
+ */
+static void leap_pd_ctrl_sanitize_parallel_reply_recv_us(
+    const LeapPdControllerContext* pd,
+    uint64_t                       cycle_start_us,
+    uint64_t                       finish_start_us,
+    uint64_t*                      reply_recv_us_io)
+{
+    uint64_t rtt_us;
+    uint64_t finish_lead_us;
+    uint64_t corrected_rtt_us;
+
+    if (pd == NULL || reply_recv_us_io == NULL ||
+        *reply_recv_us_io <= cycle_start_us ||
+        pd->config.hub_parallel_finish == 0 ||
+        pd->config.hub_finish_slot == 0u)
+    {
+        return;
+    }
+
+    rtt_us = *reply_recv_us_io - cycle_start_us;
+    if (leap_pd_ctrl_rtt_looks_pcap_quantized(rtt_us) == 0)
+    {
+        return;
+    }
+
+    finish_lead_us = (finish_start_us > cycle_start_us)
+                         ? (finish_start_us - cycle_start_us)
+                         : 0u;
+
+    if (finish_lead_us > 0u && finish_lead_us < rtt_us)
+    {
+        corrected_rtt_us = finish_lead_us - 100u;
+    }
+    else
+    {
+        corrected_rtt_us = LEAP_PD_PARALLEL_WIRE_RTT_DEFAULT_US;
+    }
+
+    if (corrected_rtt_us < 500u)
+    {
+        corrected_rtt_us = 500u;
+    }
+
+    *reply_recv_us_io = cycle_start_us + corrected_rtt_us;
+}
+
 static void leap_pd_ctrl_update_network_rtt(
     LeapPdControllerContext* ctx,
     uint64_t                 send_us,
@@ -353,6 +413,12 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
         pd->stats.lost_frames++;
         return LEAP_PD_CTRL_OK;
     }
+
+    leap_pd_ctrl_sanitize_parallel_reply_recv_us(
+        pd,
+        cycle_start_us,
+        finish_start_us,
+        &reply_recv_us);
 
     if (reply_recv_us_out != NULL)
     {
