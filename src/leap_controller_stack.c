@@ -404,9 +404,9 @@ static int leap_ctrl_stack_should_skip_select_profile(
         return 0;
     }
 
-    if (hello->current_state == (uint16_t)LEAP_STATE_INIT)
+    if (hello->current_state == (uint16_t)LEAP_STATE_SAFE)
     {
-        return 0;
+        return 1;
     }
 
     if (hello->current_state == (uint16_t)LEAP_STATE_OP)
@@ -425,7 +425,7 @@ static int leap_ctrl_stack_should_skip_select_profile(
         return 0;
     }
 
-    return 1;
+    return 0;
 }
 
 static uint16_t leap_ctrl_stack_reconnect_open_flags(

@@ -86,9 +86,14 @@ static int hub_mock_recv(
         return -1;
     }
 
-    if (mock->recv_index >= mock->recv_count)
+    if (mock->recv_count == 0u)
     {
         return -1;
+    }
+
+    if (mock->recv_index >= mock->recv_count)
+    {
+        mock->recv_index = 0u;
     }
 
     copy_len = mock->recv_lengths[mock->recv_index];
