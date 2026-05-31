@@ -9,9 +9,14 @@
 
 void leap_run_crc_tests(void);
 void leap_run_frame_vector_tests(void);
+void leap_run_frame_roundtrip_tests(void);
+void leap_run_frame_fuzz_tests(void);
+void leap_run_frame_fragment_tests(void);
 void leap_run_mgmt_device_tests(void);
+void leap_run_mgmt_boundary_tests(void);
 void leap_run_mgmt_process_tests(void);
 void leap_run_pd_device_tests(void);
+void leap_run_disc_device_tests(void);
 void leap_run_device_stack_tests(void);
 
 int main(void)
@@ -20,9 +25,14 @@ int main(void)
 
     leap_run_crc_tests();
     leap_run_frame_vector_tests();
+    leap_run_frame_roundtrip_tests();
+    leap_run_frame_fuzz_tests();
+    leap_run_frame_fragment_tests();
     leap_run_mgmt_device_tests();
+    leap_run_mgmt_boundary_tests();
     leap_run_mgmt_process_tests();
     leap_run_pd_device_tests();
+    leap_run_disc_device_tests();
     leap_run_device_stack_tests();
 
     return leap_test_summary();

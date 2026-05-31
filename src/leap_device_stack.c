@@ -7,16 +7,42 @@
 
 #include "leap/leap_device_stack.h"
 
+#include "leap/leap_disc_device.h"
+
 #include <string.h>
 
 void leap_device_stack_init(LeapDeviceStack* stack, const LeapMgmtDeviceConfig* config)
+{
+    LeapDeviceStackConfig full;
+
+    memset(&full, 0, sizeof(full));
+    if (config != NULL)
+    {
+        full.mgmt = *config;
+    }
+
+    leap_device_stack_init_full(stack, &full);
+}
+
+void leap_device_stack_init_full(LeapDeviceStack* stack, const LeapDeviceStackConfig* config)
 {
     if (stack == NULL)
     {
         return;
     }
 
-    leap_mgmt_device_init(&stack->mgmt, config);
+    memset(stack, 0, sizeof(*stack));
+
+    if (config != NULL)
+    {
+        leap_mgmt_device_init(&stack->mgmt, &config->mgmt);
+        leap_disc_device_init(&stack->disc, &config->disc);
+    }
+    else
+    {
+        leap_mgmt_device_init(&stack->mgmt, NULL);
+        leap_disc_device_init(&stack->disc, NULL);
+    }
 }
 
 LeapDeviceStackStatus leap_device_stack_process_frame(
@@ -31,8 +57,10 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
     LeapFrameParseResult  parse_result;
     LeapMgmtProcessResult mgmt_result;
     LeapPdDeviceResult    pd_result;
+    LeapDiscDeviceResult  disc_result;
     LeapMgmtProcessStatus mgmt_status;
     LeapPdDeviceStatus    pd_status;
+    LeapDiscDeviceStatus  disc_status;
     uint16_t              service_id;
 
     if (result == NULL)
@@ -91,6 +119,37 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
 
         result->status = LEAP_DEVICE_STACK_MGMT_ERROR;
         return LEAP_DEVICE_STACK_MGMT_ERROR;
+    }
+
+    if (service_id == (uint16_t)LEAP_SERVICE_DISC)
+    {
+        disc_status = leap_disc_device_process_frame(
+            &stack->disc,
+            &stack->mgmt,
+            source_mac,
+            data,
+            length,
+            &disc_result);
+
+        result->frame        = disc_result.frame;
+        result->device_state = leap_mgmt_device_get_state(&stack->mgmt);
+        result->error_code   = disc_result.error_code;
+        result->disc_message_type   = disc_result.message_type;
+        result->disc_payload_length = disc_result.payload_length;
+        (void)memcpy(
+            result->disc_payload,
+            disc_result.payload,
+            disc_result.payload_length);
+
+        if (disc_status == LEAP_DISC_DEVICE_OK)
+        {
+            result->flags |= LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY;
+            result->status = LEAP_DEVICE_STACK_OK;
+            return LEAP_DEVICE_STACK_OK;
+        }
+
+        result->status = LEAP_DEVICE_STACK_DISC_ERROR;
+        return LEAP_DEVICE_STACK_DISC_ERROR;
     }
 
     if (service_id == (uint16_t)LEAP_SERVICE_PD)

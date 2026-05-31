@@ -52,6 +52,23 @@ LeapFrameParseResult leap_frame_parse(
     size_t         length,
     LeapFrameView* out);
 
+/*
+ * Serialize a LEAP v1 frame (header + payload) with CRC fields computed.
+ * Returns 0 on success.
+ */
+int leap_frame_write(
+    uint8_t*       out,
+    size_t         out_capacity,
+    size_t*        out_length,
+    uint8_t        flags,
+    uint16_t       service_id,
+    uint16_t       message_type,
+    uint32_t       session_id,
+    uint32_t       sequence,
+    uint32_t       ack_sequence,
+    const uint8_t* payload,
+    size_t         payload_length);
+
 const char* leap_frame_parse_result_string(LeapFrameParseResult result);
 
 #ifdef __cplusplus

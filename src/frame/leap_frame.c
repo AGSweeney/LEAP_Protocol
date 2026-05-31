@@ -163,3 +163,58 @@ LeapFrameParseResult leap_frame_parse(
     out->leap_byte_count  = required_length;
     return LEAP_FRAME_OK;
 }
+
+int leap_frame_write(
+    uint8_t*       out,
+    size_t         out_capacity,
+    size_t*        out_length,
+    uint8_t        flags,
+    uint16_t       service_id,
+    uint16_t       message_type,
+    uint32_t       session_id,
+    uint32_t       sequence,
+    uint32_t       ack_sequence,
+    const uint8_t* payload,
+    size_t         payload_length)
+{
+    LeapHeader* header;
+    size_t      total_length;
+
+    if (out == NULL || out_length == NULL ||
+        out_capacity < (size_t)LEAP_HEADER_LENGTH_V1 + payload_length ||
+        payload_length > LEAP_MAX_PAYLOAD_V1)
+    {
+        return -1;
+    }
+
+    if (payload_length > 0u && payload == NULL)
+    {
+        return -1;
+    }
+
+    total_length = (size_t)LEAP_HEADER_LENGTH_V1 + payload_length;
+    memset(out, 0, total_length);
+
+    header = (LeapHeader*)out;
+    header->magic          = LEAP_MAGIC_U32;
+    header->version_major  = LEAP_VERSION_MAJOR;
+    header->version_minor  = LEAP_VERSION_MINOR;
+    header->header_length  = LEAP_HEADER_LENGTH_V1;
+    header->flags          = flags;
+    header->service_id     = service_id;
+    header->message_type   = message_type;
+    header->session_id     = session_id;
+    header->sequence       = sequence;
+    header->ack_sequence   = ack_sequence;
+    header->payload_length = (uint16_t)payload_length;
+
+    if (payload_length > 0u)
+    {
+        memcpy(out + LEAP_HEADER_LENGTH_V1, payload, payload_length);
+        header->payload_crc32c = leap_crc32c(out + LEAP_HEADER_LENGTH_V1, payload_length);
+    }
+
+    header->header_crc16 = leap_header_crc16_compute(out, LEAP_HEADER_LENGTH_V1);
+    *out_length          = total_length;
+    return 0;
+}

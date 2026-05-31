@@ -1,7 +1,7 @@
 /*
  * leap_device_stack.h
  *
- * Device-side frame dispatch: LEAP-MGMT + LEAP-PD over a single ingress path.
+ * Device-side frame dispatch: LEAP-DISC, LEAP-MGMT, and LEAP-PD.
  *
  * Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
  * SPDX-License-Identifier: MIT
@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "leap/leap_disc_device.h"
 #include "leap/leap_frame.h"
 #include "leap/leap_mgmt_device.h"
 #include "leap/leap_mgmt_process.h"
@@ -25,8 +26,15 @@ extern "C" {
 
 typedef struct LeapDeviceStack
 {
-    LeapMgmtDeviceContext mgmt;
+    LeapMgmtDeviceContext  mgmt;
+    LeapDiscDeviceContext  disc;
 } LeapDeviceStack;
+
+typedef struct LeapDeviceStackConfig
+{
+    LeapMgmtDeviceConfig mgmt;
+    LeapDiscDeviceConfig disc;
+} LeapDeviceStackConfig;
 
 typedef enum LeapDeviceStackStatus
 {
@@ -34,7 +42,8 @@ typedef enum LeapDeviceStackStatus
     LEAP_DEVICE_STACK_FRAME_ERROR,
     LEAP_DEVICE_STACK_UNSUPPORTED_SERVICE,
     LEAP_DEVICE_STACK_MGMT_ERROR,
-    LEAP_DEVICE_STACK_PD_REJECTED
+    LEAP_DEVICE_STACK_PD_REJECTED,
+    LEAP_DEVICE_STACK_DISC_ERROR
 } LeapDeviceStackStatus;
 
 #define LEAP_DEVICE_STACK_FLAG_MGMT_PROCESSED       LEAP_MGMT_PROCESS_FLAG_PROCESSED
@@ -45,6 +54,7 @@ typedef enum LeapDeviceStackStatus
 #define LEAP_DEVICE_STACK_FLAG_PD_PROCESSED         LEAP_PD_DEVICE_FLAG_PROCESSED
 #define LEAP_DEVICE_STACK_FLAG_OUTPUTS_APPLIED      LEAP_PD_DEVICE_FLAG_OUTPUTS_APPLIED
 #define LEAP_DEVICE_STACK_FLAG_LEASE_REFRESHED      LEAP_PD_DEVICE_FLAG_LEASE_REFRESHED
+#define LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY       (1u << 16)
 
 typedef struct LeapDeviceStackResult
 {
@@ -56,9 +66,13 @@ typedef struct LeapDeviceStackResult
     LeapStatusCode_u16    error_code;
     LeapFrameView         frame;
     LeapMgmtDeviceReply   mgmt_reply;
+    uint16_t              disc_message_type;
+    uint8_t               disc_payload[LEAP_DISC_DEVICE_MAX_REPLY];
+    size_t                disc_payload_length;
 } LeapDeviceStackResult;
 
 void leap_device_stack_init(LeapDeviceStack* stack, const LeapMgmtDeviceConfig* config);
+void leap_device_stack_init_full(LeapDeviceStack* stack, const LeapDeviceStackConfig* config);
 
 LeapDeviceStackStatus leap_device_stack_process_frame(
     LeapDeviceStack*          stack,
