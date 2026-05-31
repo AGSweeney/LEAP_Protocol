@@ -23,7 +23,7 @@ leap_controller_stack_release()
 | Async inbound | `leap_controller_stack_on_frame` | done |
 | Graceful shutdown | `leap_controller_stack_release` | done |
 | Frame sequence | `leap_controller_sequence` | done |
-| Multi-peer discover | `leap_controller_peer` | done |
+| Multi-peer discover | `leap_controller_peer` | done (`discover_ex`, probe, `parse_mac`) |
 | Concurrent sessions | `leap_controller_session_hub` | done |
 | Cyclic PD entry | `leap_controller_stack_run_cyclic_pd` | done |
 | DIAG read (post-OP) | `leap_controller_stack_read_diag`, `log_diag` | done |
@@ -92,6 +92,8 @@ examples/linux_loopback/
 examples/win_l2/
   controller_main.c           # Windows Npcap transport + stack
   device_main.c
+  hub_main.c                  # session hub round-robin
+  discover_main.c             # HELLO scan utility
 
 examples/win_smoke/
   wire_smoke_main.c           # single-process cooperative smoke

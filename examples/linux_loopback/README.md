@@ -136,14 +136,15 @@ sudo ./build/leap_linux_device lo
 
 # Terminal 3 — hub controller: discover → bootstrap_table → round-robin PD
 sudo ./build/leap_linux_hub lo
-sudo ./build/leap_linux_hub --scan-ms 5000 --cyclic-ms 100 --exchange lo
+sudo ./build/leap_linux_hub --scan-ms 1000 --min-peers 2 --cyclic-ms 100 --exchange lo
 ```
 
 Foreign-owned peers (another controller’s `active_owner_mac` in HELLO) are skipped
 by default. Ctrl+C stops round-robin and releases all hub sessions.
 
 Hub does not yet expose a `--diag` flag; use `leap_linux_controller --diag` for
-single-peer DIAG reads.
+single-peer DIAG reads. For Windows multi-peer on a LAN, see
+[win_l2/README.md](../win_l2/README.md) (`leap_win_hub`, `leap_win_discover`).
 
 ## Example device output
 

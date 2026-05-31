@@ -36,7 +36,8 @@ inc/leap/                          Public API
   leap_controller_session_hub.h    Concurrent multi-peer sessions
   leap_controller_peer.h           Discovery peer table
   leap_controller_sequence.h       Per-peer Ethernet sequence / replay
-  leap_log.h                       Optional LEAP_LOG_SECURITY field diagnostics
+  leap_log.h                       Timestamped logging + optional LEAP_LOG_SECURITY
+  leap_win_time.h                  Windows monotonic clock (Win32 builds)
   leap_raw_linux.h                 Linux AF_PACKET transport
   leap_raw_winpcap.h               Windows Npcap transport
 
@@ -54,6 +55,7 @@ src/
   leap_controller_peer.c
   leap_controller_sequence.c
   leap_log.c
+  platform/leap_win_time.c         Windows monotonic time (Win32 only)
   transport/leap_raw_linux.c       Linux AF_PACKET (examples + tests)
   transport/leap_raw_winpcap.c     Windows Npcap (examples; optional in CI)
 ```
@@ -74,7 +76,7 @@ stats are available via `leap_raw_winpcap_get_stats()`.
 
 ## Testing and CI
 
-- **Unit tests:** `cmake --build build && ctest --test-dir build` — **105 tests** (106 on Linux)
+- **Unit tests:** `cmake --build build && ctest --test-dir build` — **112 tests on Windows**, **111 on Linux**
 - **CI (GitHub Actions):**
   - **Linux:** configure, build, `ctest`, verify Linux example binaries exist
   - **Windows:** configure, build, `ctest` (core + tests only; Npcap examples not built in CI)
@@ -96,10 +98,11 @@ Sign off before starting an embedded or alternate-OS port:
 
 | Check | How to verify |
 | --- | --- |
-| Unit tests green | `ctest --test-dir build --output-on-failure` (105 on Windows, 106 on Linux) |
+| Unit tests green | `ctest --test-dir build --output-on-failure` (112 on Windows, 111 on Linux) |
 | Linux wire path (manual) | `sudo ./build/leap_linux_device lo` + `sudo ./build/leap_linux_controller lo` on native Linux |
 | Stack-only examples | `leap_linux_device` / `leap_linux_controller` use `leap_*_stack` — no hand-rolled MGMT/PD FSM in `device_main.c` |
-| Multi-peer behavior | Hub tests cover foreign-owner skip + round-robin PD; see [LEAP_MULTI_PEER_NOTES.md](LEAP_MULTI_PEER_NOTES.md) |
+| Multi-peer behavior | Hub tests cover foreign-owner skip, round-robin PD, bootstrap isolation; see [LEAP_MULTI_PEER_NOTES.md](LEAP_MULTI_PEER_NOTES.md) |
+| Windows multi-peer | `leap_win_hub` + `leap_win_discover` mirror Linux hub/discover (build with `-DLEAP_BUILD_WIN_L2=ON`) |
 | DIAG round-trip | `sudo ./build/leap_linux_controller --diag lo` with device running |
 | Transport boundary | Sockets only in `examples/` and `src/transport/` — not in `src/services/` |
 

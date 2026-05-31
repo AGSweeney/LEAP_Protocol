@@ -19,9 +19,10 @@ Legend: **done** · **partial** · **open**
 
 1. **PD extraction finish** — **done** — audit documented in [examples/README.md](../examples/README.md); porting path is `linux_loopback/*`; `device_minimal` stays learning-only.
 2. **Controller DIAG symmetry** — **done** — `leap_controller_stack_read_diag()` + `leap_controller_stack_log_diag()`; `--diag` in Linux example (bootstrap-only or after PD).
-3. **Multi-peer test gap** — **done** — `test_session_hub_bootstrap_table_skips_foreign_owner`, `test_session_hub_run_round_robin_two_peers`.
+3. **Multi-peer test gap** — **done** — hub round-robin, foreign-owner skip, bootstrap cross-peer isolation, discover early exit.
 4. **Porting checklist** — **done** — “Ready for hardware” table in [docs/README.md](README.md).
-5. **Manual wire smoke** — run `tools/ci/wire_smoke_*.sh` on native Linux before any platform fork.
+5. **Manual wire smoke** — run `tools/ci/wire_smoke_*.sh` (Linux) and `wire_smoke_win.ps1` (Windows) before platform forks.
+6. **Windows hub parity** — **done** — `leap_win_hub`, `leap_win_discover`; timestamped logging via `leap_log`.
 
 ---
 
@@ -31,8 +32,8 @@ Legend: **done** · **partial** · **open**
 | --- | --- | --- |
 | Implement LEAP-DIAG | **partial** | Device handler + stack dispatch + controller builders/parsers + unit tests + stack `read_diag` + Linux/Windows `--diag`. Hub DIAG variant and FSM auto-poll **open**. |
 | Transport (link monitoring, reconnect) | **partial** | `query_link` / `poll_link` + `link_transitions` stat; reconnect policy doc; example poll in device recv loop. Auto-reconnect FSM **open**. |
-| Multi-device test coverage | **partial** | Peer table, session hub, discover mock, foreign-owner skip, round-robin PD, end-to-end `table_bootstrap_round_robin` test. |
-| Spec + golden vectors | **partial** | DIAG counters + timing golden frames (§10); Wireshark DIAG + PD exchange decode. |
+| Multi-device test coverage | **done** | Peer table, `discover_ex` early exit, probe, session hub, foreign-owner skip, round-robin PD, bootstrap isolation tests. |
+| Spec + golden vectors | **done** | DIAG counters + timing golden frames (§10); Wireshark DIAG + PD exchange decode. |
 
 **Reprioritized next 3–4 weeks:**
 
@@ -40,7 +41,7 @@ Legend: **done** · **partial** · **open**
 
 - ~~Controller-side DIAG read path (post-OP, no new FSM phases).~~ **done**
 - ~~Linux example: `--diag` reads counters / timing after bootstrap or PD run.~~ **done**
-- ~~Session hub example or documented pattern: discover → hub → round-robin (optional binary).~~ **done** — `leap_linux_hub` + [examples/linux_loopback/README.md](../examples/linux_loopback/README.md).
+- ~~Session hub example or documented pattern: discover → hub → round-robin (optional binary).~~ **done** — `leap_linux_hub`, `leap_win_hub` + READMEs.
 
 ### Week 3 — Transport & resilience
 
@@ -71,7 +72,7 @@ Legend: **done** · **partial** · **open**
 
 | Milestone | Criteria |
 | --- | --- |
-| **Core locked** | Examples use stacks only; `ctest` green (105–106 tests); porting gate signed off |
+| **Core locked** | Examples use stacks only; `ctest` green (111–112 tests); porting gate signed off |
 | **DIAG complete** | Device + controller read path + example/test round-trip + golden vectors |
 | **Multi-peer confident** | Hub round-robin + foreign-owner tests; multi-peer notes match behavior |
 | **v1.0 candidate** | Golden vectors updated; dissector covers v1 services; manual wire smoke passed on Linux |

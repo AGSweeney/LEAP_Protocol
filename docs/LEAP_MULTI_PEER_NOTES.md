@@ -10,6 +10,7 @@ Status as of May 2026.
 | Mechanism | Location | Purpose |
 | --- | --- | --- |
 | Per-peer `LeapControllerStack` slots | `leap_controller_session_hub` | Independent `session_id`, MGMT sequence, PD state, lease |
+| Discovery table + early exit | `leap_controller_peer` | `discover_ex` stops scan at `min_peers`; `probe_peer` for known MACs |
 | Frame `sequence` tracking | `leap_controller_sequence` | Duplicate replay rejection, gap counting/rejection, optional window |
 | Session binding | `leap_controller_stack` on OP entry | Drop inbound frames whose `session_id` ≠ owner session |
 | PD endpoint validation | `leap_pd_profile_validate_*` | Profile ID, endpoint IDs, payload lengths from DIR map |
@@ -19,7 +20,7 @@ Status as of May 2026.
 | Linux recv demux | `leap_linux_pd.c` | `wait_exchange_reply` ignores frames from other peer MACs |
 | I/O dirty flag | `LeapPdDeviceIoBinding.outputs_dirty` | Skip redundant output shadow writes |
 | PD telemetry | `leap_pd_controller` stats | Latency, jitter, lost frames, reply rejects |
-| Security logging | `leap_log.h` | Optional `LEAP_LOG_SECURITY` compile flag |
+| Security logging | `leap_log.h` | Timestamped `leap_log_printf`; optional `LEAP_LOG_SECURITY` compile flag |
 | Stack PD entry points | `leap_controller_stack` | `run_cyclic_pd`, `pd_single_write` |
 
 ## Configuration knobs
@@ -87,14 +88,16 @@ Embedded ports should:
 
 ## Recommended bring-up flow (multi-peer)
 
-1. `leap_controller_peer_table_discover()` — collect MACs and `active_owner_mac`
+1. `leap_controller_peer_table_discover_ex()` — broadcast HELLO; stop early at `min_peers`, or use `probe_peer()` / `--peer-mac` for known MACs
 2. Skip or defer peers where `leap_controller_peer_owned_by_other()` is true
 3. `leap_controller_session_hub_bootstrap_peer()` per target (or `_bootstrap_table()`)
 4. `leap_controller_session_hub_run_round_robin()` for cyclic PD
 5. `leap_controller_session_hub_on_frame()` from a recv thread for async MGMT
 6. `leap_controller_session_hub_release_all()` on shutdown
 
-Reference binary: `examples/linux_loopback/hub_main.c` (`leap_linux_hub`).
+Default scan window: **1000 ms** (`LEAP_CTRL_PEER_DISCOVER_DEFAULT_SCAN_MS`). Hub bootstrap recv timeout: **1000 ms** (`LEAP_CTRL_HUB_BOOTSTRAP_RECV_MS`).
+
+Reference binaries: `examples/linux_loopback/hub_main.c` (`leap_linux_hub`), `examples/win_l2/hub_main.c` (`leap_win_hub`).
 
 ## Multi-peer impact (what breaks, what holds)
 

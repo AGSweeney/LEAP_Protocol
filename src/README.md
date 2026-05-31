@@ -16,18 +16,19 @@ Reference stack implementation — protocol handlers, integration layers, and tr
 | `leap_device_stack.c` | Device-side DISC + DIR + MGMT + PD + DIAG dispatch + tick |
 | `leap_controller_stack.c` | Controller bootstrap FSM, PD helpers, `read_diag` |
 | `leap_controller_session_hub.c` | Concurrent multi-peer controller sessions |
-| `leap_controller_peer.c` | Discovery peer table |
+| `leap_controller_peer.c` | Discovery peer table, probe, early-exit scan |
 | `leap_controller_sequence.c` | Per-peer Ethernet sequence / replay protection |
-| `leap_log.c` | Optional `LEAP_LOG_SECURITY` field diagnostics |
+| `leap_log.c` | Timestamped logging (`leap_log_printf`) + optional `LEAP_LOG_SECURITY` |
+| `platform/leap_win_time.c` | Windows monotonic clock and sub-ms sleep (Win32 only) |
 | `transport/leap_raw_linux.c` | Linux AF_PACKET raw Ethernet |
 | `transport/leap_raw_winpcap.c` | Windows Npcap raw Ethernet |
 
 ## Transport notes
 
 - **Linux:** `leap_raw_linux.c` is the primary wire transport for examples and tests.
-- **Windows:** `leap_raw_winpcap.c` provides Npcap I/O for `leap_win_smoke` and `leap_win_*` examples.
+- **Windows:** `leap_raw_winpcap.c` provides Npcap I/O for `leap_win_smoke` and `leap_win_*` examples; `leap_win_time.c` backs monotonic timestamps and PD pacing.
 - **Windows unit tests:** `leap_raw_linux.c` compiles as stubs on Windows so `leap_tests` links without AF_PACKET.
 
-Sockets and platform I/O stay in `transport/` and `examples/` — not inside `src/services/`.
+Sockets and platform I/O stay in `transport/`, `platform/`, and `examples/` — not inside `src/services/`.
 
 Full public API map: [docs/README.md](../docs/README.md).

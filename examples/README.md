@@ -27,6 +27,7 @@ Reference implementations for controller and device bring-up.
 | `win_l2/controller_main.c` | No | Bootstrap, PD, DIAG via `leap_controller_stack` |
 | `win_l2/hub_main.c` | No | Discovery table + `leap_controller_session_hub` |
 | `win_l2/device_main.c` | No | All protocol handling via `leap_device_stack_process_frame` + `tick` |
+| `win_l2/discover_main.c` | No | Peer table HELLO scan only |
 | `device_minimal/main.c` | No | Uses stack for all frame processing; local `build_frame()` is transport simulation only |
 
 ## Linux loopback

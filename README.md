@@ -23,9 +23,9 @@ schemas/leap-manifest-schema.json     JSON Schema for device/profile manifests
 tools/wireshark/leap_dissector.lua    Wireshark dissector (v1 services + PD exchange)
 tools/ci/wire_smoke_*                 manual end-to-end tests (Linux shell, Windows PS1)
 src/                                  reference stack (see src/README.md)
-tests/                                conformance and regression tests (105–106)
+tests/                                conformance and regression tests (111–112)
 examples/linux_loopback/              Linux AF_PACKET device, controller, hub, discover
-examples/win_l2/                        Windows Npcap two-process L2 pair
+examples/win_l2/                        Windows Npcap device, controller, hub, discover
 examples/win_smoke/                     Windows Npcap single-process wire smoke
 examples/device_minimal/              learning / fuzz harness (not porting template)
 platforms/clearcore/                  ClearCore LEAP device firmware (ProjectTemplate)
@@ -91,8 +91,9 @@ PD controller stats include cycle **latency**, **jitter** vs target period,
 
 Per-peer Ethernet sequence tracking, optional gap/out-of-window rejection,
 session binding after OP, PD exchange validation (profile + process_sequence +
-§13.4 frame age), foreign-owner skip on hub bootstrap, Linux recv demux by peer
-MAC, optional `LEAP_LOG_SECURITY` stderr diagnostics.
+§13.4 frame age), foreign-owner skip on hub bootstrap, discovery early exit at
+`min_peers`, Linux recv demux by peer MAC, timestamped logging via `leap_log.h`,
+optional `LEAP_LOG_SECURITY` stderr diagnostics.
 
 Details: [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md)
 
@@ -154,17 +155,18 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 ### Done (reference stack)
 
 - Wire contract, normative spec, golden vectors (incl. DIAG §10), manifest schema
-- Frame parser/serializer, CRC, fragment rejection policy, fuzz/regression tests (105)
+- Frame parser/serializer, CRC, fragment rejection policy, fuzz/regression tests (111–112)
 - All five v1 services: device handlers + controller helpers (where applicable)
 - **`leap_device_stack`** — DISC + DIR + MGMT + PD + DIAG + tick
 - **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`, `read_diag`
 - **`leap_controller_session_hub`** + peer discovery table + `leap_linux_hub` example
 - Multi-peer hardening (sequence, session bind, PD validation, frame age, security log)
 - Linux AF_PACKET transport + Windows Npcap transport (`leap_raw_winpcap`)
-- Linux loopback/hub/discover examples; Windows `leap_win_smoke` + `leap_win_device`/`leap_win_controller`
+- Linux loopback/hub/discover examples; Windows `leap_win_smoke` + `leap_win_device`/`leap_win_controller`/`leap_win_hub`/`leap_win_discover`
+- Timestamped example logging (`leap_log_printf`) across Linux and Windows examples
 - ClearCore device firmware port (`platforms/clearcore`)
 - Wireshark dissector: v1 services, PD exchange, DIAG message types
-- CI: Linux build + unit tests (106) + example binary checks; Windows build + unit tests (105)
+- CI: Linux build + unit tests (111) + example binary checks; Windows build + unit tests (112)
 
 ### Next (see [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md))
 
@@ -199,7 +201,7 @@ See [platforms/clearcore/README.md](platforms/clearcore/README.md).
 | [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller notes |
 | [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md) | Link monitoring and reconnect policy |
 | [examples/README.md](examples/README.md) | Example index and porting path |
-| [tests/README.md](tests/README.md) | Unit test suite index (105–106 tests) |
+| [tests/README.md](tests/README.md) | Unit test suite index (111–112 tests) |
 | [platforms/clearcore/README.md](platforms/clearcore/README.md) | ClearCore firmware setup and build |
 
 ## License
