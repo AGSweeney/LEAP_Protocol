@@ -19,6 +19,7 @@
 #include "leap_linux_pd.h"
 
 #include "leap/leap_controller_stack.h"
+#include "leap/leap_log.h"
 #include "leap/leap_protocol.h"
 
 #include <signal.h>
@@ -67,6 +68,7 @@ int main(int argc, char** argv)
     return 1;
 #else
     leap_linux_controller_parse_args(argc, argv, &options);
+    leap_log_reset_origin();
     if (options.lease_demo != 0)
     {
         lease_us = LEAP_LEASE_DEMO_US;
@@ -201,7 +203,7 @@ int main(int argc, char** argv)
 
     if (options.cyclic == 0 && options.diag == 0)
     {
-        leap_pd_controller_log_stats(&stack.pd);
+        leap_pd_controller_log_stats(&stack.pd, peer_mac);
     }
 
     if (options.stats != 0 || options.cyclic == 0)

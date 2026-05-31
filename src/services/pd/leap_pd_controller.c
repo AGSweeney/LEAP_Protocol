@@ -329,11 +329,14 @@ const LeapPdControllerStats* leap_pd_controller_stats(
     return &ctx->stats;
 }
 
-void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
+void leap_pd_controller_log_stats(
+    const LeapPdControllerContext* ctx,
+    const uint8_t*                 peer_mac)
 {
     uint64_t avg_latency = 0u;
     uint64_t avg_period  = 0u;
     uint64_t avg_jitter  = 0u;
+    char     peer_label[24];
 
     if (ctx == NULL)
     {
@@ -353,13 +356,21 @@ void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
         }
     }
 
+    peer_label[0] = '\0';
+    if (peer_mac != NULL)
+    {
+        (void)leap_log_format_mac(peer_label, sizeof(peer_label), peer_mac);
+    }
+
     leap_log_printf(
-        "PD stats: cycles=%llu ok=%llu fail=%llu hb=%llu lost=%llu timeouts=%llu "
+        "PD stats%s%s: cycles=%llu ok=%llu fail=%llu hb=%llu lost=%llu timeouts=%llu "
         "replies=%llu reject=%llu stale=%llu seq_mismatch=%llu "
         "latency last=%llu avg=%llu max=%llu us "
         "period last=%llu avg=%llu min=%llu max=%llu us "
         "jitter last=%llu avg=%llu max=%llu us target=%u ms "
         "work last=%llu max=%llu overruns=%llu inputs=0x%04X\n",
+        peer_mac != NULL ? " peer " : "",
+        peer_mac != NULL ? peer_label : "",
         (unsigned long long)ctx->stats.cycles_completed,
         (unsigned long long)ctx->stats.pd_sent_ok,
         (unsigned long long)ctx->stats.pd_sent_fail,
@@ -702,7 +713,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
     if (pd->config.stats_log_interval > 0u &&
         (pd->cycle_index % pd->config.stats_log_interval) == 0u)
     {
-        leap_pd_controller_log_stats(pd);
+        leap_pd_controller_log_stats(pd, peer_mac);
     }
 
 #if defined(__linux__) || defined(_WIN32)
@@ -770,6 +781,6 @@ LeapPdControllerStatus leap_pd_controller_run_cyclic(
     }
 
     leap_log_printf("cyclic PD stopped\n");
-    leap_pd_controller_log_stats(pd);
+    leap_pd_controller_log_stats(pd, peer_mac);
     return LEAP_PD_CTRL_OK;
 }

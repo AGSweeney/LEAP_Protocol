@@ -18,6 +18,7 @@
 #include "leap/leap_device_stack.h"
 #include "leap/leap_dir_device.h"
 #include "leap/leap_frame.h"
+#include "leap/leap_log.h"
 #include "leap/leap_pd_device.h"
 #include "leap/leap_protocol.h"
 
@@ -203,6 +204,7 @@ int main(int argc, char** argv)
     }
 
     leap_win_device_parse_args(argc, argv, &adapter, &g_stats_enabled);
+    leap_log_reset_origin();
 
     leap_win_device_io_init(&g_io);
 

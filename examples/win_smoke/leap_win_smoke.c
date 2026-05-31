@@ -680,7 +680,7 @@ int leap_win_smoke_run_cyclic(
     }
 
     stats = leap_pd_controller_stats(&stack->pd);
-    leap_pd_controller_log_stats(&stack->pd);
+    leap_pd_controller_log_stats(&stack->pd, stack->peer_mac);
 
     if (stats == NULL)
     {

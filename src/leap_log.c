@@ -45,7 +45,7 @@ const char* leap_log_security_event_name(LeapLogSecurityEvent event)
 void leap_log_reset_origin(void)
 {
     g_log_origin_us    = leap_log_monotonic_us();
-    g_log_origin_valid = (g_log_origin_us != 0u) ? 1 : 0;
+    g_log_origin_valid = 1;
 }
 
 void leap_log_set_monotonic_us_fn(LeapLogMonotonicUsFn fn)
@@ -104,6 +104,30 @@ int leap_log_format_timestamp(char* buf, size_t buf_len)
     sec = (unsigned)(delta_us / 1000000u);
     ms  = (unsigned)((delta_us / 1000u) % 1000u);
     return snprintf(buf, buf_len, "[+%7u.%03us] ", sec, ms);
+}
+
+int leap_log_format_mac(char* buf, size_t buf_len, const uint8_t* mac)
+{
+    if (buf == NULL || buf_len == 0u)
+    {
+        return 0;
+    }
+
+    if (mac == NULL)
+    {
+        return snprintf(buf, buf_len, "(null)");
+    }
+
+    return snprintf(
+        buf,
+        buf_len,
+        "%02x:%02x:%02x:%02x:%02x:%02x",
+        mac[0],
+        mac[1],
+        mac[2],
+        mac[3],
+        mac[4],
+        mac[5]);
 }
 
 void leap_log_vfprintf(FILE* stream, const char* fmt, va_list args)

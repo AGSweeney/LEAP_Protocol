@@ -17,6 +17,7 @@
 
 #include "leap/leap_device_stack.h"
 #include "leap/leap_dir_device.h"
+#include "leap/leap_log.h"
 #include "leap/leap_pd_device.h"
 #include "leap/leap_protocol.h"
 
@@ -180,6 +181,7 @@ int main(int argc, char** argv)
     return 1;
 #else
     device_parse_args(argc, argv, &ifname);
+    leap_log_reset_origin();
 
     leap_linux_io_init(&g_io);
     leap_linux_device_stats_init(&g_stats);

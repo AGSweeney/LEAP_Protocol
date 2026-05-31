@@ -254,7 +254,7 @@ int main(int argc, char** argv)
 
     if (options.cyclic == 0 && options.diag == 0)
     {
-        leap_pd_controller_log_stats(&stack.pd);
+        leap_pd_controller_log_stats(&stack.pd, peer_mac);
     }
 
     if (options.stats != 0 || options.cyclic == 0)

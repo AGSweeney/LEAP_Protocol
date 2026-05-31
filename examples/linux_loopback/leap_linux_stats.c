@@ -10,6 +10,8 @@
 #include "leap/leap_device_stack.h"
 #include "leap/leap_raw_linux.h"
 
+#include "leap/leap_log.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -85,7 +87,7 @@ void leap_linux_device_stats_log(
         return;
     }
 
-    printf(
+    leap_log_printf(
         "device stats: rx=%llu rejected=%llu pd_applied=%llu "
         "pd_reply=%llu mgmt=%llu disc=%llu dir=%llu tx_retries=%llu\n",
         (unsigned long long)stats->frames_rx,
@@ -100,7 +102,7 @@ void leap_linux_device_stats_log(
     if (transport != NULL)
     {
         leap_raw_linux_get_stats(transport, &tstats);
-        printf(
+        leap_log_printf(
             "transport: tx_ok=%llu tx_err=%llu rx_ok=%llu "
             "rx_filtered=%llu rx_timeout=%llu rx_err=%llu\n",
             (unsigned long long)tstats.tx_frames_ok,

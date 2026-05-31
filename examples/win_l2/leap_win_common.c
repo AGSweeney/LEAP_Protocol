@@ -135,7 +135,7 @@ LeapPdControllerStatus leap_win_controller_run_cyclic_pd_with_link_watch(
     }
 
     leap_log_printf("cyclic PD stopped\n");
-    leap_pd_controller_log_stats(&stack->pd);
+    leap_pd_controller_log_stats(&stack->pd, stack->peer_mac);
     return LEAP_PD_CTRL_OK;
 }
 

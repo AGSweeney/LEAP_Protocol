@@ -85,9 +85,9 @@ static void hub_log_peer_stats(
         return;
     }
 
-    leap_log_printf("  slot %d peer ", slot);
-    leap_win_print_mac(NULL, leap_controller_session_hub_peer_mac(hub, slot));
-    leap_pd_controller_log_stats(&stack->pd);
+    leap_pd_controller_log_stats(
+        &stack->pd,
+        leap_controller_session_hub_peer_mac(hub, slot));
 }
 
 int main(int argc, char** argv)

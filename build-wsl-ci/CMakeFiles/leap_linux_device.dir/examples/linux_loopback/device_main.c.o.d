@@ -38,8 +38,9 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/device_main.c.o: \
  /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h /usr/include/stdio.h \
- /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_log.h \
+ /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h /usr/include/stdio.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h \

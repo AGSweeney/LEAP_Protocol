@@ -122,7 +122,7 @@ LeapPdControllerStatus leap_linux_controller_run_cyclic_pd_with_link_watch(
     }
 
     leap_log_printf("cyclic PD stopped\n");
-    leap_pd_controller_log_stats(&stack->pd);
+    leap_pd_controller_log_stats(&stack->pd, stack->peer_mac);
     return LEAP_PD_CTRL_OK;
 }
 
@@ -258,7 +258,7 @@ void leap_linux_print_transport_stats(const LeapRawLinuxSocket* sock)
     }
 
     leap_raw_linux_get_stats(sock, &stats);
-    printf(
+    leap_log_printf(
         "transport: tx_ok=%llu tx_err=%llu tx_partial=%llu "
         "rx_ok=%llu rx_filtered=%llu rx_timeout=%llu rx_err=%llu rx_short=%llu "
         "link_xitions=%llu\n",
@@ -293,7 +293,7 @@ void leap_linux_poll_link_and_log(LeapRawLinuxSocket* sock)
         return;
     }
 
-    printf(
+    leap_log_printf(
         "transport: link %s (iface_up=%d carrier_up=%d transitions=%llu)\n",
         state.link_up != 0 ? "UP" : "DOWN",
         state.interface_up,

@@ -156,7 +156,9 @@ LeapPdControllerStatus leap_pd_controller_send_single_write(
     const uint8_t*             peer_mac,
     uint16_t                   digital_outputs);
 
-void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx);
+void leap_pd_controller_log_stats(
+    const LeapPdControllerContext* ctx,
+    const uint8_t*                 peer_mac);
 
 #ifdef __cplusplus
 }

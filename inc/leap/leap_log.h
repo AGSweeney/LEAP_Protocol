@@ -54,6 +54,8 @@ uint64_t leap_log_monotonic_us(void);
  */
 int leap_log_format_timestamp(char* buf, size_t buf_len);
 
+int leap_log_format_mac(char* buf, size_t buf_len, const uint8_t* mac);
+
 void leap_log_vfprintf(FILE* stream, const char* fmt, va_list args);
 
 void leap_log_fprintf(FILE* stream, const char* fmt, ...);
