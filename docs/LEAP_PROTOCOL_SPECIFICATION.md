@@ -648,7 +648,28 @@ state, directory, diagnostics, and process-data exchange primitives.
 
 `MOTION_SINGLE_AXIS` and `MOTION_MULTI_AXIS` profile IDs reserve namespace only.
 They MUST NOT be treated as interoperable motion profiles until a dedicated
-motion profile specification is published.
+motion profile specification is published that normatively defines all of the
+following:
+
+- distributed clock synchronization mechanism, accuracy requirements, and
+  maximum permissible clock drift
+- interpolation period, trajectory representation, and ramp profile rules
+- axis enable and disable semantics and required sequencing
+- homing procedures and reference position establishment
+- following error detection, configurable threshold, and fault escalation policy
+- hardware travel limits and software travel limit enforcement
+- torque limiting and velocity limiting
+- drive-disable output behavior on fault, safe-state entry, and communication
+  loss
+- axis status word layout, mode-of-operation flags, and error code mapping
+- coordinated multi-axis grouping and synchronization rules where applicable
+
+Implementations MUST NOT claim motion interoperability with other LEAP devices
+on the basis of `MOTION_SINGLE_AXIS` or `MOTION_MULTI_AXIS` profile ID alone
+until all of the above are normatively specified in a published LEAP motion
+profile document. Products shipping with these profile IDs before that document
+exists MUST document them as vendor-private profiles and MUST NOT represent them
+as conforming to a LEAP standard motion profile.
 
 ### 12.1 Golden Reference Profile: DIGITAL_IO_16X16
 
@@ -975,7 +996,11 @@ transition to `SAFE` or `FAULT` according to the active profile's policy.
 
 ## 16. Fragmentation
 
-Fragmentation is optional and SHOULD NOT be used for cyclic process data.
+Fragmentation is optional. It MUST NOT be used for cyclic process data. It is
+provided only for infrequent large metadata exchanges — such as directory dumps,
+object reads, or vendor configuration blobs — that exceed a single Ethernet
+frame. Devices SHOULD NOT advertise or use fragmented transfers in normal
+operation.
 
 When the `FRAGMENTED` flag is set, the payload begins with `LeapFragmentHeader`.
 
@@ -987,8 +1012,54 @@ When the `FRAGMENTED` flag is set, the payload begins with `LeapFragmentHeader`.
 | `8` | `4` | `total_length` | Complete unfragmented payload bytes |
 | `12` | `4` | `total_crc32c` | CRC-32C over complete payload |
 
-Receivers MUST bound memory use and MUST discard incomplete fragment groups when
-their reassembly timer expires.
+### 16.1 Reassembly Rules
+
+Receivers MUST enforce all of the following rules. Failure to do so creates
+exposure to memory exhaustion, state corruption, and injection attacks from
+malformed or adversarial fragment streams.
+
+**Group identification:**
+
+- `fragment_group_id` is a per-sender reassembly key scoped to a single session.
+  It is not globally unique across devices or across device reboots.
+- `fragment_count` MUST be identical in every fragment of the same group. If a
+  receiver observes any fragment whose `fragment_count` differs from the value in
+  the first fragment received for that `fragment_group_id`, it MUST discard the
+  entire group and respond with `BAD_LENGTH`.
+
+**Ordering, duplicates, and index bounds:**
+
+- Fragments MUST be accepted regardless of arrival order within a group.
+- `fragment_index` is zero-based. Fragments with `fragment_index >=
+  fragment_count` MUST be discarded immediately.
+- Duplicate fragments (same `fragment_group_id` and same `fragment_index`) MUST
+  be silently discarded; only the first received copy is retained.
+- Because `fragment_index` addresses a distinct logical slot, overlapping content
+  cannot arise from valid senders. Receivers MUST NOT attempt to merge or
+  reconcile content for the same index slot.
+
+**Memory and resource limits:**
+
+- Receivers MUST limit concurrent active reassembly groups to at most `4` per
+  session. Groups that would exceed this limit MUST be silently dropped.
+- Receivers MUST reject any fragment group whose `fragment_count` exceeds `255`.
+- Receivers MUST reject any fragment group whose `total_length` exceeds
+  `LEAP_MAX_ETHERNET_PAYLOAD` (`1500` bytes). This prevents fragmented reassembly
+  from being used to bypass the protocol's normal MTU discipline.
+- Receivers MUST discard incomplete fragment groups when their reassembly timer
+  expires. The normative minimum reassembly timeout is `5` seconds.
+
+**CRC gate and state-change prohibition:**
+
+- Receivers MUST NOT apply any state change, output write, object write, profile
+  selection, or any other application-visible side effect derived from a
+  fragmented message until all of the following conditions are met:
+  1. All `fragment_count` fragments have been received.
+  2. The concatenated payload byte length exactly equals `total_length`.
+  3. The CRC-32C of the reassembled payload matches `total_crc32c`.
+- If the final integrity check fails, the entire group MUST be discarded and the
+  receiver MUST respond with `BAD_CHECK`. Partial or speculative state changes
+  from incomplete or unverified reassembly are not permitted under any condition.
 
 ## 17. Security Model
 
@@ -1017,6 +1088,15 @@ acceptable only for controlled lab and private machine-cell networks. Routed,
 shared, plant-wide, or hostile networks require an authentication and
 authorization extension before LEAP output control is considered production
 ready.
+
+Deployments MUST NOT use LEAP v1.0 on non-isolated, plant-wide, enterprise
+IT/OT, or internet-routed networks without an authentication and authorization
+extension that covers at minimum session establishment, frame integrity, and
+replay protection. The owner lease mechanism is not a substitute for access
+control on networks where unauthenticated nodes can join. Using LEAP v1.0 output
+control on such networks without an authentication extension is a deployment
+error regardless of whether physical access to the network is believed to be
+restricted.
 
 ## 18. Profile Specification Requirements
 
