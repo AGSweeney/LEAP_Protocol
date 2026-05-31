@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#define _GNU_SOURCE
+
 #include "leap/leap_raw_linux.h"
 
 #if defined(__linux__)
