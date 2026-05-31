@@ -46,6 +46,9 @@ static void leap_pd_ctrl_update_cycle_period(
     LeapPdControllerContext* ctx,
     uint64_t                 period_us)
 {
+    uint64_t target_us;
+    uint64_t jitter_us;
+
     if (ctx == NULL || period_us == 0u)
     {
         return;
@@ -62,6 +65,19 @@ static void leap_pd_ctrl_update_cycle_period(
     if (period_us > ctx->stats.max_cycle_period_us)
     {
         ctx->stats.max_cycle_period_us = period_us;
+    }
+
+    target_us = (uint64_t)ctx->config.cycle_period_ms * 1000u;
+    if (target_us > 0u)
+    {
+        jitter_us = (period_us > target_us) ? (period_us - target_us)
+                                          : (target_us - period_us);
+        ctx->stats.last_cycle_jitter_us = jitter_us;
+        ctx->stats.total_cycle_jitter_us += jitter_us;
+        if (jitter_us > ctx->stats.max_cycle_jitter_us)
+        {
+            ctx->stats.max_cycle_jitter_us = jitter_us;
+        }
     }
 }
 
@@ -290,6 +306,7 @@ void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
 {
     uint64_t avg_latency = 0u;
     uint64_t avg_period  = 0u;
+    uint64_t avg_jitter  = 0u;
 
     if (ctx == NULL)
     {
@@ -303,21 +320,28 @@ void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
         {
             avg_period = ctx->stats.total_cycle_period_us / ctx->stats.cycles_completed;
         }
+        if (ctx->stats.total_cycle_jitter_us > 0u)
+        {
+            avg_jitter = ctx->stats.total_cycle_jitter_us / ctx->stats.cycles_completed;
+        }
     }
 
     printf(
-        "PD stats: cycles=%llu ok=%llu fail=%llu hb=%llu timeouts=%llu "
-        "replies=%llu reply_reject=%llu seq_mismatch=%llu "
+        "PD stats: cycles=%llu ok=%llu fail=%llu hb=%llu lost=%llu timeouts=%llu "
+        "replies=%llu reject=%llu stale=%llu seq_mismatch=%llu "
         "latency last=%llu avg=%llu max=%llu us "
         "period last=%llu avg=%llu min=%llu max=%llu us "
+        "jitter last=%llu avg=%llu max=%llu us target=%u ms "
         "work last=%llu max=%llu overruns=%llu inputs=0x%04X\n",
         (unsigned long long)ctx->stats.cycles_completed,
         (unsigned long long)ctx->stats.pd_sent_ok,
         (unsigned long long)ctx->stats.pd_sent_fail,
         (unsigned long long)ctx->stats.heartbeats_sent,
+        (unsigned long long)ctx->stats.lost_frames,
         (unsigned long long)ctx->stats.recv_timeouts,
         (unsigned long long)ctx->stats.exchange_replies,
         (unsigned long long)ctx->stats.reply_rejects,
+        (unsigned long long)ctx->stats.reply_stale_rejects,
         (unsigned long long)ctx->stats.reply_sequence_mismatches,
         (unsigned long long)ctx->stats.last_latency_us,
         (unsigned long long)avg_latency,
@@ -326,6 +350,10 @@ void leap_pd_controller_log_stats(const LeapPdControllerContext* ctx)
         (unsigned long long)avg_period,
         (unsigned long long)ctx->stats.min_cycle_period_us,
         (unsigned long long)ctx->stats.max_cycle_period_us,
+        (unsigned long long)ctx->stats.last_cycle_jitter_us,
+        (unsigned long long)avg_jitter,
+        (unsigned long long)ctx->stats.max_cycle_jitter_us,
+        ctx->config.cycle_period_ms,
         (unsigned long long)ctx->stats.last_cycle_work_us,
         (unsigned long long)ctx->stats.max_cycle_work_us,
         (unsigned long long)ctx->stats.cycle_overruns,
@@ -500,6 +528,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
                     500) != 0)
             {
                 pd->stats.recv_timeouts++;
+                pd->stats.lost_frames++;
             }
             else
             {
@@ -620,15 +649,6 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle(
 
     now_us = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : cycle_start_us;
     leap_pd_ctrl_record_cycle_timing(pd, cycle_start_us, now_us);
-
-    if ((pd->cycle_index % 20u) == 0u)
-    {
-        printf(
-            "cyclic PD seq=%u outputs=0x%04X work=%llu us\n",
-            pd->pd_sequence - 1u,
-            outputs,
-            (unsigned long long)pd->stats.last_cycle_work_us);
-    }
 
     pd->cycle_index++;
 

@@ -29,6 +29,7 @@ typedef struct LeapPdControllerStats
     uint64_t heartbeats_sent;
     uint64_t exchange_replies;
     uint64_t recv_timeouts;
+    uint64_t lost_frames;
     uint64_t reply_rejects;
     uint64_t reply_sequence_mismatches;
     uint64_t reply_stale_rejects;
@@ -39,6 +40,9 @@ typedef struct LeapPdControllerStats
     uint64_t min_cycle_period_us;
     uint64_t max_cycle_period_us;
     uint64_t total_cycle_period_us;
+    uint64_t last_cycle_jitter_us;
+    uint64_t max_cycle_jitter_us;
+    uint64_t total_cycle_jitter_us;
     uint64_t last_cycle_work_us;
     uint64_t max_cycle_work_us;
     uint64_t cycle_overruns;

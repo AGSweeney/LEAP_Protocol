@@ -108,6 +108,12 @@ int leap_mgmt_device_session_allows_owner_pd(
     uint32_t                     session_id,
     const uint8_t*               source_mac);
 
+int leap_mgmt_device_session_allows_diag_read(
+    const LeapMgmtDeviceContext* ctx,
+    uint32_t                     session_id,
+    const uint8_t*               source_mac,
+    uint64_t                       now_us);
+
 void leap_mgmt_device_refresh_owner_lease(LeapMgmtDeviceContext* ctx, uint64_t now_us);
 void leap_mgmt_device_refresh_process_watchdog(LeapMgmtDeviceContext* ctx, uint64_t now_us);
 

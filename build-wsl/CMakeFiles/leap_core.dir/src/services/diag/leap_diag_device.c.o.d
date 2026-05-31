@@ -1,7 +1,7 @@
-CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o: \
- /mnt/d/LEAP_Protocol/src/services/pd/leap_pd_common.c \
+CMakeFiles/leap_core.dir/src/services/diag/leap_diag_device.c.o: \
+ /mnt/d/LEAP_Protocol/src/services/diag/leap_diag_device.c \
  /usr/include/stdc-predef.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h /usr/include/stdint.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
@@ -19,10 +19,12 @@ CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_log.h /usr/include/string.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

@@ -8,6 +8,7 @@
 #include "leap/leap_pd_common.h"
 
 #include "leap/leap_dir_device.h"
+#include "leap/leap_log.h"
 
 #include <string.h>
 
@@ -527,6 +528,11 @@ LeapPdCommonStatus leap_pd_check_frame_age(
     limit = (uint64_t)max_frame_age_us + (uint64_t)jitter_margin_us;
     if (age > limit)
     {
+        leap_log_security(
+            LEAP_LOG_SEC_PD_STALE_FRAME,
+            "age_us=%llu limit_us=%llu",
+            (unsigned long long)age,
+            (unsigned long long)limit);
         return LEAP_PD_COMMON_STALE_FRAME;
     }
 

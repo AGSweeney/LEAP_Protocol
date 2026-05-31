@@ -4,6 +4,7 @@
 CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o: /mnt/d/LEAP_Protocol/examples/device_minimal/main.c \
   /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
@@ -64,6 +65,8 @@ CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o: /mnt/d/LEAP_Prot
 
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
+/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
+
 /usr/include/features-time64.h:
 
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
@@ -74,10 +77,6 @@ CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o: /mnt/d/LEAP_Prot
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/FILE.h:
-
-/usr/include/features.h:
-
 /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h:
@@ -85,6 +84,8 @@ CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o: /mnt/d/LEAP_Prot
 /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h:
 
@@ -103,6 +104,10 @@ CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o: /mnt/d/LEAP_Prot
 /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h:
 
 /mnt/d/LEAP_Protocol/examples/device_minimal/main.c:
+
+/usr/include/x86_64-linux-gnu/bits/types/FILE.h:
+
+/usr/include/features.h:
 
 /usr/include/stdio.h:
 
@@ -141,5 +146,3 @@ CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o: /mnt/d/LEAP_Prot
 /usr/include/x86_64-linux-gnu/bits/types.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
-
-/usr/include/x86_64-linux-gnu/bits/string_fortified.h:

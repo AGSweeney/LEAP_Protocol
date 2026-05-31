@@ -55,8 +55,9 @@ The reference stack provides a full device path and a controller bootstrap FSM:
 | DISC | HELLO reply, identity | HELLO broadcast, `leap_disc_controller` |
 | DIR | profile/endpoints | SELECT_PROFILE, profile reply parsing |
 | MGMT | sessions, lease, watchdog, state | open session, set OP, heartbeat, owner release |
-| PD | pack/unpack, I/O shadow, sequence policy | cyclic exchange, cycle metrics |
-| Stack | `leap_device_stack` (dispatch + tick) | `leap_controller_stack`, `leap_controller_session_hub` |
+| PD | pack/unpack, I/O shadow, sequence policy | cyclic engine, latency/jitter/lost-frame stats |
+| DIAG | counters, timing, events, trace marks | request builders + reply parsers |
+| Stack | `leap_device_stack` (all services + tick) | `leap_controller_stack`, `leap_controller_session_hub` |
 
 After bootstrap the controller stack tracks inbound peer sequence numbers (duplicate
 detection, `ack_sequence` on outbound frames), dispatches async MGMT replies and
@@ -68,9 +69,13 @@ collect up to 16 peers). Known peers can be brought to OP with
 
 Concurrent multi-peer control uses `leap_controller_session_hub`: each bound peer
 gets an independent `LeapControllerStack` (session ID, sequence, lease, PD state).
-Frame-level replay protection (`leap_controller_sequence`), profile-based PD
-endpoint validation, and exchange-reply sequence checks harden multi-peer I/O.
+Frame-level replay protection (`leap_controller_sequence`), optional gap rejection,
+§13.4 frame-age checks on exchange replies, profile-based PD endpoint validation,
+foreign-owner skip on hub bootstrap, and `LEAP_LOG_SECURITY` field diagnostics.
 See `docs/LEAP_MULTI_PEER_NOTES.md` for remaining multi-controller risks.
+
+Porting gate: use `leap_device_stack` / `leap_controller_stack` (or session hub)
+as the only application entry points — do not duplicate MGMT/PD logic on targets.
 
 ## Roadmap
 
@@ -80,20 +85,23 @@ See `docs/LEAP_MULTI_PEER_NOTES.md` for remaining multi-controller risks.
 - Frame parser/serializer, CRC engines, fragment handling, fuzz/regression tests
 - Device-side **LEAP-MGMT** (sessions, ownership, lease/watchdog, state machine)
 - **LEAP-DISC** / **LEAP-DIR** device handlers and controller helpers
-- **LEAP-PD** pack/unpack, device I/O binding, controller cyclic exchange + lease maintenance
-- Integrated `leap_device_stack` (DISC + DIR + MGMT + PD dispatch and tick)
+- **LEAP-PD** in `src/services/pd/` (common, device, controller cyclic engine)
+- **LEAP-DIAG** device handler + controller helpers; wired in `leap_device_stack`
+- Integrated `leap_device_stack` (DISC + DIR + MGMT + PD + DIAG dispatch and tick)
 - Linux `AF_PACKET` transport with partial-send retry, promisc/filter options, transport counters
-- Linux loopback examples (controller + device), WSL limitation documented
-- Controller stack Phase 1–3: bootstrap FSM, Linux IO adapter, `on_frame`, `release`
+- Linux loopback examples (controller uses stack-only PD path; device uses device stack)
+- Controller stack: bootstrap FSM, `on_frame`, `release`, `run_cyclic_pd`, session hub
+- Multi-peer hardening: sequence window, session bind, exchange validation, security log hook
 - Automated comms-loss unit test (`leap_device_stack_tick` lease expiry)
-- CI: build, ctest, Linux example binaries, loopback wire smoke on `lo`
+- CI: build, ctest (99+ unit tests), Linux example binary verification
 
 ### Next
 
-- Sequence/ACK window enforcement and replay hardening
-- **LEAP-DIAG** service (counters, timing, event log)
+- Controller-side DIAG poll helper / Linux `--diag` example flag
 - Wireshark dissector coverage for all v1.0 services and PD profiles
+- Rolling sequence bitmap (optional post-v1 replay hardening)
 - Embedded reference port (no Linux sockets; timer-driven tick)
+- Manual wire smoke on native Linux (`tools/ci/wire_smoke_*.sh`; not run on GHA)
 - Production EtherType registration path (beyond development `0x88B6`)
 - v0.9 / v1.0 release tag once independent implementations pass conformance vectors
 

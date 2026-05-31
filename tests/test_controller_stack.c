@@ -11,6 +11,7 @@
 #include "leap_test_frame.h"
 
 #include "leap/leap_controller_stack.h"
+#include "leap/leap_controller_sequence.h"
 #include "leap/leap_protocol.h"
 
 #include <string.h>
@@ -177,6 +178,7 @@ static void ctrl_stack_put_op_state(LeapControllerStack* stack)
     stack->phase      = LEAP_CTRL_STACK_OP;
     stack->mgmt.session_id = 42u;
     stack->mgmt.state      = LEAP_MGMT_CTRL_OP;
+    leap_controller_frame_sequence_bind_session(&stack->frame_seq, 42u);
 }
 
 static void ctrl_stack_setup_replies(CtrlStackMockIo* mock)
@@ -361,6 +363,94 @@ TEST(test_controller_stack_on_frame_duplicate_ignored)
     ASSERT_TRUE((event.flags & LEAP_CTRL_STACK_FLAG_DUPLICATE_FRAME) != 0u);
 }
 
+TEST(test_controller_stack_rejects_replayed_old_sequence)
+{
+    LeapControllerStack      stack;
+    LeapControllerStackEvent event;
+    LeapFrameView            view;
+    uint8_t                  frame[CTRL_STACK_TEST_FRAME_BUF];
+    size_t                   frame_length;
+    LeapStateReply           state_reply;
+
+    leap_controller_stack_init(&stack, NULL);
+    ctrl_stack_put_op_state(&stack);
+
+    memset(&state_reply, 0, sizeof(state_reply));
+    state_reply.current_state = (uint16_t)LEAP_STATE_OP;
+
+    ASSERT_TRUE(
+        leap_test_frame_build(
+            frame,
+            sizeof(frame),
+            &frame_length,
+            (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ACK_REQUESTED),
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_STATE_REPLY,
+            42u,
+            10u,
+            (const uint8_t*)&state_reply,
+            sizeof(state_reply)) == 0);
+    ASSERT_EQ_INT(leap_frame_parse(frame, frame_length, &view), LEAP_FRAME_OK);
+    ASSERT_EQ_INT(
+        leap_controller_stack_on_frame(&stack, k_device_mac, &view, &event),
+        LEAP_CTRL_STACK_OK);
+    ASSERT_EQ_U32(stack.frame_seq.highest_peer_sequence, 10u);
+
+    ASSERT_TRUE(
+        leap_test_frame_build(
+            frame,
+            sizeof(frame),
+            &frame_length,
+            (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ACK_REQUESTED),
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_STATE_REPLY,
+            42u,
+            3u,
+            (const uint8_t*)&state_reply,
+            sizeof(state_reply)) == 0);
+    ASSERT_EQ_INT(leap_frame_parse(frame, frame_length, &view), LEAP_FRAME_OK);
+    ASSERT_EQ_INT(
+        leap_controller_stack_on_frame(&stack, k_device_mac, &view, &event),
+        LEAP_CTRL_STACK_IGNORED);
+    ASSERT_EQ_U32(stack.frame_seq.duplicate_frames, 1u);
+    ASSERT_TRUE((event.flags & LEAP_CTRL_STACK_FLAG_DUPLICATE_FRAME) != 0u);
+}
+
+TEST(test_controller_stack_ignores_foreign_session)
+{
+    LeapControllerStack      stack;
+    LeapControllerStackEvent event;
+    LeapFrameView            view;
+    uint8_t                  frame[CTRL_STACK_TEST_FRAME_BUF];
+    size_t                   frame_length;
+    LeapStateReply           state_reply;
+
+    leap_controller_stack_init(&stack, NULL);
+    ctrl_stack_put_op_state(&stack);
+
+    memset(&state_reply, 0, sizeof(state_reply));
+    state_reply.current_state = (uint16_t)LEAP_STATE_OP;
+    ASSERT_TRUE(
+        leap_test_frame_build(
+            frame,
+            sizeof(frame),
+            &frame_length,
+            (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ACK_REQUESTED),
+            (uint16_t)LEAP_SERVICE_MGMT,
+            LEAP_MGMT_STATE_REPLY,
+            99u,
+            5u,
+            (const uint8_t*)&state_reply,
+            sizeof(state_reply)) == 0);
+    ASSERT_EQ_INT(leap_frame_parse(frame, frame_length, &view), LEAP_FRAME_OK);
+
+    ASSERT_EQ_INT(
+        leap_controller_stack_on_frame(&stack, k_device_mac, &view, &event),
+        LEAP_CTRL_STACK_IGNORED);
+    ASSERT_EQ_U32(stack.frame_seq.session_mismatches, 1u);
+    ASSERT_TRUE((event.flags & LEAP_CTRL_STACK_FLAG_SESSION_MISMATCH) != 0u);
+}
+
 TEST(test_controller_stack_send_acks_peer_sequence)
 {
     LeapControllerStack   stack;
@@ -411,6 +501,8 @@ void leap_run_controller_stack_tests(void)
     RUN_TEST(test_controller_stack_bootstrap_reaches_op);
     RUN_TEST(test_controller_stack_on_frame_mgmt_error_faults);
     RUN_TEST(test_controller_stack_on_frame_duplicate_ignored);
+    RUN_TEST(test_controller_stack_rejects_replayed_old_sequence);
+    RUN_TEST(test_controller_stack_ignores_foreign_session);
     RUN_TEST(test_controller_stack_send_acks_peer_sequence);
     RUN_TEST(test_controller_stack_release_without_session_resets);
 }

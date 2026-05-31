@@ -1202,3 +1202,59 @@ LeapControllerStackStatus leap_controller_stack_bootstrap_peer(
 
     return leap_ctrl_stack_run_until_op(stack, io, NULL);
 }
+
+static int leap_ctrl_stack_peer_ready(const LeapControllerStack* stack)
+{
+    if (stack == NULL || stack->peer_bound == 0)
+    {
+        return 0;
+    }
+
+    return (stack->phase == LEAP_CTRL_STACK_OP) ? 1 : 0;
+}
+
+LeapPdControllerStatus leap_controller_stack_run_cyclic_pd(
+    LeapControllerStack*      stack,
+    const LeapPdControllerIo* pd_io,
+    volatile int*             stop_flag)
+{
+    if (stack == NULL || pd_io == NULL || stop_flag == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (leap_ctrl_stack_peer_ready(stack) == 0)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    return leap_pd_controller_run_cyclic(
+        &stack->pd,
+        &stack->mgmt,
+        pd_io,
+        stack->peer_mac,
+        stop_flag);
+}
+
+LeapPdControllerStatus leap_controller_stack_pd_single_write(
+    LeapControllerStack*      stack,
+    const LeapPdControllerIo* pd_io,
+    uint16_t                  digital_outputs)
+{
+    if (stack == NULL || pd_io == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (leap_ctrl_stack_peer_ready(stack) == 0)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    return leap_pd_controller_send_single_write(
+        &stack->pd,
+        &stack->mgmt,
+        pd_io,
+        stack->peer_mac,
+        digital_outputs);
+}

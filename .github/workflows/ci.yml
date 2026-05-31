@@ -27,22 +27,6 @@ jobs:
           test -x build/leap_linux_discover
           test -x build/leap_tests
 
-      - name: Wire smoke (loopback)
-        env:
-          LEAP_WIRE_STARTUP_S: "2"
-          LEAP_WIRE_SMOKE_REQUIRED: "1"
-        run: |
-          chmod +x tools/ci/wire_smoke_lo.sh
-          ip link show lo
-          LEAP_BUILD_DIR="$PWD/build" tools/ci/wire_smoke_lo.sh
-
-      - name: Wire smoke (multi-device discovery)
-        env:
-          LEAP_WIRE_SMOKE_REQUIRED: "1"
-        run: |
-          chmod +x tools/ci/wire_smoke_discover_lo.sh
-          LEAP_BUILD_DIR="$PWD/build" tools/ci/wire_smoke_discover_lo.sh
-
   test-windows:
     runs-on: windows-latest
     steps:

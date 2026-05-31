@@ -38,16 +38,19 @@ void leap_device_stack_init_full(LeapDeviceStack* stack, const LeapDeviceStackCo
         leap_mgmt_device_init(&stack->mgmt, &config->mgmt);
         leap_disc_device_init(&stack->disc, &config->disc);
         leap_dir_device_init(&stack->dir, &config->dir);
+        leap_diag_device_init(&stack->diag, &config->diag);
     }
     else
     {
         leap_mgmt_device_init(&stack->mgmt, NULL);
         leap_disc_device_init(&stack->disc, NULL);
         leap_dir_device_init(&stack->dir, NULL);
+        leap_diag_device_init(&stack->diag, NULL);
     }
 
     leap_dir_device_sync_disc(&stack->dir, &stack->disc);
     leap_pd_device_init(&stack->pd, NULL);
+    leap_diag_device_on_transport_ready(&stack->diag, 0u);
     stack->pd_io_bound = 0;
 }
 
@@ -86,10 +89,12 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
     LeapPdDeviceResult    pd_result;
     LeapDiscDeviceResult  disc_result;
     LeapDirDeviceResult   dir_result;
+    LeapDiagDeviceResult  diag_result;
     LeapMgmtProcessStatus mgmt_status;
     LeapPdDeviceStatus    pd_status;
     LeapDiscDeviceStatus  disc_status;
     LeapDirDeviceStatus   dir_status;
+    LeapDiagDeviceStatus  diag_status;
     uint16_t              service_id;
 
     if (result == NULL)
@@ -108,6 +113,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
     parse_result = leap_frame_parse(data, length, &view);
     if (parse_result != LEAP_FRAME_OK)
     {
+        leap_diag_device_on_frame_parse_error(&stack->diag, parse_result);
         result->status      = LEAP_DEVICE_STACK_FRAME_ERROR;
         result->frame_error = parse_result;
         return LEAP_DEVICE_STACK_FRAME_ERROR;
@@ -136,8 +142,21 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
 
         if (mgmt_status == LEAP_MGMT_PROCESS_OK)
         {
+            leap_diag_device_on_mgmt_flags(
+                &stack->diag,
+                mgmt_result.flags,
+                mgmt_result.reply.message_type,
+                mgmt_result.device_state,
+                now_us);
+            leap_diag_device_on_frame_accepted(&stack->diag);
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
+        }
+
+        leap_diag_device_on_frame_rejected(&stack->diag);
+        if (mgmt_status == LEAP_MGMT_PROCESS_HANDLER_ERROR)
+        {
+            stack->diag.state_transition_rejects++;
         }
 
         if (mgmt_status == LEAP_MGMT_PROCESS_HANDLER_ERROR)
@@ -172,11 +191,13 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
 
         if (disc_status == LEAP_DISC_DEVICE_OK)
         {
+            leap_diag_device_on_frame_accepted(&stack->diag);
             result->flags |= LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY;
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
         }
 
+        leap_diag_device_on_frame_rejected(&stack->diag);
         result->status = LEAP_DEVICE_STACK_DISC_ERROR;
         return LEAP_DEVICE_STACK_DISC_ERROR;
     }
@@ -205,6 +226,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
 
         if (dir_status == LEAP_DIR_DEVICE_OK)
         {
+            leap_diag_device_on_frame_accepted(&stack->diag);
             result->flags |= LEAP_DEVICE_STACK_FLAG_DIR_HAS_REPLY;
             if ((dir_result.flags & LEAP_DIR_DEVICE_FLAG_PROFILE_SELECTED) != 0u)
             {
@@ -217,6 +239,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
             return LEAP_DEVICE_STACK_OK;
         }
 
+        leap_diag_device_on_frame_rejected(&stack->diag);
         result->status = LEAP_DEVICE_STACK_DIR_ERROR;
         return LEAP_DEVICE_STACK_DIR_ERROR;
     }
@@ -249,11 +272,16 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
                 pd_result.reply_payload_length);
         }
 
+        leap_diag_device_on_pd_result(&stack->diag, &pd_result, now_us);
+
         if (pd_status == LEAP_PD_DEVICE_OK)
         {
+            leap_diag_device_on_frame_accepted(&stack->diag);
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
         }
+
+        leap_diag_device_on_frame_rejected(&stack->diag);
 
         if (pd_status == LEAP_PD_DEVICE_REJECTED)
         {
@@ -265,6 +293,51 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         return LEAP_DEVICE_STACK_PD_REJECTED;
     }
 
+    if (service_id == (uint16_t)LEAP_SERVICE_DIAG)
+    {
+        diag_status = leap_diag_device_process_frame(
+            &stack->diag,
+            &stack->mgmt,
+            source_mac,
+            now_us,
+            data,
+            length,
+            &diag_result);
+
+        result->frame        = diag_result.frame;
+        result->device_state = leap_mgmt_device_get_state(&stack->mgmt);
+        result->error_code   = diag_result.error_code;
+        result->diag_message_type   = diag_result.message_type;
+        result->diag_payload_length = diag_result.payload_length;
+        if (diag_result.payload_length > 0u)
+        {
+            (void)memcpy(
+                result->diag_payload,
+                diag_result.payload,
+                diag_result.payload_length);
+        }
+
+        if (diag_status == LEAP_DIAG_DEVICE_OK)
+        {
+            leap_diag_device_on_frame_accepted(&stack->diag);
+            result->flags |= LEAP_DEVICE_STACK_FLAG_DIAG_HAS_REPLY;
+            result->status = LEAP_DEVICE_STACK_OK;
+            return LEAP_DEVICE_STACK_OK;
+        }
+
+        if (diag_status == LEAP_DIAG_DEVICE_NO_REPLY)
+        {
+            leap_diag_device_on_frame_accepted(&stack->diag);
+            result->status = LEAP_DEVICE_STACK_OK;
+            return LEAP_DEVICE_STACK_OK;
+        }
+
+        leap_diag_device_on_frame_rejected(&stack->diag);
+        result->status = LEAP_DEVICE_STACK_DIAG_ERROR;
+        return LEAP_DEVICE_STACK_DIAG_ERROR;
+    }
+
+    leap_diag_device_on_unsupported_service(&stack->diag);
     result->status = LEAP_DEVICE_STACK_UNSUPPORTED_SERVICE;
     return LEAP_DEVICE_STACK_UNSUPPORTED_SERVICE;
 }
@@ -274,11 +347,20 @@ LeapDeviceStackStatus leap_device_stack_tick(
     uint64_t         now_us,
     uint32_t*        flags_out)
 {
+    uint32_t flags = 0u;
+
     if (stack == NULL)
     {
         return LEAP_DEVICE_STACK_FRAME_ERROR;
     }
 
-    (void)leap_mgmt_process_tick(&stack->mgmt, now_us, flags_out);
+    (void)leap_mgmt_process_tick(&stack->mgmt, now_us, &flags);
+    leap_diag_device_on_tick_flags(&stack->diag, flags, now_us);
+
+    if (flags_out != NULL)
+    {
+        *flags_out = flags;
+    }
+
     return LEAP_DEVICE_STACK_OK;
 }

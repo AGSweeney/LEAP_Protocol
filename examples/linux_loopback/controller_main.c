@@ -1,8 +1,7 @@
 /*
  * examples/linux_loopback/controller_main.c
  *
- * Linux AF_PACKET LEAP controller:
- *   HELLO -> SELECT_PROFILE -> OPEN_SESSION -> SET_STATE(OP) -> PD
+ * Linux AF_PACKET LEAP controller — transport + leap_controller_stack only.
  *
  * Usage:
  *   sudo ./leap_linux_controller [interface]
@@ -19,7 +18,6 @@
 #include "leap_linux_pd.h"
 
 #include "leap/leap_controller_stack.h"
-#include "leap/leap_pd_controller.h"
 #include "leap/leap_protocol.h"
 
 #include <signal.h>
@@ -38,18 +36,27 @@ static void controller_on_sigint(int signo)
     g_controller_stop = 1;
 }
 
+static void controller_shutdown(
+    LeapControllerStack*       stack,
+    LeapControllerStackIo*     stack_io,
+    LeapRawLinuxSocket*        transport)
+{
+    leap_controller_stack_release(stack, stack_io);
+    leap_raw_linux_close(transport);
+}
+
 int main(int argc, char** argv)
 {
-    LeapLinuxControllerOptions  options;
-    LeapRawLinuxSocket          transport;
-    LeapRawLinuxOpenOptions     open_options;
-    LeapControllerStack         stack;
-    LeapControllerStackConfig   stack_config;
-    LeapControllerStackIo       stack_io;
-    LeapPdControllerIo          pd_io;
-    LeapLinuxPdTransport        pd_transport;
-    uint8_t                     peer_mac[6];
-    uint32_t                    lease_us = 5000000u;
+    LeapLinuxControllerOptions options;
+    LeapRawLinuxSocket         transport;
+    LeapRawLinuxOpenOptions    open_options;
+    LeapControllerStack        stack;
+    LeapControllerStackConfig  stack_config;
+    LeapControllerStackIo      stack_io;
+    LeapPdControllerIo         pd_io;
+    LeapLinuxPdTransport       pd_transport;
+    uint8_t                    peer_mac[6];
+    uint32_t                   lease_us = 5000000u;
 
 #if !defined(__linux__)
     (void)argc;
@@ -98,7 +105,7 @@ int main(int argc, char** argv)
     }
     else if (options.cyclic != 0)
     {
-        printf(" (cyclic PD %u ms", options.cyclic_period_ms);
+        printf(" (cyclic %u ms", options.cyclic_period_ms);
         if (options.exchange != 0)
         {
             printf(", exchange");
@@ -112,10 +119,13 @@ int main(int argc, char** argv)
     printf("\n");
     leap_linux_print_mac("  local MAC: ", transport.local_mac);
 
-    if (leap_controller_stack_bootstrap(&stack, &stack_io, peer_mac) != LEAP_CTRL_STACK_OK)
+    if (leap_controller_stack_bootstrap(&stack, &stack_io, peer_mac) !=
+        LEAP_CTRL_STACK_OK)
     {
-        fprintf(stderr, "controller bootstrap failed (phase=%u)\n",
-                (unsigned)leap_controller_stack_get_phase(&stack));
+        fprintf(
+            stderr,
+            "bootstrap failed (phase=%u)\n",
+            (unsigned)leap_controller_stack_get_phase(&stack));
         leap_raw_linux_close(&transport);
         return 1;
     }
@@ -127,55 +137,53 @@ int main(int argc, char** argv)
 
     if (options.lease_demo != 0)
     {
-        printf("lease-demo: idling %u s without heartbeat or PD (watch device log)...\n",
-               LEAP_LEASE_DEMO_IDLE_S);
+        printf(
+            "lease-demo: idling %u s without heartbeat or PD...\n",
+            LEAP_LEASE_DEMO_IDLE_S);
         sleep(LEAP_LEASE_DEMO_IDLE_S);
-        printf("lease-demo complete — device should show safe outputs active\n");
-        leap_raw_linux_close(&transport);
+        printf("lease-demo complete — device should show safe outputs\n");
+        controller_shutdown(&stack, &stack_io, &transport);
         return 0;
     }
 
     if (options.cyclic != 0)
     {
         signal(SIGINT, controller_on_sigint);
-        if (leap_pd_controller_run_cyclic(
-                &stack.pd,
-                &stack.mgmt,
+        if (leap_controller_stack_run_cyclic_pd(
+                &stack,
                 &pd_io,
-                peer_mac,
                 (volatile int*)&g_controller_stop) != LEAP_PD_CTRL_OK)
         {
-            leap_controller_stack_release(&stack, &stack_io);
-            leap_raw_linux_close(&transport);
+            controller_shutdown(&stack, &stack_io, &transport);
             return 1;
         }
-        leap_controller_stack_release(&stack, &stack_io);
-        leap_raw_linux_close(&transport);
-        return 0;
     }
-
-    if (leap_pd_controller_send_single_write(
-            &stack.pd, &stack.mgmt, &pd_io, peer_mac, 0x0015u) != LEAP_PD_CTRL_OK)
+    else
     {
-        leap_controller_stack_release(&stack, &stack_io);
-        leap_raw_linux_close(&transport);
-        return 1;
+        if (leap_controller_stack_pd_single_write(
+                &stack, &pd_io, 0x0015u) != LEAP_PD_CTRL_OK)
+        {
+            controller_shutdown(&stack, &stack_io, &transport);
+            return 1;
+        }
+
+        printf("sent PD WRITE (outputs=0x0015)\n");
     }
 
-    if (options.stats != 0)
+    if (options.cyclic == 0)
     {
         leap_pd_controller_log_stats(&stack.pd);
-        leap_linux_print_transport_stats(&transport);
-        printf("send retries (app): %llu\n",
-               (unsigned long long)leap_linux_send_retry_count());
     }
 
-    printf("sent PD WRITE_ENDPOINT (outputs=0x0015)\n");
-    printf("check device log for 'I/O shadow: outputs=0x0015'\n");
-    printf("flow complete — DISC + DIR + MGMT + PD on raw Ethernet\n");
+    if (options.stats != 0 || options.cyclic == 0)
+    {
+        leap_linux_print_transport_stats(&transport);
+        printf(
+            "send retries (app): %llu\n",
+            (unsigned long long)leap_linux_send_retry_count());
+    }
 
-    leap_controller_stack_release(&stack, &stack_io);
-    leap_raw_linux_close(&transport);
+    controller_shutdown(&stack, &stack_io, &transport);
     return 0;
 #endif
 }

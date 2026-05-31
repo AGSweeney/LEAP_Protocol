@@ -5,6 +5,7 @@ CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o
  /mnt/d/LEAP_Protocol/examples/device_minimal/main.c
  /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h
  /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h
+ /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h
  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h
  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h

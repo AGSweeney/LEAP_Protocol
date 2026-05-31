@@ -6,6 +6,7 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/device_main.c.o: /mnt/d
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_io.h \
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_stats.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
@@ -145,6 +146,7 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_io.c.o: /mnt
 CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o: /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_stats.c \
   /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_stats.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h \
+  /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
   /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
@@ -196,12 +198,6 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o: /
 
 /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_io.c:
 
-/usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdint-least.h:
-
-/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_stats.h:
-
 /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
 
 /usr/include/string.h:
@@ -213,6 +209,12 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o: /
 /usr/include/x86_64-linux-gnu/bits/stdlib.h:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdint-least.h:
+
+/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_stats.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:
 
 /usr/include/x86_64-linux-gnu/bits/long-double.h:
 
@@ -228,11 +230,35 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o: /
 
 /usr/include/x86_64-linux-gnu/bits/types/FILE.h:
 
+/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h:
+
+/usr/include/features.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h:
+
 /usr/include/stdint.h:
+
+/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.c:
+
+/usr/include/x86_64-linux-gnu/bits/timesize.h:
 
 /usr/include/features-time64.h:
 
+/usr/include/linux/errno.h:
+
+/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.h:
+
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
+
+/usr/include/stdc-predef.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h:
 
@@ -248,31 +274,15 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o: /
 
 /usr/include/errno.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h:
-
-/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.h:
-
-/usr/include/linux/errno.h:
-
-/usr/include/features.h:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h:
-
-/usr/include/x86_64-linux-gnu/bits/timesize.h:
-
-/mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.c:
-
-/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
-
-/mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h:
+/mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h:
 
 /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h:
+
+/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
+
+/mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdio2.h:
 
@@ -293,12 +303,6 @@ CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o: /
 /usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
-
-/usr/include/stdc-predef.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
 

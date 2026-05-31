@@ -89,6 +89,47 @@ Embedded ports should:
 5. `leap_controller_session_hub_on_frame()` from a recv thread for async MGMT
 6. `leap_controller_session_hub_release_all()` on shutdown
 
+## Multi-peer impact (what breaks, what holds)
+
+### Happy path: N devices, one controller
+
+| Stage | Behavior |
+| --- | --- |
+| Discover | Broadcast HELLO; table holds one row per device MAC + profile/state/owner |
+| Bootstrap | Hub allocates one `LeapControllerStack` slot per peer; independent `session_id` and MGMT sequence |
+| Cyclic PD | Round-robin calls `run_one_cycle` per OP slot; Linux transport demuxes replies by peer MAC |
+| Async recv | `on_frame` routes by `src_mac`; frame sequence + session binding per slot |
+
+### Failure modes
+
+| Scenario | Stack response | Device state |
+| --- | --- | --- |
+| Two controllers race `OPEN_SESSION` | Device grants one owner; loser gets MGMT error / NOT_OWNER | Single owner enforced by device |
+| Foreign `active_owner_mac` at discover | Hub `skip_foreign_owned_peers` skips bootstrap (default) | Unchanged |
+| Replay old Ethernet `sequence` | Controller ignores duplicate; `duplicate_frames++` | Unaffected |
+| Forward sequence gap | Counted by default; optional `reject_sequence_gaps` faults slot | PD `process_sequence` still authoritative |
+| PD from wrong MAC or session | Device rejects NOT_OWNER; OP → SAFE on spoof | Safe state |
+| Stale EXCHANGE_REPLY | Controller drops reply; `reply_stale_rejects++` | Unaffected |
+| Cross-peer frame on wrong slot | Session mismatch or ignored (no matching slot MAC) | Unaffected |
+
+### Field diagnostics
+
+Compile with `-DLEAP_LOG_SECURITY` to emit `LEAP-SEC[...]` lines on sequence
+violations, PD ownership rejects, and stale frame age checks. Counters on
+controller sequence state and PD controller stats mirror the same events for
+telemetry without stderr spam in release builds.
+
+### Wire smoke (local only)
+
+GitHub Actions runners block veth/bridge setup (`Attribute failed policy validation`).
+Unit tests cover replay, ownership, and session binding. Run wire smoke manually
+on native Linux with `sudo` when validating AF_PACKET:
+
+```bash
+LEAP_BUILD_DIR=build tools/ci/wire_smoke_lo.sh
+LEAP_BUILD_DIR=build tools/ci/wire_smoke_discover_lo.sh
+```
+
 ## See also
 
 - Normative process sequence rules: `docs/LEAP_PROTOCOL_SPECIFICATION.md` §13.4–§13.6

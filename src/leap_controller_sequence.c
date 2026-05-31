@@ -7,6 +7,8 @@
 
 #include "leap/leap_controller_sequence.h"
 
+#include "leap/leap_log.h"
+
 #include <stddef.h>
 
 void leap_controller_frame_sequence_init(LeapControllerFrameSequenceState* state)
@@ -71,6 +73,11 @@ LeapControllerFrameSequenceResult leap_controller_frame_sequence_accept(
         frame_session_id != state->bound_session_id)
     {
         state->session_mismatches++;
+        leap_log_security(
+            LEAP_LOG_SEC_FRAME_SEQ_SESSION_MISMATCH,
+            "session_id=%u bound=%u",
+            frame_session_id,
+            state->bound_session_id);
         return LEAP_CTRL_FRAME_SEQ_SESSION_MISMATCH;
     }
 
@@ -95,6 +102,11 @@ LeapControllerFrameSequenceResult leap_controller_frame_sequence_accept(
     if (sequence <= state->highest_peer_sequence)
     {
         state->duplicate_frames++;
+        leap_log_security(
+            LEAP_LOG_SEC_FRAME_SEQ_DUPLICATE,
+            "sequence=%u highest=%u",
+            sequence,
+            state->highest_peer_sequence);
         return LEAP_CTRL_FRAME_SEQ_DUPLICATE;
     }
 
@@ -106,6 +118,12 @@ LeapControllerFrameSequenceResult leap_controller_frame_sequence_accept(
         if (config != NULL && config->reject_sequence_gaps != 0)
         {
             state->gap_rejects++;
+            leap_log_security(
+                LEAP_LOG_SEC_FRAME_SEQ_GAP,
+                "sequence=%u highest=%u gap=%u",
+                sequence,
+                state->highest_peer_sequence,
+                gap);
             return LEAP_CTRL_FRAME_SEQ_GAP;
         }
     }
@@ -114,6 +132,12 @@ LeapControllerFrameSequenceResult leap_controller_frame_sequence_accept(
         sequence > state->highest_peer_sequence + window)
     {
         state->out_of_window_rejects++;
+        leap_log_security(
+            LEAP_LOG_SEC_FRAME_SEQ_OUT_OF_WINDOW,
+            "sequence=%u highest=%u window=%u",
+            sequence,
+            state->highest_peer_sequence,
+            window);
         return LEAP_CTRL_FRAME_SEQ_OUT_OF_WINDOW;
     }
 

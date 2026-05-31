@@ -531,6 +531,31 @@ static int leap_mgmt_validate_session(
     return 0;
 }
 
+int leap_mgmt_device_session_allows_diag_read(
+    const LeapMgmtDeviceContext* ctx,
+    uint32_t                     session_id,
+    const uint8_t*               source_mac,
+    uint64_t                       now_us)
+{
+    if (ctx == NULL)
+    {
+        return 0;
+    }
+
+    if (leap_mgmt_observer_expired(ctx, now_us))
+    {
+        return 0;
+    }
+
+    if (ctx->device_state == LEAP_STATE_INIT ||
+        ctx->device_state == LEAP_STATE_CONFIGURED)
+    {
+        return 1;
+    }
+
+    return leap_mgmt_validate_session(ctx, session_id, source_mac);
+}
+
 void leap_mgmt_device_init(LeapMgmtDeviceContext* ctx, const LeapMgmtDeviceConfig* config)
 {
     if (ctx == NULL)

@@ -18,4 +18,5 @@ CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_log.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h

@@ -182,6 +182,16 @@ LeapControllerStackStatus leap_controller_stack_release(
     LeapControllerStack*         stack,
     const LeapControllerStackIo* io);
 
+LeapPdControllerStatus leap_controller_stack_run_cyclic_pd(
+    LeapControllerStack*        stack,
+    const LeapPdControllerIo*   pd_io,
+    volatile int*               stop_flag);
+
+LeapPdControllerStatus leap_controller_stack_pd_single_write(
+    LeapControllerStack*      stack,
+    const LeapPdControllerIo* pd_io,
+    uint16_t                  digital_outputs);
+
 #ifdef __cplusplus
 }
 #endif

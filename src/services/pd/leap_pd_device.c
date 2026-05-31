@@ -7,6 +7,8 @@
 
 #include "leap/leap_pd_device.h"
 
+#include "leap/leap_log.h"
+
 #include <string.h>
 
 static int leap_pd_message_supported(uint16_t message_type)
@@ -404,6 +406,11 @@ LeapPdDeviceStatus leap_pd_device_process_frame(
 
         result->status     = LEAP_PD_DEVICE_REJECTED;
         result->error_code = LEAP_STATUS_NOT_OWNER;
+        leap_log_security(
+            LEAP_LOG_SEC_PD_NOT_OWNER,
+            "session_id=%u state=%u",
+            result->frame.header.session_id,
+            (unsigned)mgmt->device_state);
         return LEAP_PD_DEVICE_REJECTED;
     }
 

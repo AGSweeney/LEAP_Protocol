@@ -597,6 +597,78 @@ src/leap_device_stack.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_device_stack.c.s
 .PHONY : src/leap_device_stack.c.s
 
+src/leap_log.o: src/leap_log.c.o
+.PHONY : src/leap_log.o
+
+# target to build an object file
+src/leap_log.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_log.c.o
+.PHONY : src/leap_log.c.o
+
+src/leap_log.i: src/leap_log.c.i
+.PHONY : src/leap_log.i
+
+# target to preprocess a source file
+src/leap_log.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_log.c.i
+.PHONY : src/leap_log.c.i
+
+src/leap_log.s: src/leap_log.c.s
+.PHONY : src/leap_log.s
+
+# target to generate assembly for a file
+src/leap_log.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_log.c.s
+.PHONY : src/leap_log.c.s
+
+src/services/diag/leap_diag_controller.o: src/services/diag/leap_diag_controller.c.o
+.PHONY : src/services/diag/leap_diag_controller.o
+
+# target to build an object file
+src/services/diag/leap_diag_controller.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_controller.c.o
+.PHONY : src/services/diag/leap_diag_controller.c.o
+
+src/services/diag/leap_diag_controller.i: src/services/diag/leap_diag_controller.c.i
+.PHONY : src/services/diag/leap_diag_controller.i
+
+# target to preprocess a source file
+src/services/diag/leap_diag_controller.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_controller.c.i
+.PHONY : src/services/diag/leap_diag_controller.c.i
+
+src/services/diag/leap_diag_controller.s: src/services/diag/leap_diag_controller.c.s
+.PHONY : src/services/diag/leap_diag_controller.s
+
+# target to generate assembly for a file
+src/services/diag/leap_diag_controller.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_controller.c.s
+.PHONY : src/services/diag/leap_diag_controller.c.s
+
+src/services/diag/leap_diag_device.o: src/services/diag/leap_diag_device.c.o
+.PHONY : src/services/diag/leap_diag_device.o
+
+# target to build an object file
+src/services/diag/leap_diag_device.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_device.c.o
+.PHONY : src/services/diag/leap_diag_device.c.o
+
+src/services/diag/leap_diag_device.i: src/services/diag/leap_diag_device.c.i
+.PHONY : src/services/diag/leap_diag_device.i
+
+# target to preprocess a source file
+src/services/diag/leap_diag_device.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_device.c.i
+.PHONY : src/services/diag/leap_diag_device.c.i
+
+src/services/diag/leap_diag_device.s: src/services/diag/leap_diag_device.c.s
+.PHONY : src/services/diag/leap_diag_device.s
+
+# target to generate assembly for a file
+src/services/diag/leap_diag_device.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_device.c.s
+.PHONY : src/services/diag/leap_diag_device.c.s
+
 src/services/dir/leap_dir_controller.o: src/services/dir/leap_dir_controller.c.o
 .PHONY : src/services/dir/leap_dir_controller.o
 
@@ -1052,6 +1124,54 @@ tests/test_device_stack.s: tests/test_device_stack.c.s
 tests/test_device_stack.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_device_stack.c.s
 .PHONY : tests/test_device_stack.c.s
+
+tests/test_diag_controller.o: tests/test_diag_controller.c.o
+.PHONY : tests/test_diag_controller.o
+
+# target to build an object file
+tests/test_diag_controller.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_diag_controller.c.o
+.PHONY : tests/test_diag_controller.c.o
+
+tests/test_diag_controller.i: tests/test_diag_controller.c.i
+.PHONY : tests/test_diag_controller.i
+
+# target to preprocess a source file
+tests/test_diag_controller.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_diag_controller.c.i
+.PHONY : tests/test_diag_controller.c.i
+
+tests/test_diag_controller.s: tests/test_diag_controller.c.s
+.PHONY : tests/test_diag_controller.s
+
+# target to generate assembly for a file
+tests/test_diag_controller.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_diag_controller.c.s
+.PHONY : tests/test_diag_controller.c.s
+
+tests/test_diag_device.o: tests/test_diag_device.c.o
+.PHONY : tests/test_diag_device.o
+
+# target to build an object file
+tests/test_diag_device.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_diag_device.c.o
+.PHONY : tests/test_diag_device.c.o
+
+tests/test_diag_device.i: tests/test_diag_device.c.i
+.PHONY : tests/test_diag_device.i
+
+# target to preprocess a source file
+tests/test_diag_device.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_diag_device.c.i
+.PHONY : tests/test_diag_device.c.i
+
+tests/test_diag_device.s: tests/test_diag_device.c.s
+.PHONY : tests/test_diag_device.s
+
+# target to generate assembly for a file
+tests/test_diag_device.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_diag_device.c.s
+.PHONY : tests/test_diag_device.c.s
 
 tests/test_dir_device.o: tests/test_dir_device.c.o
 .PHONY : tests/test_dir_device.o
@@ -1548,6 +1668,15 @@ help:
 	@echo "... src/leap_device_stack.o"
 	@echo "... src/leap_device_stack.i"
 	@echo "... src/leap_device_stack.s"
+	@echo "... src/leap_log.o"
+	@echo "... src/leap_log.i"
+	@echo "... src/leap_log.s"
+	@echo "... src/services/diag/leap_diag_controller.o"
+	@echo "... src/services/diag/leap_diag_controller.i"
+	@echo "... src/services/diag/leap_diag_controller.s"
+	@echo "... src/services/diag/leap_diag_device.o"
+	@echo "... src/services/diag/leap_diag_device.i"
+	@echo "... src/services/diag/leap_diag_device.s"
 	@echo "... src/services/dir/leap_dir_controller.o"
 	@echo "... src/services/dir/leap_dir_controller.i"
 	@echo "... src/services/dir/leap_dir_controller.s"
@@ -1605,6 +1734,12 @@ help:
 	@echo "... tests/test_device_stack.o"
 	@echo "... tests/test_device_stack.i"
 	@echo "... tests/test_device_stack.s"
+	@echo "... tests/test_diag_controller.o"
+	@echo "... tests/test_diag_controller.i"
+	@echo "... tests/test_diag_controller.s"
+	@echo "... tests/test_diag_device.o"
+	@echo "... tests/test_diag_device.i"
+	@echo "... tests/test_diag_device.s"
 	@echo "... tests/test_dir_device.o"
 	@echo "... tests/test_dir_device.i"
 	@echo "... tests/test_dir_device.s"

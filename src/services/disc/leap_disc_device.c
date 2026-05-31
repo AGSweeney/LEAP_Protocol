@@ -112,6 +112,7 @@ void leap_disc_device_init(LeapDiscDeviceContext* ctx, const LeapDiscDeviceConfi
         (uint16_t)LEAP_SERVICE_DISC,
         (uint16_t)LEAP_SERVICE_DIR,
         (uint16_t)LEAP_SERVICE_PD,
+        (uint16_t)LEAP_SERVICE_DIAG,
     };
 
     if (ctx == NULL)
@@ -130,8 +131,8 @@ void leap_disc_device_init(LeapDiscDeviceContext* ctx, const LeapDiscDeviceConfi
     {
         size_t i;
 
-        ctx->config.supported_service_count = 4u;
-        for (i = 0u; i < 4u; i++)
+        ctx->config.supported_service_count = 5u;
+        for (i = 0u; i < 5u; i++)
         {
             ctx->config.supported_services[i] = k_default_services[i];
         }

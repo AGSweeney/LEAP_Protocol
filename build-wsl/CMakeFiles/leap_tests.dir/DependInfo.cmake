@@ -16,6 +16,8 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/mnt/d/LEAP_Protocol/tests/test_controller_stack.c" "CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_controller_stack.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_crc.c" "CMakeFiles/leap_tests.dir/tests/test_crc.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_crc.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_device_stack.c" "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_device_stack.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_diag_controller.c" "CMakeFiles/leap_tests.dir/tests/test_diag_controller.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_diag_controller.c.o.d"
+  "/mnt/d/LEAP_Protocol/tests/test_diag_device.c" "CMakeFiles/leap_tests.dir/tests/test_diag_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_diag_device.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_dir_device.c" "CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_dir_device.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_disc_controller.c" "CMakeFiles/leap_tests.dir/tests/test_disc_controller.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_disc_controller.c.o.d"
   "/mnt/d/LEAP_Protocol/tests/test_disc_device.c" "CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o" "gcc" "CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o.d"

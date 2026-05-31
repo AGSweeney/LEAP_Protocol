@@ -212,6 +212,7 @@ TEST(test_pd_controller_cycle_metrics_and_heartbeat)
     ASSERT_EQ_U32(pd.stats.cycles_completed, 3u);
     ASSERT_TRUE(pd.stats.last_cycle_work_us > 0u);
     ASSERT_TRUE(pd.stats.min_cycle_period_us > 0u);
+    ASSERT_TRUE(pd.stats.last_cycle_jitter_us > 0u);
     ASSERT_TRUE(mock.hb_send_count >= 1u);
 }
 
