@@ -92,6 +92,8 @@ Embedded ports should:
 5. `leap_controller_session_hub_on_frame()` from a recv thread for async MGMT
 6. `leap_controller_session_hub_release_all()` on shutdown
 
+Reference binary: `examples/linux_loopback/hub_main.c` (`leap_linux_hub`).
+
 ## Multi-peer impact (what breaks, what holds)
 
 ### Happy path: N devices, one controller
@@ -136,4 +138,5 @@ LEAP_BUILD_DIR=build tools/ci/wire_smoke_discover_lo.sh
 ## See also
 
 - Normative process sequence rules: `docs/LEAP_PROTOCOL_SPECIFICATION.md` §13.4–§13.6
+- Transport reconnect: `docs/LEAP_TRANSPORT_RECONNECT.md`
 - Controller stack plan: `docs/LEAP_CONTROLLER_STACK_PLAN.md`

@@ -21,6 +21,8 @@
 
 static const uint8_t k_peer_a[6] = { 0x02, 0x10, 0x20, 0x30, 0x40, 0x01 };
 static const uint8_t k_peer_b[6] = { 0x02, 0x10, 0x20, 0x30, 0x40, 0x02 };
+static const uint8_t k_ctrl_mac[6] = { 0x02, 0x11, 0x22, 0x33, 0x44, 0x55 };
+static const uint8_t k_foreign_mac[6] = { 0x02, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE };
 
 typedef struct CtrlStackMockIo
 {
@@ -394,10 +396,26 @@ TEST(test_controller_stack_bootstrap_peer_reaches_op)
     ASSERT_TRUE(mock.send_count >= 3u);
 }
 
+TEST(test_controller_peer_owned_by_other)
+{
+    LeapControllerPeerEntry entry;
+
+    memset(&entry, 0, sizeof(entry));
+    ASSERT_EQ_INT(leap_controller_peer_owned_by_other(&entry, k_ctrl_mac), 0);
+
+    memcpy(entry.active_owner_mac, k_ctrl_mac, 6);
+    ASSERT_EQ_INT(leap_controller_peer_owned_by_other(&entry, k_ctrl_mac), 0);
+
+    memcpy(entry.active_owner_mac, k_foreign_mac, 6);
+    ASSERT_EQ_INT(leap_controller_peer_owned_by_other(&entry, k_ctrl_mac), 1);
+    ASSERT_EQ_INT(leap_controller_peer_owned_by_other(&entry, NULL), 1);
+}
+
 void leap_run_controller_peer_tests(void)
 {
     printf("controller peer\n");
     RUN_TEST(test_controller_peer_discover_collects_two_peers);
     RUN_TEST(test_controller_peer_table_full);
     RUN_TEST(test_controller_stack_bootstrap_peer_reaches_op);
+    RUN_TEST(test_controller_peer_owned_by_other);
 }

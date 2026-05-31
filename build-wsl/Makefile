@@ -204,6 +204,19 @@ leap_linux_discover/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/build
 .PHONY : leap_linux_discover/fast
 
+#=============================================================================
+# Target rules for targets named leap_linux_hub
+
+# Build rule for target.
+leap_linux_hub: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 leap_linux_hub
+.PHONY : leap_linux_hub
+
+# fast build rule for target.
+leap_linux_hub/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/build
+.PHONY : leap_linux_hub/fast
+
 examples/device_minimal/main.o: examples/device_minimal/main.c.o
 .PHONY : examples/device_minimal/main.o
 
@@ -300,6 +313,30 @@ examples/linux_loopback/discover_main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/discover_main.c.s
 .PHONY : examples/linux_loopback/discover_main.c.s
 
+examples/linux_loopback/hub_main.o: examples/linux_loopback/hub_main.c.o
+.PHONY : examples/linux_loopback/hub_main.o
+
+# target to build an object file
+examples/linux_loopback/hub_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/hub_main.c.o
+.PHONY : examples/linux_loopback/hub_main.c.o
+
+examples/linux_loopback/hub_main.i: examples/linux_loopback/hub_main.c.i
+.PHONY : examples/linux_loopback/hub_main.i
+
+# target to preprocess a source file
+examples/linux_loopback/hub_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/hub_main.c.i
+.PHONY : examples/linux_loopback/hub_main.c.i
+
+examples/linux_loopback/hub_main.s: examples/linux_loopback/hub_main.c.s
+.PHONY : examples/linux_loopback/hub_main.s
+
+# target to generate assembly for a file
+examples/linux_loopback/hub_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/hub_main.c.s
+.PHONY : examples/linux_loopback/hub_main.c.s
+
 examples/linux_loopback/leap_linux_common.o: examples/linux_loopback/leap_linux_common.c.o
 .PHONY : examples/linux_loopback/leap_linux_common.o
 
@@ -308,6 +345,7 @@ examples/linux_loopback/leap_linux_common.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_common.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_common.c.o
 .PHONY : examples/linux_loopback/leap_linux_common.c.o
 
 examples/linux_loopback/leap_linux_common.i: examples/linux_loopback/leap_linux_common.c.i
@@ -318,6 +356,7 @@ examples/linux_loopback/leap_linux_common.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_common.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_common.c.i
 .PHONY : examples/linux_loopback/leap_linux_common.c.i
 
 examples/linux_loopback/leap_linux_common.s: examples/linux_loopback/leap_linux_common.c.s
@@ -328,6 +367,7 @@ examples/linux_loopback/leap_linux_common.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_common.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_common.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_common.c.s
 .PHONY : examples/linux_loopback/leap_linux_common.c.s
 
 examples/linux_loopback/leap_linux_controller_io.o: examples/linux_loopback/leap_linux_controller_io.c.o
@@ -337,6 +377,7 @@ examples/linux_loopback/leap_linux_controller_io.o: examples/linux_loopback/leap
 examples/linux_loopback/leap_linux_controller_io.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controller_io.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_controller_io.c.o
 .PHONY : examples/linux_loopback/leap_linux_controller_io.c.o
 
 examples/linux_loopback/leap_linux_controller_io.i: examples/linux_loopback/leap_linux_controller_io.c.i
@@ -346,6 +387,7 @@ examples/linux_loopback/leap_linux_controller_io.i: examples/linux_loopback/leap
 examples/linux_loopback/leap_linux_controller_io.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controller_io.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_controller_io.c.i
 .PHONY : examples/linux_loopback/leap_linux_controller_io.c.i
 
 examples/linux_loopback/leap_linux_controller_io.s: examples/linux_loopback/leap_linux_controller_io.c.s
@@ -355,6 +397,7 @@ examples/linux_loopback/leap_linux_controller_io.s: examples/linux_loopback/leap
 examples/linux_loopback/leap_linux_controller_io.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controller_io.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_discover.dir/build.make CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_controller_io.c.s
 .PHONY : examples/linux_loopback/leap_linux_controller_io.c.s
 
 examples/linux_loopback/leap_linux_io.o: examples/linux_loopback/leap_linux_io.c.o
@@ -387,6 +430,7 @@ examples/linux_loopback/leap_linux_pd.o: examples/linux_loopback/leap_linux_pd.c
 # target to build an object file
 examples/linux_loopback/leap_linux_pd.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_pd.c.o
 .PHONY : examples/linux_loopback/leap_linux_pd.c.o
 
 examples/linux_loopback/leap_linux_pd.i: examples/linux_loopback/leap_linux_pd.c.i
@@ -395,6 +439,7 @@ examples/linux_loopback/leap_linux_pd.i: examples/linux_loopback/leap_linux_pd.c
 # target to preprocess a source file
 examples/linux_loopback/leap_linux_pd.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_pd.c.i
 .PHONY : examples/linux_loopback/leap_linux_pd.c.i
 
 examples/linux_loopback/leap_linux_pd.s: examples/linux_loopback/leap_linux_pd.c.s
@@ -403,6 +448,7 @@ examples/linux_loopback/leap_linux_pd.s: examples/linux_loopback/leap_linux_pd.c
 # target to generate assembly for a file
 examples/linux_loopback/leap_linux_pd.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_controller.dir/build.make CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/leap_linux_pd.c.s
 .PHONY : examples/linux_loopback/leap_linux_pd.c.s
 
 examples/linux_loopback/leap_linux_stats.o: examples/linux_loopback/leap_linux_stats.c.o
@@ -1619,6 +1665,7 @@ help:
 	@echo "... leap_linux_controller"
 	@echo "... leap_linux_device"
 	@echo "... leap_linux_discover"
+	@echo "... leap_linux_hub"
 	@echo "... leap_tests"
 	@echo "... examples/device_minimal/main.o"
 	@echo "... examples/device_minimal/main.i"
@@ -1632,6 +1679,9 @@ help:
 	@echo "... examples/linux_loopback/discover_main.o"
 	@echo "... examples/linux_loopback/discover_main.i"
 	@echo "... examples/linux_loopback/discover_main.s"
+	@echo "... examples/linux_loopback/hub_main.o"
+	@echo "... examples/linux_loopback/hub_main.i"
+	@echo "... examples/linux_loopback/hub_main.s"
 	@echo "... examples/linux_loopback/leap_linux_common.o"
 	@echo "... examples/linux_loopback/leap_linux_common.i"
 	@echo "... examples/linux_loopback/leap_linux_common.s"

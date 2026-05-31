@@ -25,6 +25,7 @@ jobs:
           test -x build/leap_linux_controller
           test -x build/leap_linux_device
           test -x build/leap_linux_discover
+          test -x build/leap_linux_hub
           test -x build/leap_tests
 
   test-windows:

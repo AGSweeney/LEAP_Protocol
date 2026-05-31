@@ -19,5 +19,4 @@ CMakeFiles/leap_core.dir/src/frame/leap_frame.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h /usr/include/string.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h
+ /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h /usr/include/string.h

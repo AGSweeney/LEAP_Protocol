@@ -22,13 +22,8 @@ CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o: \
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
  /usr/include/x86_64-linux-gnu/bits/floatn.h \
- /usr/include/x86_64-linux-gnu/bits/floatn-common.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
- /usr/include/x86_64-linux-gnu/bits/stdio.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2.h /usr/include/stdlib.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
+ /usr/include/x86_64-linux-gnu/bits/floatn-common.h /usr/include/stdlib.h \
  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h /usr/include/stdint.h \
  /usr/include/x86_64-linux-gnu/bits/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
@@ -44,5 +39,4 @@ CMakeFiles/leap_tests.dir/tests/test_disc_device.c.o: \
  /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h /usr/include/string.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h
+ /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h /usr/include/string.h

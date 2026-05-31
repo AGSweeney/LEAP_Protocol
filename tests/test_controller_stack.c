@@ -494,6 +494,79 @@ TEST(test_controller_stack_release_without_session_resets)
     ASSERT_EQ_INT(leap_controller_stack_get_phase(&stack), LEAP_CTRL_STACK_IDLE);
 }
 
+TEST(test_controller_stack_read_diag_op)
+{
+    LeapControllerStack           stack;
+    LeapControllerStackIo         io;
+    CtrlStackMockIo               mock;
+    LeapControllerStackDiagResult result;
+    uint8_t                       counters_payload[64];
+    LeapCountersReply*            counters_hdr;
+    LeapCounterEntry*             counter_entries;
+    LeapTimingReply               timing;
+    size_t                        counters_payload_len;
+
+    leap_controller_stack_init(&stack, NULL);
+    ctrl_stack_put_op_state(&stack);
+
+    memset(&mock, 0, sizeof(mock));
+    memset(&io, 0, sizeof(io));
+    io.user_ctx    = &mock;
+    io.send_frame  = ctrl_stack_mock_send;
+    io.recv_frame  = ctrl_stack_mock_recv;
+
+    counters_hdr = (LeapCountersReply*)counters_payload;
+    counter_entries =
+        (LeapCounterEntry*)(counters_payload + sizeof(LeapCountersReply));
+    counters_hdr->counter_count = 2u;
+    counters_hdr->reserved      = 0u;
+    counter_entries[0].counter_id = (uint16_t)LEAP_COUNTER_RX_FRAMES_ACCEPTED;
+    counter_entries[0].value    = 42u;
+    counter_entries[1].counter_id = (uint16_t)LEAP_COUNTER_CRC_FAILURES;
+    counter_entries[1].value    = 3u;
+    counters_payload_len =
+        sizeof(LeapCountersReply) + (2u * sizeof(LeapCounterEntry));
+
+    ctrl_stack_mock_add_reply(
+        &mock,
+        (uint16_t)LEAP_SERVICE_DIAG,
+        LEAP_DIAG_COUNTERS_REPLY,
+        42u,
+        counters_payload,
+        counters_payload_len);
+
+    memset(&timing, 0, sizeof(timing));
+    timing.last_cycle_time_us            = 1000u;
+    timing.max_cycle_time_us             = 2000u;
+    timing.min_cycle_time_us             = 800u;
+    timing.last_reply_latency_us         = 50u;
+    timing.max_reply_latency_us          = 120u;
+    timing.process_watchdog_remaining_us = 50000u;
+    timing.owner_lease_remaining_us      = 4000000u;
+
+    ctrl_stack_mock_add_reply(
+        &mock,
+        (uint16_t)LEAP_SERVICE_DIAG,
+        LEAP_DIAG_TIMING_REPLY,
+        42u,
+        (const uint8_t*)&timing,
+        sizeof(timing));
+
+    ASSERT_EQ_INT(
+        leap_controller_stack_read_diag(&stack, &io, &result),
+        LEAP_CTRL_STACK_DIAG_OK);
+    ASSERT_EQ_INT(result.has_counters, 1);
+    ASSERT_EQ_INT(result.has_timing, 1);
+    ASSERT_EQ_U16(result.counter_count, 2u);
+    ASSERT_EQ_U16(result.counters[0].counter_id, LEAP_COUNTER_RX_FRAMES_ACCEPTED);
+    ASSERT_TRUE(result.counters[0].value == 42u);
+    ASSERT_EQ_U32(result.timing.last_cycle_time_us, 1000u);
+    ASSERT_EQ_U32(result.timing.owner_lease_remaining_us, 4000000u);
+    ASSERT_EQ_INT(mock.send_count, 2u);
+    ASSERT_EQ_U16(mock.last_service, (uint16_t)LEAP_SERVICE_DIAG);
+    ASSERT_EQ_U16(mock.last_message, LEAP_DIAG_READ_TIMING);
+}
+
 void leap_run_controller_stack_tests(void)
 {
     printf("controller stack\n");
@@ -505,4 +578,5 @@ void leap_run_controller_stack_tests(void)
     RUN_TEST(test_controller_stack_ignores_foreign_session);
     RUN_TEST(test_controller_stack_send_acks_peer_sequence);
     RUN_TEST(test_controller_stack_release_without_session_resets);
+    RUN_TEST(test_controller_stack_read_diag_op);
 }

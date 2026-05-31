@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = -I/mnt/d/LEAP_Protocol/inc
 
-C_FLAGS = -O3 -DNDEBUG -std=c99 -Wall -Wextra -Wpedantic
+C_FLAGS = -std=c99 -Wall -Wextra -Wpedantic
 

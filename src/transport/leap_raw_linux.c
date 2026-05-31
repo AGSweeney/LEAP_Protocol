@@ -252,6 +252,7 @@ int leap_raw_linux_open_ex(
     memset(sock, 0, sizeof(*sock));
     sock->fd               = -1;
     sock->filter_dest_mac  = (filter_dest != 0) ? 1 : 0;
+    sock->cached_link_up   = -1;
 
     sock->fd = socket(AF_PACKET, SOCK_RAW, htons(ethertype));
     if (sock->fd < 0)
@@ -306,6 +307,87 @@ int leap_raw_linux_open_ex(
     }
 
     sock->ethertype = ethertype;
+    (void)snprintf(sock->ifname, sizeof(sock->ifname), "%s", ifname);
+    return 0;
+}
+
+int leap_raw_linux_query_link(
+    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxLinkState*    state_out)
+{
+    struct ifreq ifr;
+    short        flags;
+
+    if (sock == NULL || state_out == NULL || sock->fd < 0 ||
+        sock->ifname[0] == '\0')
+    {
+        return -1;
+    }
+
+    memset(state_out, 0, sizeof(*state_out));
+
+    memset(&ifr, 0, sizeof(ifr));
+    (void)snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", sock->ifname);
+
+    if (ioctl(sock->fd, SIOCGIFFLAGS, &ifr) < 0)
+    {
+        leap_raw_linux_set_errno();
+        return -1;
+    }
+
+    flags = ifr.ifr_flags;
+    state_out->interface_up = ((flags & IFF_UP) != 0) ? 1 : 0;
+    state_out->carrier_up   = ((flags & IFF_RUNNING) != 0) ? 1 : 0;
+    state_out->link_up =
+        (state_out->interface_up != 0 && state_out->carrier_up != 0) ? 1 : 0;
+
+    leap_raw_linux_clear_errno();
+    return 0;
+}
+
+int leap_raw_linux_poll_link(
+    LeapRawLinuxSocket*    sock,
+    int*                   changed_out,
+    LeapRawLinuxLinkState* state_out)
+{
+    LeapRawLinuxLinkState state;
+    int                   prev;
+    int                   changed = 0;
+
+    if (sock == NULL)
+    {
+        return -1;
+    }
+
+    if (changed_out != NULL)
+    {
+        *changed_out = 0;
+    }
+
+    if (leap_raw_linux_query_link(sock, &state) != 0)
+    {
+        return -1;
+    }
+
+    if (state_out != NULL)
+    {
+        *state_out = state;
+    }
+
+    prev = sock->cached_link_up;
+    if (prev >= 0 && state.link_up != prev)
+    {
+        changed = 1;
+        sock->stats.link_transitions++;
+    }
+
+    sock->cached_link_up = state.link_up;
+
+    if (changed_out != NULL)
+    {
+        *changed_out = changed;
+    }
+
     return 0;
 }
 
@@ -551,6 +633,35 @@ int leap_raw_linux_recv(
     (void)payload_capacity;
     (void)payload_length;
     (void)timeout_ms;
+    return -1;
+}
+
+int leap_raw_linux_query_link(
+    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxLinkState*    state_out)
+{
+    (void)sock;
+    if (state_out != NULL)
+    {
+        memset(state_out, 0, sizeof(*state_out));
+    }
+    return -1;
+}
+
+int leap_raw_linux_poll_link(
+    LeapRawLinuxSocket*    sock,
+    int*                   changed_out,
+    LeapRawLinuxLinkState* state_out)
+{
+    (void)sock;
+    if (changed_out != NULL)
+    {
+        *changed_out = 0;
+    }
+    if (state_out != NULL)
+    {
+        memset(state_out, 0, sizeof(*state_out));
+    }
     return -1;
 }
 

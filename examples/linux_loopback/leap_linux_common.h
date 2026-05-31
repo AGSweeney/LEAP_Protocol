@@ -14,6 +14,9 @@
 #include <stdint.h>
 
 #include "leap/leap_raw_linux.h"
+#include "leap/leap_controller_stack.h"
+#include "leap/leap_controller_session_hub.h"
+#include "leap/leap_pd_controller.h"
 
 typedef struct LeapLinuxControllerOptions
 {
@@ -25,13 +28,36 @@ typedef struct LeapLinuxControllerOptions
     int         exchange;
     int         stats;
     unsigned    stats_interval;
+    int         diag;
 } LeapLinuxControllerOptions;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int leap_linux_link_stop_on_down(
+    LeapRawLinuxSocket* sock,
+    volatile int*       stop_flag);
+
+LeapPdControllerStatus leap_linux_controller_run_cyclic_pd_with_link_watch(
+    LeapControllerStack*      stack,
+    const LeapPdControllerIo* pd_io,
+    LeapRawLinuxSocket*       transport,
+    volatile int*             stop_flag);
+
+LeapPdControllerStatus leap_linux_hub_run_round_robin_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawLinuxSocket*       transport,
+    volatile int*             stop_flag);
 
 void leap_linux_print_mac(const char* label, const uint8_t* mac);
 
 void leap_linux_print_transport_error(const char* action);
 
 void leap_linux_print_transport_stats(const LeapRawLinuxSocket* sock);
+
+void leap_linux_poll_link_and_log(LeapRawLinuxSocket* sock);
 
 uint64_t leap_linux_send_retry_count(void);
 
@@ -74,5 +100,9 @@ void leap_linux_controller_parse_args(
     int                       argc,
     char**                    argv,
     LeapLinuxControllerOptions* options);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LEAP_LINUX_COMMON_H */

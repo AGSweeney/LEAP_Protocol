@@ -19,11 +19,15 @@
 
 static const uint8_t k_peer_a[6] = { 0x02, 0x50, 0x00, 0x00, 0x00, 0x01 };
 static const uint8_t k_peer_b[6] = { 0x02, 0x50, 0x00, 0x00, 0x00, 0x02 };
+static const uint8_t k_peer_c[6] = { 0x02, 0x50, 0x00, 0x00, 0x00, 0x03 };
+static const uint8_t k_ctrl_mac[6] = { 0x02, 0x01, 0x02, 0x03, 0x04, 0x05 };
+static const uint8_t k_foreign_owner[6] = { 0x02, 0xFF, 0xFF, 0xFF, 0xFF, 0x01 };
 
 typedef struct HubMockStackIo
 {
-    uint8_t  recv_frames[16][HUB_TEST_FRAME_BUF];
-    size_t   recv_lengths[16];
+    uint8_t  recv_frames[32][HUB_TEST_FRAME_BUF];
+    uint8_t  recv_src_mac[32][6];
+    size_t   recv_lengths[32];
     unsigned recv_count;
     unsigned recv_index;
     unsigned send_count;
@@ -94,7 +98,7 @@ static int hub_mock_recv(
     }
 
     memcpy(payload_buf, mock->recv_frames[mock->recv_index], copy_len);
-    memcpy(src_mac, k_peer_a, 6);
+    memcpy(src_mac, mock->recv_src_mac[mock->recv_index], 6);
     *payload_length = copy_len;
     mock->recv_index++;
     return 0;
@@ -102,6 +106,7 @@ static int hub_mock_recv(
 
 static void hub_mock_add_reply(
     HubMockStackIo* mock,
+    const uint8_t*  src_mac,
     uint16_t        service_id,
     uint16_t        message_type,
     uint32_t        session_id,
@@ -110,7 +115,7 @@ static void hub_mock_add_reply(
 {
     unsigned idx;
 
-    if (mock == NULL || mock->recv_count >= 16u)
+    if (mock == NULL || mock->recv_count >= 32u)
     {
         return;
     }
@@ -128,10 +133,21 @@ static void hub_mock_add_reply(
             1u,
             payload,
             payload_length) == 0);
+    if (src_mac != NULL)
+    {
+        memcpy(mock->recv_src_mac[idx], src_mac, 6);
+    }
+    else
+    {
+        memcpy(mock->recv_src_mac[idx], k_peer_a, 6);
+    }
     mock->recv_count++;
 }
 
-static void hub_mock_add_bootstrap_replies(HubMockStackIo* mock, uint32_t session_id)
+static void hub_mock_add_bootstrap_replies(
+    HubMockStackIo* mock,
+    const uint8_t*  peer_mac,
+    uint32_t        session_id)
 {
     LeapProfileReply     profile;
     LeapOpenSessionReply open_reply;
@@ -142,6 +158,7 @@ static void hub_mock_add_bootstrap_replies(HubMockStackIo* mock, uint32_t sessio
     profile.endpoint_count    = 2u;
     hub_mock_add_reply(
         mock,
+        peer_mac,
         (uint16_t)LEAP_SERVICE_DIR,
         LEAP_DIR_PROFILE_REPLY,
         0u,
@@ -155,6 +172,7 @@ static void hub_mock_add_bootstrap_replies(HubMockStackIo* mock, uint32_t sessio
     open_reply.current_state            = (uint16_t)LEAP_STATE_SAFE;
     hub_mock_add_reply(
         mock,
+        peer_mac,
         (uint16_t)LEAP_SERVICE_MGMT,
         LEAP_MGMT_OPEN_SESSION_REPLY,
         0u,
@@ -166,6 +184,7 @@ static void hub_mock_add_bootstrap_replies(HubMockStackIo* mock, uint32_t sessio
     state_reply.current_state  = (uint16_t)LEAP_STATE_OP;
     hub_mock_add_reply(
         mock,
+        peer_mac,
         (uint16_t)LEAP_SERVICE_MGMT,
         LEAP_MGMT_STATE_REPLY,
         session_id,
@@ -199,7 +218,7 @@ TEST(test_session_hub_two_independent_sessions)
     leap_controller_session_hub_init(&hub, &config);
 
     memset(&mock, 0, sizeof(mock));
-    hub_mock_add_bootstrap_replies(&mock, 101u);
+    hub_mock_add_bootstrap_replies(&mock, k_peer_a, 101u);
 
     memset(&io, 0, sizeof(io));
     io.user_ctx   = &mock;
@@ -213,7 +232,7 @@ TEST(test_session_hub_two_independent_sessions)
     ASSERT_TRUE(leap_controller_session_hub_is_op(&hub, slot_a));
 
     hub_mock_reset_recv(&mock);
-    hub_mock_add_bootstrap_replies(&mock, 102u);
+    hub_mock_add_bootstrap_replies(&mock, k_peer_b, 102u);
 
     ASSERT_EQ_INT(
         leap_controller_session_hub_bootstrap_peer(
@@ -243,7 +262,7 @@ TEST(test_session_hub_on_frame_routes_by_mac)
     int                           slot_out;
 
     memset(&mock, 0, sizeof(mock));
-    hub_mock_add_bootstrap_replies(&mock, 101u);
+    hub_mock_add_bootstrap_replies(&mock, k_peer_a, 101u);
 
     leap_controller_session_hub_init(&hub, NULL);
     memset(&io, 0, sizeof(io));
@@ -300,14 +319,14 @@ TEST(test_session_hub_release_one_keeps_other)
     io.send_frame = hub_mock_send;
     io.recv_frame = hub_mock_recv;
 
-    hub_mock_add_bootstrap_replies(&mock, 101u);
+    hub_mock_add_bootstrap_replies(&mock, k_peer_a, 101u);
     ASSERT_EQ_INT(
         leap_controller_session_hub_bootstrap_peer(
             &hub, &io, k_peer_a, NULL, &slot_a),
         LEAP_CTRL_STACK_OK);
 
     hub_mock_reset_recv(&mock);
-    hub_mock_add_bootstrap_replies(&mock, 102u);
+    hub_mock_add_bootstrap_replies(&mock, k_peer_b, 102u);
     ASSERT_EQ_INT(
         leap_controller_session_hub_bootstrap_peer(
             &hub, &io, k_peer_b, NULL, &slot_b),
@@ -322,10 +341,268 @@ TEST(test_session_hub_release_one_keeps_other)
     ASSERT_TRUE(leap_controller_session_hub_find(&hub, k_peer_b) >= 0);
 }
 
+typedef struct HubPdMockIo
+{
+    volatile int* stop_flag;
+    unsigned      pd_send_a;
+    unsigned      pd_send_b;
+    uint64_t      now_us;
+} HubPdMockIo;
+
+static int hub_pd_mock_send(
+    void*          user_ctx,
+    const uint8_t* peer_mac,
+    uint16_t       message_type,
+    const uint8_t* payload,
+    size_t         payload_length,
+    uint32_t       session_id,
+    uint32_t       sequence)
+{
+    HubPdMockIo* mock = (HubPdMockIo*)user_ctx;
+    unsigned     total;
+
+    (void)message_type;
+    (void)payload;
+    (void)payload_length;
+    (void)session_id;
+    (void)sequence;
+
+    if (mock == NULL || peer_mac == NULL)
+    {
+        return -1;
+    }
+
+    if (memcmp(peer_mac, k_peer_a, 6) == 0)
+    {
+        mock->pd_send_a++;
+    }
+    else if (memcmp(peer_mac, k_peer_b, 6) == 0)
+    {
+        mock->pd_send_b++;
+    }
+
+    mock->now_us += 5000u;
+
+    total = mock->pd_send_a + mock->pd_send_b;
+    if (mock->stop_flag != NULL && total >= 4u)
+    {
+        *mock->stop_flag = 1;
+    }
+
+    return 0;
+}
+
+static uint64_t hub_pd_mock_monotonic(void* user_ctx)
+{
+    HubPdMockIo* mock = (HubPdMockIo*)user_ctx;
+
+    if (mock == NULL)
+    {
+        return 0u;
+    }
+
+    return mock->now_us;
+}
+
+static void hub_bootstrap_two_peers(
+    LeapControllerSessionHub* hub,
+    LeapControllerStackIo*    io,
+    HubMockStackIo*           mock,
+    int*                      slot_a,
+    int*                      slot_b)
+{
+    hub_mock_reset_recv(mock);
+    hub_mock_add_bootstrap_replies(mock, k_peer_a, 101u);
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_bootstrap_peer(
+            hub, io, k_peer_a, NULL, slot_a),
+        LEAP_CTRL_STACK_OK);
+
+    hub_mock_reset_recv(mock);
+    hub_mock_add_bootstrap_replies(mock, k_peer_b, 102u);
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_bootstrap_peer(
+            hub, io, k_peer_b, NULL, slot_b),
+        LEAP_CTRL_STACK_OK);
+}
+
+TEST(test_session_hub_bootstrap_table_skips_foreign_owner)
+{
+    LeapControllerSessionHub       hub;
+    LeapControllerSessionHubConfig config;
+    LeapControllerStackIo          io;
+    HubMockStackIo                 mock;
+    LeapControllerPeerTable        table;
+    unsigned                       boot_count = 0u;
+
+    memset(&config, 0, sizeof(config));
+    memcpy(config.default_peer.mgmt.controller_mac, k_ctrl_mac, 6);
+    config.skip_foreign_owned_peers = 1;
+    leap_controller_session_hub_init(&hub, &config);
+
+    leap_controller_peer_table_init(&table);
+    memcpy(table.peers[0].mac, k_peer_a, 6);
+    table.peers[0].reachable          = 1;
+    table.peers[0].device_state       = (uint16_t)LEAP_STATE_CONFIGURED;
+    table.peers[0].active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    table.peers[0].default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+
+    memcpy(table.peers[1].mac, k_peer_b, 6);
+    table.peers[1].reachable          = 1;
+    table.peers[1].device_state       = (uint16_t)LEAP_STATE_CONFIGURED;
+    table.peers[1].active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    table.peers[1].default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+    memcpy(table.peers[1].active_owner_mac, k_foreign_owner, 6);
+
+    memcpy(table.peers[2].mac, k_peer_c, 6);
+    table.peers[2].reachable          = 1;
+    table.peers[2].device_state       = (uint16_t)LEAP_STATE_CONFIGURED;
+    table.peers[2].active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    table.peers[2].default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+    table.count = 3u;
+
+    memset(&mock, 0, sizeof(mock));
+    hub_mock_add_bootstrap_replies(&mock, k_peer_a, 201u);
+    hub_mock_add_bootstrap_replies(&mock, k_peer_c, 203u);
+
+    memset(&io, 0, sizeof(io));
+    io.user_ctx   = &mock;
+    io.send_frame = hub_mock_send;
+    io.recv_frame = hub_mock_recv;
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_bootstrap_table(
+            &hub, &io, &table, &boot_count),
+        LEAP_CTRL_HUB_OK);
+    ASSERT_EQ_INT((int)boot_count, 2);
+    ASSERT_EQ_INT((int)leap_controller_session_hub_active_count(&hub), 2);
+    ASSERT_EQ_INT(leap_controller_session_hub_find(&hub, k_peer_a), 0);
+    ASSERT_EQ_INT(leap_controller_session_hub_find(&hub, k_peer_b), -1);
+    ASSERT_TRUE(leap_controller_session_hub_find(&hub, k_peer_c) >= 0);
+    ASSERT_TRUE(
+        leap_controller_session_hub_is_op(
+            &hub, leap_controller_session_hub_find(&hub, k_peer_a)));
+    ASSERT_TRUE(
+        leap_controller_session_hub_is_op(
+            &hub, leap_controller_session_hub_find(&hub, k_peer_c)));
+}
+
+TEST(test_session_hub_run_round_robin_two_peers)
+{
+    LeapControllerSessionHub hub;
+    LeapControllerStackIo    stack_io;
+    HubMockStackIo             stack_mock;
+    HubPdMockIo                pd_mock;
+    LeapPdControllerIo         pd_io;
+    int                        slot_a;
+    int                        slot_b;
+    LeapControllerStack*       stack_a;
+    LeapControllerStack*       stack_b;
+    volatile int               stop = 0;
+
+    leap_controller_session_hub_init(&hub, NULL);
+
+    memset(&stack_mock, 0, sizeof(stack_mock));
+    memset(&stack_io, 0, sizeof(stack_io));
+    stack_io.user_ctx   = &stack_mock;
+    stack_io.send_frame = hub_mock_send;
+    stack_io.recv_frame = hub_mock_recv;
+
+    hub_bootstrap_two_peers(&hub, &stack_io, &stack_mock, &slot_a, &slot_b);
+
+    memset(&pd_mock, 0, sizeof(pd_mock));
+    pd_mock.stop_flag = &stop;
+    pd_mock.now_us    = 1000u;
+
+    memset(&pd_io, 0, sizeof(pd_io));
+    pd_io.user_ctx     = &pd_mock;
+    pd_io.send_pd      = hub_pd_mock_send;
+    pd_io.monotonic_us = hub_pd_mock_monotonic;
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_run_round_robin(&hub, &pd_io, &stop),
+        LEAP_PD_CTRL_OK);
+    ASSERT_EQ_INT((int)pd_mock.pd_send_a, 2);
+    ASSERT_EQ_INT((int)pd_mock.pd_send_b, 2);
+
+    stack_a = leap_controller_session_hub_stack(&hub, slot_a);
+    stack_b = leap_controller_session_hub_stack(&hub, slot_b);
+    ASSERT_TRUE(stack_a != NULL && stack_b != NULL);
+    ASSERT_TRUE(stack_a->pd.stats.cycles_completed == 2u);
+    ASSERT_TRUE(stack_b->pd.stats.cycles_completed == 2u);
+}
+
+TEST(test_session_hub_table_bootstrap_round_robin)
+{
+    LeapControllerSessionHub       hub;
+    LeapControllerSessionHubConfig config;
+    LeapControllerStackIo          stack_io;
+    HubMockStackIo                 stack_mock;
+    HubPdMockIo                    pd_mock;
+    LeapPdControllerIo             pd_io;
+    LeapControllerPeerTable        table;
+    volatile int                   stop = 0;
+    unsigned                       boot_count = 0u;
+
+    memset(&config, 0, sizeof(config));
+    memcpy(config.default_peer.mgmt.controller_mac, k_ctrl_mac, 6);
+    leap_controller_session_hub_init(&hub, &config);
+
+    leap_controller_peer_table_init(&table);
+    memcpy(table.peers[0].mac, k_peer_a, 6);
+    table.peers[0].reachable          = 1;
+    table.peers[0].device_state       = (uint16_t)LEAP_STATE_CONFIGURED;
+    table.peers[0].active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    table.peers[0].default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+
+    memcpy(table.peers[1].mac, k_peer_b, 6);
+    table.peers[1].reachable          = 1;
+    table.peers[1].device_state       = (uint16_t)LEAP_STATE_CONFIGURED;
+    table.peers[1].active_profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+    table.peers[1].default_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+    table.count = 2u;
+
+    memset(&stack_mock, 0, sizeof(stack_mock));
+    hub_mock_add_bootstrap_replies(&stack_mock, k_peer_a, 301u);
+    hub_mock_add_bootstrap_replies(&stack_mock, k_peer_b, 302u);
+
+    memset(&stack_io, 0, sizeof(stack_io));
+    stack_io.user_ctx   = &stack_mock;
+    stack_io.send_frame = hub_mock_send;
+    stack_io.recv_frame = hub_mock_recv;
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_bootstrap_table(
+            &hub, &stack_io, &table, &boot_count),
+        LEAP_CTRL_HUB_OK);
+    ASSERT_EQ_INT((int)boot_count, 2);
+    ASSERT_EQ_INT((int)leap_controller_session_hub_active_count(&hub), 2);
+
+    memset(&pd_mock, 0, sizeof(pd_mock));
+    pd_mock.stop_flag = &stop;
+    pd_mock.now_us    = 1000u;
+
+    memset(&pd_io, 0, sizeof(pd_io));
+    pd_io.user_ctx     = &pd_mock;
+    pd_io.send_pd      = hub_pd_mock_send;
+    pd_io.monotonic_us = hub_pd_mock_monotonic;
+
+    ASSERT_EQ_INT(
+        leap_controller_session_hub_run_round_robin(&hub, &pd_io, &stop),
+        LEAP_PD_CTRL_OK);
+    ASSERT_EQ_INT((int)pd_mock.pd_send_a, 2);
+    ASSERT_EQ_INT((int)pd_mock.pd_send_b, 2);
+}
+
 void leap_run_controller_session_hub_tests(void)
 {
     printf("controller session hub\n");
     RUN_TEST(test_session_hub_two_independent_sessions);
     RUN_TEST(test_session_hub_on_frame_routes_by_mac);
     RUN_TEST(test_session_hub_release_one_keeps_other);
+    RUN_TEST(test_session_hub_bootstrap_table_skips_foreign_owner);
+    RUN_TEST(test_session_hub_run_round_robin_two_peers);
+    RUN_TEST(test_session_hub_table_bootstrap_round_robin);
 }

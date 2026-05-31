@@ -29,5 +29,9 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o: 
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_common.h \
- /usr/include/string.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_stack.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_session_hub.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h \
+ /usr/include/string.h

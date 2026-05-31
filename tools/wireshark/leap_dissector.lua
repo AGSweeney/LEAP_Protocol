@@ -45,6 +45,22 @@ local f_dio_status    = ProtoField.uint16("leap.dio16.status", "I/O Status", BAS
 local f_dio_vsupply   = ProtoField.uint8("leap.dio16.v_field_supply", "Field Supply (0.1V)", BASE_DEC)
 local f_dio_reserved  = ProtoField.uint8("leap.dio16.reserved0", "Reserved", BASE_HEX)
 
+local f_diag_first_counter = ProtoField.uint16("leap.diag.first_counter_id", "First Counter ID", BASE_HEX)
+local f_diag_counter_count = ProtoField.uint16("leap.diag.counter_count", "Counter Count", BASE_DEC)
+local f_diag_read_flags    = ProtoField.uint32("leap.diag.read_flags", "Read Flags", BASE_HEX)
+local f_diag_reply_count   = ProtoField.uint16("leap.diag.reply_counter_count", "Counter Count", BASE_DEC)
+local f_diag_counter_id    = ProtoField.uint16("leap.diag.counter_id", "Counter ID", BASE_HEX)
+local f_diag_counter_flags = ProtoField.uint16("leap.diag.counter_flags", "Counter Flags", BASE_HEX)
+local f_diag_counter_value = ProtoField.uint64("leap.diag.counter_value", "Counter Value", BASE_DEC)
+local f_diag_timing_flags  = ProtoField.uint32("leap.diag.timing_flags", "Timing Flags", BASE_HEX)
+local f_diag_last_cycle    = ProtoField.uint32("leap.diag.last_cycle_us", "Last Cycle (us)", BASE_DEC)
+local f_diag_max_cycle     = ProtoField.uint32("leap.diag.max_cycle_us", "Max Cycle (us)", BASE_DEC)
+local f_diag_min_cycle     = ProtoField.uint32("leap.diag.min_cycle_us", "Min Cycle (us)", BASE_DEC)
+local f_diag_last_lat      = ProtoField.uint32("leap.diag.last_reply_lat_us", "Last Reply Latency (us)", BASE_DEC)
+local f_diag_max_lat       = ProtoField.uint32("leap.diag.max_reply_lat_us", "Max Reply Latency (us)", BASE_DEC)
+local f_diag_wd_remain     = ProtoField.uint32("leap.diag.watchdog_remain_us", "Watchdog Remain (us)", BASE_DEC)
+local f_diag_lease_remain  = ProtoField.uint32("leap.diag.lease_remain_us", "Lease Remain (us)", BASE_DEC)
+
 local f_raw_payload   = ProtoField.bytes("leap.payload", "Payload")
 local f_padding       = ProtoField.bytes("leap.padding", "Ethernet Padding")
 
@@ -54,6 +70,10 @@ leap_proto.fields = {
     f_frag_group_id, f_frag_index, f_frag_count, f_frag_total_len, f_frag_total_crc,
     f_ep_id, f_ep_offset, f_data_len, f_ep_flags, f_proc_seq, f_cycle_us, f_ts_us, f_max_age_us, f_profile_id,
     f_dio_inputs, f_dio_outputs, f_dio_status, f_dio_vsupply, f_dio_reserved,
+    f_diag_first_counter, f_diag_counter_count, f_diag_read_flags,
+    f_diag_reply_count, f_diag_counter_id, f_diag_counter_flags, f_diag_counter_value,
+    f_diag_timing_flags, f_diag_last_cycle, f_diag_max_cycle, f_diag_min_cycle,
+    f_diag_last_lat, f_diag_max_lat, f_diag_wd_remain, f_diag_lease_remain,
     f_raw_payload, f_padding
 }
 
@@ -67,7 +87,15 @@ local LEAP_FLAG_FRAGMENTED           = 0x20  -- bit 5
 local LEAP_SERVICE_PD                = 0x0010
 local LEAP_PD_WRITE_ENDPOINT         = 0x0001
 local LEAP_PD_ENDPOINT_DATA          = 0x0003
+local LEAP_PD_EXCHANGE_ENDPOINTS     = 0x0004
+local LEAP_PD_EXCHANGE_REPLY         = 0x0005
 local LEAP_PROFILE_DIGITAL_IO_16X16  = 0x00010002
+
+local LEAP_SERVICE_DIAG              = 0x0020
+local LEAP_DIAG_READ_COUNTERS        = 0x0001
+local LEAP_DIAG_COUNTERS_REPLY       = 0x0002
+local LEAP_DIAG_READ_TIMING          = 0x0003
+local LEAP_DIAG_TIMING_REPLY         = 0x0004
 
 function leap_proto.dissector(buffer, pinfo, tree)
     -- Use reported (captured) length for all bounds decisions.
@@ -167,9 +195,12 @@ function leap_proto.dissector(buffer, pinfo, tree)
         return
     end
 
-    -- Decode LEAP-PD single-endpoint messages.
+    -- Decode LEAP-PD single-endpoint and exchange messages.
     if service_id == LEAP_SERVICE_PD
-       and (message_type == LEAP_PD_WRITE_ENDPOINT or message_type == LEAP_PD_ENDPOINT_DATA)
+       and (message_type == LEAP_PD_WRITE_ENDPOINT
+            or message_type == LEAP_PD_ENDPOINT_DATA
+            or message_type == LEAP_PD_EXCHANGE_ENDPOINTS
+            or message_type == LEAP_PD_EXCHANGE_REPLY)
        and payload_len >= LEAP_EP_DATA_HEADER_LEN then
 
         local pd = payload_tree:add(buffer(payload_offset, LEAP_EP_DATA_HEADER_LEN),
@@ -202,6 +233,43 @@ function leap_proto.dissector(buffer, pinfo, tree)
             dio:add_le(f_dio_status,   buffer(pd_data_offset + 4, 2))
             dio:add(   f_dio_vsupply,  buffer(pd_data_offset + 6, 1))
             dio:add(   f_dio_reserved, buffer(pd_data_offset + 7, 1))
+        end
+    end
+
+    -- Decode LEAP-DIAG requests and replies.
+    if service_id == LEAP_SERVICE_DIAG and payload_len >= 4 then
+        if message_type == LEAP_DIAG_READ_COUNTERS and payload_len >= 8 then
+            local diag = payload_tree:add(buffer(payload_offset, 8), "LEAP-DIAG Read Counters")
+            diag:add_le(f_diag_first_counter, buffer(payload_offset + 0, 2))
+            diag:add_le(f_diag_counter_count, buffer(payload_offset + 2, 2))
+            diag:add_le(f_diag_read_flags,    buffer(payload_offset + 4, 4))
+        elseif message_type == LEAP_DIAG_COUNTERS_REPLY and payload_len >= 4 then
+            local count = buffer(payload_offset + 0, 2):le_uint()
+            local diag = payload_tree:add(buffer(payload_offset, payload_len),
+                                        string.format("LEAP-DIAG Counters Reply (%u)", count))
+            diag:add_le(f_diag_reply_count, buffer(payload_offset + 0, 2))
+            local off = payload_offset + 4
+            local i
+            for i = 0, count - 1 do
+                if (off + 12) > (payload_offset + payload_len) then break end
+                local ent = diag:add(buffer(off, 12), string.format("Counter Entry %u", i + 1))
+                ent:add_le(f_diag_counter_id,    buffer(off + 0, 2))
+                ent:add_le(f_diag_counter_flags, buffer(off + 2, 2))
+                ent:add_le(f_diag_counter_value, buffer(off + 4, 8))
+                off = off + 12
+            end
+        elseif message_type == LEAP_DIAG_READ_TIMING and payload_len >= 4 then
+            local diag = payload_tree:add(buffer(payload_offset, 4), "LEAP-DIAG Read Timing")
+            diag:add_le(f_diag_timing_flags, buffer(payload_offset + 0, 4))
+        elseif message_type == LEAP_DIAG_TIMING_REPLY and payload_len >= 28 then
+            local diag = payload_tree:add(buffer(payload_offset, 28), "LEAP-DIAG Timing Reply")
+            diag:add_le(f_diag_last_cycle, buffer(payload_offset +  0, 4))
+            diag:add_le(f_diag_max_cycle,  buffer(payload_offset +  4, 4))
+            diag:add_le(f_diag_min_cycle,  buffer(payload_offset +  8, 4))
+            diag:add_le(f_diag_last_lat,   buffer(payload_offset + 12, 4))
+            diag:add_le(f_diag_max_lat,    buffer(payload_offset + 16, 4))
+            diag:add_le(f_diag_wd_remain,  buffer(payload_offset + 20, 4))
+            diag:add_le(f_diag_lease_remain, buffer(payload_offset + 24, 4))
         end
     end
 

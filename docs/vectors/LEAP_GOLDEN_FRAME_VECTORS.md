@@ -247,7 +247,138 @@ validation. This vector tests the payload-CRC rejection path (§6.1).
 1000000008000500ed030000e803000000c4b3a2960100008813000002000100e00115000000f1ff
 ```
 
-## 9. Notes
+## 10. Golden LEAP-DIAG Vectors
+
+Scenario (request):
+
+- Service ID: `0x0020` (`LEAP_SERVICE_DIAG`)
+- Message Type: `0x0001` (`LEAP_DIAG_READ_COUNTERS`)
+- Session ID: `0x4A3B2C1D`
+- Sequence / Ack: `1005 / 982`
+- Payload: `LeapReadCountersRequest` (`8` bytes) — read one counter starting at `LEAP_COUNTER_RX_FRAMES_ACCEPTED` (`0x0001`)
+
+Derived integrity values:
+
+- `payload_crc32c = 0x24A4B469`
+- `header_crc16 = 0x8069`
+
+### 10.1 `READ_COUNTERS` Header Bytes (`32` bytes)
+
+```text
+4c45415001002000200001001d2c3b4aed030000d603000008008069b4a4242a
+```
+
+### 10.2 `READ_COUNTERS` Payload Bytes (`8` bytes)
+
+```text
+0100010000000000
+```
+
+Field decode:
+
+| Bytes | Value | Field |
+| --- | --- | --- |
+| `01 00` | `0x0001` | `first_counter_id` (`LEAP_COUNTER_RX_FRAMES_ACCEPTED`) |
+| `01 00` | `1` | `counter_count` |
+| `00 00 00 00` | `0` | `read_flags` |
+
+### 10.3 Full `READ_COUNTERS` Frame (`40` bytes)
+
+```text
+4c45415001002000200001001d2c3b4aed030000d603000008008069b4a4242a0100010000000000
+```
+
+Scenario (reply):
+
+- Message Type: `0x0002` (`LEAP_DIAG_COUNTERS_REPLY`)
+- Flags: `RESPONSE \| ACK_REQUESTED` (`0x03`)
+- Sequence / Ack: `1006 / 1005`
+- Payload: `LeapCountersReply` (`4` bytes) + one `LeapCounterEntry` (`12` bytes) — `RX_FRAMES_ACCEPTED = 42`
+
+Derived integrity values:
+
+- `payload_crc32c = 0x5CD82935`
+- `header_crc16 = 0x1010`
+
+### 10.4 `COUNTERS_REPLY` Header Bytes (`32` bytes)
+
+```text
+4c45415001002003200002001d2c3b4aee030000ed0300001000103529d84e
+```
+
+### 10.5 `COUNTERS_REPLY` Payload Bytes (`16` bytes)
+
+```text
+01000000010000002a00000000000000
+```
+
+Field decode:
+
+| Bytes | Value | Field |
+| --- | --- | --- |
+| `01 00` | `1` | `counter_count` |
+| `00 00` | `0` | `reserved` |
+| `01 00` | `0x0001` | entry `counter_id` |
+| `00 00` | `0` | entry `counter_flags` |
+| `2a 00 00 00 00 00 00 00` | `42` | entry `value` |
+
+### 10.6 Full `COUNTERS_REPLY` Frame (`48` bytes)
+
+```text
+4c45415001002003200002001d2c3b4aee030000ed0300001000103529d84e5c01000000010000002a00000000000000
+```
+
+### 10.7 Golden `READ_TIMING` / `TIMING_REPLY`
+
+Scenario (request):
+
+- Message Type: `0x0003` (`LEAP_DIAG_READ_TIMING`)
+- Session ID: `0x4A3B2C1D`
+- Sequence / Ack: `1007 / 1006`
+- Payload: `LeapReadTimingRequest` (`4` bytes), `timing_flags = 0`
+
+Derived integrity values:
+
+- `payload_crc32c = 0x4867C7E0`
+- `header_crc16 = 0x6400`
+
+Full frame (`36` bytes):
+
+```text
+4c45415001002000200003001d2c3b4aef030000ee030000040064e0c74b674800000000
+```
+
+Scenario (reply):
+
+- Message Type: `0x0004` (`LEAP_DIAG_TIMING_REPLY`)
+- Flags: `RESPONSE \| ACK_REQUESTED` (`0x03`)
+- Sequence / Ack: `1008 / 1007`
+- Payload: `LeapTimingReply` (`28` bytes)
+
+Derived integrity values:
+
+- `payload_crc32c = 0x618EDBB1`
+- `header_crc16 = 0xB100`
+
+Full frame (`60` bytes):
+
+```text
+4c45415001002003200004001d2c3b4af0030000ef0300001c00b1db618e925ee8030000d007000020030000320000007800000050c3000000093d00
+```
+
+Field decode (`LeapTimingReply`):
+
+| Field | Value |
+| --- | --- |
+| `last_cycle_time_us` | `1000` |
+| `max_cycle_time_us` | `2000` |
+| `min_cycle_time_us` | `800` |
+| `last_reply_latency_us` | `50` |
+| `max_reply_latency_us` | `120` |
+| `process_watchdog_remaining_us` | `50000` |
+| `owner_lease_remaining_us` | `4000000` |
+
+## 11. Notes
 
 - Byte streams cover the LEAP frame (header + payload, plus transport padding where shown). Ethernet destination/source MAC and EtherType fields are not included unless explicitly stated.
 - CRC coverage is limited to the true payload bytes declared by `payload_length`. Transport padding bytes are excluded from both `payload_crc32c` computation and receiver CRC validation.

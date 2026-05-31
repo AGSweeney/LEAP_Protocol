@@ -17,7 +17,24 @@
 extern "C" {
 #endif
 
-#define LEAP_RAW_LINUX_MAC_LEN 6u
+#define LEAP_RAW_LINUX_MAC_LEN    6u
+#define LEAP_RAW_LINUX_IFNAME_MAX 16u
+
+typedef struct LeapRawLinuxLinkState
+{
+    /*
+     * IFF_UP — administratively enabled.
+     */
+    int interface_up;
+    /*
+     * IFF_RUNNING — carrier present on most Ethernet drivers.
+     */
+    int carrier_up;
+    /*
+     * Practical link-ready: interface_up && carrier_up.
+     */
+    int link_up;
+} LeapRawLinuxLinkState;
 
 typedef struct LeapRawLinuxOpenOptions
 {
@@ -45,6 +62,7 @@ typedef struct LeapRawLinuxStats
     uint64_t rx_timeouts;
     uint64_t rx_errors;
     uint64_t rx_short_frames;
+    uint64_t link_transitions;
 } LeapRawLinuxStats;
 
 typedef struct LeapRawLinuxSocket
@@ -52,8 +70,10 @@ typedef struct LeapRawLinuxSocket
     int               fd;
     uint16_t          ethertype;
     uint8_t           local_mac[LEAP_RAW_LINUX_MAC_LEN];
+    char              ifname[LEAP_RAW_LINUX_IFNAME_MAX];
     int               promiscuous;
     int               filter_dest_mac;
+    int               cached_link_up;
     LeapRawLinuxStats stats;
 } LeapRawLinuxSocket;
 
@@ -96,6 +116,22 @@ void leap_raw_linux_get_stats(
     LeapRawLinuxStats*        out);
 
 void leap_raw_linux_reset_stats(LeapRawLinuxSocket* sock);
+
+/*
+ * Query interface flags (IFF_UP / IFF_RUNNING). Requires an open socket.
+ */
+int leap_raw_linux_query_link(
+    const LeapRawLinuxSocket* sock,
+    LeapRawLinuxLinkState*    state_out);
+
+/*
+ * Poll link state; sets *changed_out when link_up differs from the previous poll.
+ * First poll never sets changed. Updates cached state and link_transitions stat.
+ */
+int leap_raw_linux_poll_link(
+    LeapRawLinuxSocket*    sock,
+    int*                   changed_out,
+    LeapRawLinuxLinkState* state_out);
 
 #ifdef __cplusplus
 }

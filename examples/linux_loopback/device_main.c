@@ -221,6 +221,7 @@ int main(int argc, char** argv)
     for (;;)
     {
         now_us = leap_raw_linux_monotonic_us();
+        leap_linux_poll_link_and_log(&transport);
 
         if (leap_linux_recv_leap(
                 &transport,

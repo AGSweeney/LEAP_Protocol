@@ -8,6 +8,7 @@
  *   sudo ./leap_linux_controller --cyclic [interface]
  *   sudo ./leap_linux_controller --cyclic-ms 100 [interface]
  *   sudo ./leap_linux_controller --lease-demo [interface]
+ *   sudo ./leap_linux_controller --diag [interface]
  *
  * Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
  * SPDX-License-Identifier: MIT
@@ -55,6 +56,7 @@ int main(int argc, char** argv)
     LeapControllerStackIo      stack_io;
     LeapPdControllerIo         pd_io;
     LeapLinuxPdTransport       pd_transport;
+    LeapControllerStackDiagResult diag_result;
     uint8_t                    peer_mac[6];
     uint32_t                   lease_us = 5000000u;
 
@@ -112,6 +114,10 @@ int main(int argc, char** argv)
         }
         printf(")");
     }
+    else if (options.diag != 0)
+    {
+        printf(" (diag)");
+    }
     if (options.promiscuous != 0)
     {
         printf(" [promisc]");
@@ -135,6 +141,53 @@ int main(int argc, char** argv)
     printf("  session_id: 0x%08X  state: OP\n",
            leap_mgmt_controller_session_id(&stack.mgmt));
 
+    if (options.lease_demo == 0)
+    {
+        if (options.cyclic != 0)
+        {
+            signal(SIGINT, controller_on_sigint);
+            if (leap_linux_controller_run_cyclic_pd_with_link_watch(
+                    &stack,
+                    &pd_io,
+                    &transport,
+                    (volatile int*)&g_controller_stop) != LEAP_PD_CTRL_OK)
+            {
+                controller_shutdown(&stack, &stack_io, &transport);
+                return 1;
+            }
+        }
+        else if (options.diag == 0)
+        {
+            if (leap_controller_stack_pd_single_write(
+                    &stack, &pd_io, 0x0015u) != LEAP_PD_CTRL_OK)
+            {
+                controller_shutdown(&stack, &stack_io, &transport);
+                return 1;
+            }
+
+            printf("sent PD WRITE (outputs=0x0015)\n");
+        }
+
+        if (options.diag != 0)
+        {
+            LeapControllerStackDiagStatus diag_status;
+
+            diag_status = leap_controller_stack_read_diag(
+                &stack, &stack_io, &diag_result);
+            if (diag_status != LEAP_CTRL_STACK_DIAG_OK)
+            {
+                fprintf(
+                    stderr,
+                    "DIAG read failed (status=%d)\n",
+                    (int)diag_status);
+                controller_shutdown(&stack, &stack_io, &transport);
+                return 1;
+            }
+
+            leap_controller_stack_log_diag(&diag_result);
+        }
+    }
+
     if (options.lease_demo != 0)
     {
         printf(
@@ -146,31 +199,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    if (options.cyclic != 0)
-    {
-        signal(SIGINT, controller_on_sigint);
-        if (leap_controller_stack_run_cyclic_pd(
-                &stack,
-                &pd_io,
-                (volatile int*)&g_controller_stop) != LEAP_PD_CTRL_OK)
-        {
-            controller_shutdown(&stack, &stack_io, &transport);
-            return 1;
-        }
-    }
-    else
-    {
-        if (leap_controller_stack_pd_single_write(
-                &stack, &pd_io, 0x0015u) != LEAP_PD_CTRL_OK)
-        {
-            controller_shutdown(&stack, &stack_io, &transport);
-            return 1;
-        }
-
-        printf("sent PD WRITE (outputs=0x0015)\n");
-    }
-
-    if (options.cyclic == 0)
+    if (options.cyclic == 0 && options.diag == 0)
     {
         leap_pd_controller_log_stats(&stack.pd);
     }

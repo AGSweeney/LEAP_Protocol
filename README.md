@@ -126,27 +126,38 @@ See [examples/linux_loopback/README.md](examples/linux_loopback/README.md).
 - Frame parser/serializer, CRC, fragmentation, fuzz/regression tests
 - All five v1 services: device handlers + controller helpers (where applicable)
 - **`leap_device_stack`** — DISC + DIR + MGMT + PD + DIAG + tick
-- **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`
-- **`leap_controller_session_hub`** + peer discovery table
+- **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`, `read_diag`
+- **`leap_controller_session_hub`** + peer discovery table + `leap_linux_hub` example
 - Multi-peer hardening (sequence, session bind, PD validation, frame age, security log)
 - Linux AF_PACKET transport, loopback examples, discover demo
 - CI: build + unit tests + example binary checks
 
-### Next
+### Next (see [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md))
 
-- Controller DIAG poll helper; Linux `--diag` example flag
-- Wireshark dissector coverage for all v1 services
-- Rolling sequence bitmap (optional post-v1)
-- Embedded reference port (timer-driven tick, no sockets in core)
-- Manual wire smoke documented and maintained (`tools/ci/`)
-- Production EtherType registration (beyond dev `0x88B6`)
-- v0.9 / v1.0 release tag after independent conformance runs
+**Near term (core lock-down)**
+
+- Finish PD/example audit (`device_minimal` stays low-level by design)
+- ~~Controller DIAG read helper + `--diag` flag~~ **done**
+- ~~Hub integration tests (round-robin, foreign-owner skip)~~ **done**
+- Manual wire smoke on native Linux before platform ports
+
+**Medium term (3–4 weeks)**
+
+- Transport link monitoring and reconnect policy — see [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md)
+- DIAG golden vectors + Wireshark coverage
+- Multi-device hub example or documented pattern
+- v1.0 conformance / release readiness review
+
+**Later**
+
+- Rolling sequence bitmap, embedded port, production EtherType, release tag
 
 ## Documentation
 
 | Doc | Description |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Documentation index + module map |
+| [docs/LEAP_FORWARD_PLAN.md](LEAP_FORWARD_PLAN.md) | Prioritized 7–10 day and 3–4 week plan vs current status |
 | [docs/LEAP_PROTOCOL_SPECIFICATION.md](docs/LEAP_PROTOCOL_SPECIFICATION.md) | Normative spec |
 | [docs/LEAP_CONTROLLER_STACK_PLAN.md](docs/LEAP_CONTROLLER_STACK_PLAN.md) | Controller stack design + status |
 | [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller notes |

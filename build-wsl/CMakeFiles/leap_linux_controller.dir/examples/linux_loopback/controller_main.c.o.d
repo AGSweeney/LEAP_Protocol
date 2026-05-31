@@ -20,7 +20,6 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/controller_main.c.o
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
- /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_controller_io.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_stack.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
@@ -32,6 +31,9 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/controller_main.c.o
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_session_hub.h \
+ /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h \
+ /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_controller_io.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.h \
  /usr/include/signal.h \
  /usr/include/x86_64-linux-gnu/bits/signum-generic.h \
@@ -47,13 +49,7 @@ CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/controller_main.c.o
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
  /usr/include/x86_64-linux-gnu/bits/floatn.h \
- /usr/include/x86_64-linux-gnu/bits/floatn-common.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h \
- /usr/include/x86_64-linux-gnu/bits/stdio.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2.h /usr/include/string.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+ /usr/include/x86_64-linux-gnu/bits/floatn-common.h /usr/include/string.h \
  /usr/include/unistd.h /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/confname.h \
- /usr/include/x86_64-linux-gnu/bits/unistd.h \
- /usr/include/x86_64-linux-gnu/bits/unistd-decl.h \
  /usr/include/x86_64-linux-gnu/bits/unistd_ext.h

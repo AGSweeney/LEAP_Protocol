@@ -10,7 +10,9 @@
 #include "test_harness.h"
 
 #include "leap/leap_raw_linux.h"
+#include "leap/leap_protocol.h"
 
+#include <stdio.h>
 #include <string.h>
 
 TEST(test_raw_linux_stats_reset_clears_counters)
@@ -35,10 +37,49 @@ TEST(test_raw_linux_stats_reset_clears_counters)
     ASSERT_TRUE(stats.rx_frames_ok == 0u);
     ASSERT_TRUE(stats.rx_filtered == 0u);
     ASSERT_TRUE(stats.rx_timeouts == 0u);
+    ASSERT_TRUE(stats.link_transitions == 0u);
 }
+
+#if defined(__linux__)
+
+TEST(test_raw_linux_link_query_lo)
+{
+    LeapRawLinuxSocket    sock;
+    LeapRawLinuxLinkState state;
+    int                   changed;
+
+    if (leap_raw_linux_open(
+            &sock,
+            "lo",
+            LEAP_ETHERTYPE_DEVELOPMENT) != 0)
+    {
+        printf("  (skipped: AF_PACKET open failed on this host)\n");
+        return;
+    }
+
+    ASSERT_EQ_INT(leap_raw_linux_query_link(&sock, &state), 0);
+    ASSERT_EQ_INT(state.interface_up, 1);
+    ASSERT_EQ_INT(state.link_up, 1);
+
+    ASSERT_EQ_INT(leap_raw_linux_poll_link(&sock, &changed, &state), 0);
+    ASSERT_EQ_INT(changed, 0);
+
+    sock.cached_link_up = 0;
+    ASSERT_EQ_INT(leap_raw_linux_poll_link(&sock, &changed, &state), 0);
+    ASSERT_EQ_INT(changed, 1);
+    ASSERT_TRUE(sock.stats.link_transitions == 1u);
+    ASSERT_EQ_INT(sock.cached_link_up, 1);
+
+    leap_raw_linux_close(&sock);
+}
+
+#endif
 
 void leap_run_raw_linux_stats_tests(void)
 {
     printf("raw linux stats\n");
     RUN_TEST(test_raw_linux_stats_reset_clears_counters);
+#if defined(__linux__)
+    RUN_TEST(test_raw_linux_link_query_lo);
+#endif
 }

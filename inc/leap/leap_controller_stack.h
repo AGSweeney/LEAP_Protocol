@@ -25,6 +25,29 @@
 extern "C" {
 #endif
 
+#define LEAP_CTRL_STACK_DIAG_MAX_COUNTERS 16u
+
+typedef enum LeapControllerStackDiagStatus
+{
+    LEAP_CTRL_STACK_DIAG_OK = 0,
+    LEAP_CTRL_STACK_DIAG_INVALID_ARG,
+    LEAP_CTRL_STACK_DIAG_NOT_OP,
+    LEAP_CTRL_STACK_DIAG_IO_MISSING,
+    LEAP_CTRL_STACK_DIAG_SEND_FAILED,
+    LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT,
+    LEAP_CTRL_STACK_DIAG_UNEXPECTED_REPLY,
+    LEAP_CTRL_STACK_DIAG_PARSE_ERROR
+} LeapControllerStackDiagStatus;
+
+typedef struct LeapControllerStackDiagResult
+{
+    int              has_counters;
+    int              has_timing;
+    uint16_t         counter_count;
+    LeapCounterEntry counters[LEAP_CTRL_STACK_DIAG_MAX_COUNTERS];
+    LeapTimingReply  timing;
+} LeapControllerStackDiagResult;
+
 #define LEAP_CTRL_STACK_BROADCAST_MAC \
     { 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu }
 
@@ -191,6 +214,17 @@ LeapPdControllerStatus leap_controller_stack_pd_single_write(
     LeapControllerStack*      stack,
     const LeapPdControllerIo* pd_io,
     uint16_t                  digital_outputs);
+
+/*
+ * Post-OP diagnostics read (READ_COUNTERS + READ_TIMING). Requires owner session.
+ */
+LeapControllerStackDiagStatus leap_controller_stack_read_diag(
+    LeapControllerStack*             stack,
+    const LeapControllerStackIo*     io,
+    LeapControllerStackDiagResult*   result_out);
+
+void leap_controller_stack_log_diag(
+    const LeapControllerStackDiagResult* result);
 
 #ifdef __cplusplus
 }

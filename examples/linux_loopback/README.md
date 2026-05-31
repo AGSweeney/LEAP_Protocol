@@ -8,6 +8,7 @@ Applications use the **reference stacks** — not ad-hoc MGMT/PD logic:
 | --- | --- | --- |
 | `leap_linux_device` | `leap_device_stack` | DISC, DIR, MGMT, PD, DIAG dispatch + tick |
 | `leap_linux_controller` | `leap_controller_stack` | Bootstrap to OP, cyclic or single PD |
+| `leap_linux_hub` | `leap_controller_session_hub` | Discover, bootstrap all peers, round-robin PD |
 | `leap_linux_discover` | peer table | Broadcast HELLO scan (multi-device demo) |
 
 ## Flow (default controller run)
@@ -22,7 +23,8 @@ Applications use the **reference stacks** — not ad-hoc MGMT/PD logic:
 8. **Device** applies outputs to I/O shadow; optional DIAG counters increment
 
 The device runs a recv loop with monotonic-time `leap_device_stack_tick()` for
-lease/watchdog expiry.
+lease/watchdog expiry. Link up/down transitions are logged via
+`leap_linux_poll_link_and_log()` each loop iteration.
 
 ## Requirements
 
@@ -55,7 +57,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-Targets: `leap_linux_device`, `leap_linux_controller`, `leap_linux_discover`
+Targets: `leap_linux_device`, `leap_linux_controller`, `leap_linux_discover`, `leap_linux_hub`
 
 ## Run
 
@@ -97,6 +99,22 @@ sudo ./build/leap_linux_controller --lease-demo lo
 
 2 s lease, reaches `OP`, idles 3 s without heartbeat/PD. Watch the **device** log.
 
+### Diagnostics read (`--diag`)
+
+After bootstrap (and optionally after a PD run), issue `READ_COUNTERS` +
+`READ_TIMING` via `leap_controller_stack_read_diag()`:
+
+```bash
+# DIAG only (no PD write)
+sudo ./build/leap_linux_controller --diag lo
+
+# PD write then DIAG
+sudo ./build/leap_linux_controller lo --diag
+
+# Cyclic PD, then DIAG on exit (Ctrl+C)
+sudo ./build/leap_linux_controller --cyclic --diag lo
+```
+
 ### Multi-device discovery
 
 ```bash
@@ -104,6 +122,25 @@ sudo ./build/leap_linux_discover lo
 ```
 
 Broadcasts HELLO and prints discovered peer MACs (no bootstrap).
+
+### Multi-device session hub
+
+Run one device per peer (separate terminals or hosts on the same segment):
+
+```bash
+# Terminal 1 — device A (use distinct interfaces/MACs on real hardware)
+sudo ./build/leap_linux_device lo
+
+# Terminal 2 — optional second device if your setup supports two MACs on lo
+# sudo ./build/leap_linux_device eth0
+
+# Terminal 3 — hub controller: discover → bootstrap_table → round-robin PD
+sudo ./build/leap_linux_hub lo
+sudo ./build/leap_linux_hub --scan-ms 5000 --cyclic-ms 100 --exchange lo
+```
+
+Foreign-owned peers (another controller’s `active_owner_mac` in HELLO) are skipped
+by default. Ctrl+C stops round-robin and releases all hub sessions.
 
 ## Example device output
 

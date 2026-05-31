@@ -8,8 +8,10 @@
 #include "leap/leap_controller_stack.h"
 
 #include "leap/leap_controller_sequence.h"
+#include "leap/leap_diag_controller.h"
 #include "leap/leap_disc_controller.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #define LEAP_CTRL_STACK_DEFAULT_LEASE_US     5000000u
@@ -1257,4 +1259,277 @@ LeapPdControllerStatus leap_controller_stack_pd_single_write(
         pd_io,
         stack->peer_mac,
         digital_outputs);
+}
+
+static LeapControllerStackDiagStatus leap_ctrl_stack_diag_map_status(
+    LeapControllerStackStatus status)
+{
+    switch (status)
+    {
+    case LEAP_CTRL_STACK_OK:
+        return LEAP_CTRL_STACK_DIAG_OK;
+    case LEAP_CTRL_STACK_INVALID_ARG:
+        return LEAP_CTRL_STACK_DIAG_INVALID_ARG;
+    case LEAP_CTRL_STACK_IO_MISSING:
+        return LEAP_CTRL_STACK_DIAG_IO_MISSING;
+    case LEAP_CTRL_STACK_SEND_FAILED:
+        return LEAP_CTRL_STACK_DIAG_SEND_FAILED;
+    case LEAP_CTRL_STACK_RECV_TIMEOUT:
+        return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
+    default:
+        return LEAP_CTRL_STACK_DIAG_UNEXPECTED_REPLY;
+    }
+}
+
+static LeapControllerStackDiagStatus leap_ctrl_stack_diag_exchange(
+    LeapControllerStack*           stack,
+    const LeapControllerStackIo*   io,
+    uint16_t                       request_type,
+    const uint8_t*                 request_payload,
+    size_t                         request_length,
+    uint16_t                       expected_reply_type,
+    uint8_t*                       reply_payload,
+    size_t                         reply_capacity,
+    size_t*                        reply_length_out)
+{
+    uint8_t         rx_buf[LEAP_CTRL_STACK_RX_BUF];
+    uint8_t         src_mac[6];
+    LeapFrameView   view;
+    size_t          rx_length;
+    LeapControllerStackStatus status;
+    unsigned        attempt;
+    uint32_t        session_id;
+    uint32_t        sequence;
+    int             timeout_ms;
+
+    if (stack == NULL || io == NULL || request_payload == NULL ||
+        reply_payload == NULL || reply_length_out == NULL)
+    {
+        return LEAP_CTRL_STACK_DIAG_INVALID_ARG;
+    }
+
+    if (io->send_frame == NULL || io->recv_frame == NULL)
+    {
+        return LEAP_CTRL_STACK_DIAG_IO_MISSING;
+    }
+
+    session_id = leap_mgmt_controller_session_id(&stack->mgmt);
+    sequence   = leap_mgmt_controller_next_sequence(&stack->mgmt);
+
+    if (io->send_frame(
+            io->user_ctx,
+            stack->peer_mac,
+            0u,
+            (uint16_t)LEAP_SERVICE_DIAG,
+            request_type,
+            session_id,
+            sequence,
+            0u,
+            request_payload,
+            request_length) != 0)
+    {
+        return LEAP_CTRL_STACK_DIAG_SEND_FAILED;
+    }
+
+    timeout_ms = stack->config.recv_timeout_ms;
+    if (timeout_ms <= 0)
+    {
+        timeout_ms = LEAP_CTRL_STACK_DEFAULT_RECV_MS;
+    }
+
+    for (attempt = 0u; attempt < 8u; attempt++)
+    {
+        status = leap_ctrl_stack_recv(
+            io,
+            timeout_ms,
+            src_mac,
+            &view,
+            rx_buf,
+            sizeof(rx_buf),
+            &rx_length);
+        if (status == LEAP_CTRL_STACK_RECV_TIMEOUT)
+        {
+            return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
+        }
+        if (status != LEAP_CTRL_STACK_OK)
+        {
+            return leap_ctrl_stack_diag_map_status(status);
+        }
+
+        if (memcmp(src_mac, stack->peer_mac, 6) != 0)
+        {
+            continue;
+        }
+
+        if (view.header.service_id != (uint16_t)LEAP_SERVICE_DIAG)
+        {
+            continue;
+        }
+
+        if (view.header.message_type != expected_reply_type)
+        {
+            continue;
+        }
+
+        if ((view.header.flags & LEAP_FLAG_ERROR) != 0u)
+        {
+            return LEAP_CTRL_STACK_DIAG_UNEXPECTED_REPLY;
+        }
+
+        if (view.payload_length > reply_capacity)
+        {
+            return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+        }
+
+        memcpy(reply_payload, view.payload, view.payload_length);
+        *reply_length_out = view.payload_length;
+        return LEAP_CTRL_STACK_DIAG_OK;
+    }
+
+    return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
+}
+
+LeapControllerStackDiagStatus leap_controller_stack_read_diag(
+    LeapControllerStack*           stack,
+    const LeapControllerStackIo*   io,
+    LeapControllerStackDiagResult* result_out)
+{
+    uint8_t                      req[64];
+    uint8_t                      reply[LEAP_CTRL_STACK_RX_BUF];
+    size_t                       req_length;
+    size_t                       reply_length;
+    LeapCountersReply            counters_hdr;
+    LeapControllerStackDiagStatus status;
+    LeapDiagControllerStatus     parse_status;
+
+    if (result_out != NULL)
+    {
+        memset(result_out, 0, sizeof(*result_out));
+    }
+
+    if (stack == NULL || io == NULL || result_out == NULL)
+    {
+        return LEAP_CTRL_STACK_DIAG_INVALID_ARG;
+    }
+
+    if (leap_ctrl_stack_peer_ready(stack) == 0)
+    {
+        return LEAP_CTRL_STACK_DIAG_NOT_OP;
+    }
+
+    req_length = leap_diag_controller_build_read_counters(
+        req,
+        sizeof(req),
+        (uint16_t)LEAP_COUNTER_RX_FRAMES_ACCEPTED,
+        12u,
+        0u);
+    if (req_length == 0u)
+    {
+        return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+    }
+
+    status = leap_ctrl_stack_diag_exchange(
+        stack,
+        io,
+        LEAP_DIAG_READ_COUNTERS,
+        req,
+        req_length,
+        LEAP_DIAG_COUNTERS_REPLY,
+        reply,
+        sizeof(reply),
+        &reply_length);
+    if (status != LEAP_CTRL_STACK_DIAG_OK)
+    {
+        return status;
+    }
+
+    parse_status = leap_diag_controller_on_counters_reply(
+        reply,
+        reply_length,
+        &counters_hdr,
+        result_out->counters,
+        LEAP_CTRL_STACK_DIAG_MAX_COUNTERS,
+        NULL);
+    if (parse_status != LEAP_DIAG_CTRL_OK)
+    {
+        return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+    }
+
+    result_out->has_counters   = 1;
+    result_out->counter_count  = counters_hdr.counter_count;
+
+    req_length = leap_diag_controller_build_read_timing(req, sizeof(req), 0u);
+    if (req_length == 0u)
+    {
+        return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+    }
+
+    status = leap_ctrl_stack_diag_exchange(
+        stack,
+        io,
+        LEAP_DIAG_READ_TIMING,
+        req,
+        req_length,
+        LEAP_DIAG_TIMING_REPLY,
+        reply,
+        sizeof(reply),
+        &reply_length);
+    if (status != LEAP_CTRL_STACK_DIAG_OK)
+    {
+        return status;
+    }
+
+    parse_status = leap_diag_controller_on_timing_reply(
+        reply,
+        reply_length,
+        &result_out->timing);
+    if (parse_status != LEAP_DIAG_CTRL_OK)
+    {
+        return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+    }
+
+    result_out->has_timing = 1;
+    return LEAP_CTRL_STACK_DIAG_OK;
+}
+
+void leap_controller_stack_log_diag(
+    const LeapControllerStackDiagResult* result)
+{
+    unsigned i;
+
+    if (result == NULL)
+    {
+        return;
+    }
+
+    printf("DIAG readback:\n");
+
+    if (result->has_counters != 0)
+    {
+        printf("  counters (%u):\n", (unsigned)result->counter_count);
+        for (i = 0u; i < result->counter_count &&
+                    i < LEAP_CTRL_STACK_DIAG_MAX_COUNTERS;
+             i++)
+        {
+            printf(
+                "    id=0x%04X value=%llu\n",
+                result->counters[i].counter_id,
+                (unsigned long long)result->counters[i].value);
+        }
+    }
+
+    if (result->has_timing != 0)
+    {
+        printf(
+            "  timing: last_cycle=%u us max_cycle=%u min_cycle=%u "
+            "last_reply_lat=%u us max_reply_lat=%u us "
+            "watchdog_remain=%u us lease_remain=%u us\n",
+            result->timing.last_cycle_time_us,
+            result->timing.max_cycle_time_us,
+            result->timing.min_cycle_time_us,
+            result->timing.last_reply_latency_us,
+            result->timing.max_reply_latency_us,
+            result->timing.process_watchdog_remaining_us,
+            result->timing.owner_lease_remaining_us);
+    }
 }

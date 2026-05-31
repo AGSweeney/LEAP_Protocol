@@ -22,5 +22,4 @@ CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o: \
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h /usr/include/string.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h
+ /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h /usr/include/string.h

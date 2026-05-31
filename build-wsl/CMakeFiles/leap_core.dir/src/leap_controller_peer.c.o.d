@@ -31,5 +31,4 @@ CMakeFiles/leap_core.dir/src/leap_controller_peer.c.o: \
  /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
  /mnt/d/LEAP_Protocol/inc/leap/leap_disc_controller.h \
- /usr/include/string.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h
+ /usr/include/string.h

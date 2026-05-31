@@ -7,6 +7,7 @@
 
 #include "leap_linux_common.h"
 
+#include "leap/leap_controller_peer.h"
 #include "leap/leap_frame.h"
 #include "leap/leap_protocol.h"
 
@@ -14,8 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define LEAP_LINUX_TX_BUF 1600u
 
 static uint64_t g_leap_linux_send_retries = 0u;
 
@@ -27,6 +26,174 @@ uint64_t leap_linux_send_retry_count(void)
 void leap_linux_reset_send_retry_count(void)
 {
     g_leap_linux_send_retries = 0u;
+}
+
+#include <string.h>
+
+#define LEAP_LINUX_TX_BUF 1600u
+
+int leap_linux_link_stop_on_down(
+    LeapRawLinuxSocket* sock,
+    volatile int*       stop_flag)
+{
+    int                   changed = 0;
+    LeapRawLinuxLinkState state;
+
+    if (sock == NULL || stop_flag == NULL)
+    {
+        return 0;
+    }
+
+    if (leap_raw_linux_poll_link(sock, &changed, &state) != 0)
+    {
+        return 0;
+    }
+
+    if (changed != 0)
+    {
+        printf(
+            "transport: link %s (iface_up=%d carrier_up=%d transitions=%llu)\n",
+            state.link_up != 0 ? "UP" : "DOWN",
+            state.interface_up,
+            state.carrier_up,
+            (unsigned long long)sock->stats.link_transitions);
+    }
+
+    if (state.link_up == 0)
+    {
+        if (*stop_flag == 0)
+        {
+            printf("transport: link down — stopping PD\n");
+            *stop_flag = 1;
+        }
+        return 1;
+    }
+
+    return 0;
+}
+
+LeapPdControllerStatus leap_linux_controller_run_cyclic_pd_with_link_watch(
+    LeapControllerStack*      stack,
+    const LeapPdControllerIo* pd_io,
+    LeapRawLinuxSocket*       transport,
+    volatile int*             stop_flag)
+{
+    LeapPdControllerStatus status;
+
+    if (stack == NULL || pd_io == NULL || transport == NULL || stop_flag == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (leap_controller_stack_get_phase(stack) != LEAP_CTRL_STACK_OP)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    printf(
+        "cyclic PD (%u ms%s) — Ctrl+C or link-down to stop\n",
+        stack->pd.config.cycle_period_ms,
+        stack->pd.config.use_exchange != 0 ? ", exchange" : "");
+
+    while (*stop_flag == 0)
+    {
+        (void)leap_linux_link_stop_on_down(transport, stop_flag);
+        if (*stop_flag != 0)
+        {
+            break;
+        }
+
+        status = leap_pd_controller_run_one_cycle(
+            &stack->pd,
+            &stack->mgmt,
+            pd_io,
+            stack->peer_mac,
+            stop_flag,
+            1);
+        if (status == LEAP_PD_CTRL_STOPPED)
+        {
+            break;
+        }
+        if (status != LEAP_PD_CTRL_OK)
+        {
+            return status;
+        }
+    }
+
+    printf("cyclic PD stopped\n");
+    leap_pd_controller_log_stats(&stack->pd);
+    return LEAP_PD_CTRL_OK;
+}
+
+LeapPdControllerStatus leap_linux_hub_run_round_robin_with_link_watch(
+    LeapControllerSessionHub* hub,
+    const LeapPdControllerIo* pd_io,
+    LeapRawLinuxSocket*       transport,
+    volatile int*             stop_flag)
+{
+    LeapPdControllerStatus status;
+    unsigned               i;
+    int                    ran_any;
+
+    if (hub == NULL || pd_io == NULL || transport == NULL || stop_flag == NULL)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    if (hub->active_count == 0u)
+    {
+        return LEAP_PD_CTRL_INVALID_ARG;
+    }
+
+    printf("hub round-robin PD — Ctrl+C or link-down to stop\n");
+
+    while (*stop_flag == 0)
+    {
+        (void)leap_linux_link_stop_on_down(transport, stop_flag);
+        if (*stop_flag != 0)
+        {
+            break;
+        }
+
+        ran_any = 0;
+
+        for (i = 0u; i < LEAP_CTRL_MAX_PEERS; i++)
+        {
+            if (hub->slots[i].in_use == 0)
+            {
+                continue;
+            }
+
+            if (leap_controller_stack_get_phase(&hub->slots[i].stack) !=
+                LEAP_CTRL_STACK_OP)
+            {
+                continue;
+            }
+
+            status = leap_controller_session_hub_run_one_cycle(
+                hub,
+                (int)i,
+                pd_io,
+                stop_flag);
+            if (status == LEAP_PD_CTRL_STOPPED)
+            {
+                return LEAP_PD_CTRL_OK;
+            }
+            if (status != LEAP_PD_CTRL_OK)
+            {
+                return status;
+            }
+
+            ran_any = 1;
+        }
+
+        if (ran_any == 0)
+        {
+            return LEAP_PD_CTRL_INVALID_ARG;
+        }
+    }
+
+    return LEAP_PD_CTRL_OK;
 }
 
 void leap_linux_print_mac(const char* label, const uint8_t* mac)
@@ -92,7 +259,8 @@ void leap_linux_print_transport_stats(const LeapRawLinuxSocket* sock)
     leap_raw_linux_get_stats(sock, &stats);
     printf(
         "transport: tx_ok=%llu tx_err=%llu tx_partial=%llu "
-        "rx_ok=%llu rx_filtered=%llu rx_timeout=%llu rx_err=%llu rx_short=%llu\n",
+        "rx_ok=%llu rx_filtered=%llu rx_timeout=%llu rx_err=%llu rx_short=%llu "
+        "link_xitions=%llu\n",
         (unsigned long long)stats.tx_frames_ok,
         (unsigned long long)stats.tx_errors,
         (unsigned long long)stats.tx_partial_chunks,
@@ -100,7 +268,36 @@ void leap_linux_print_transport_stats(const LeapRawLinuxSocket* sock)
         (unsigned long long)stats.rx_filtered,
         (unsigned long long)stats.rx_timeouts,
         (unsigned long long)stats.rx_errors,
-        (unsigned long long)stats.rx_short_frames);
+        (unsigned long long)stats.rx_short_frames,
+        (unsigned long long)stats.link_transitions);
+}
+
+void leap_linux_poll_link_and_log(LeapRawLinuxSocket* sock)
+{
+    LeapRawLinuxLinkState state;
+    int                   changed = 0;
+
+    if (sock == NULL)
+    {
+        return;
+    }
+
+    if (leap_raw_linux_poll_link(sock, &changed, &state) != 0)
+    {
+        return;
+    }
+
+    if (changed == 0)
+    {
+        return;
+    }
+
+    printf(
+        "transport: link %s (iface_up=%d carrier_up=%d transitions=%llu)\n",
+        state.link_up != 0 ? "UP" : "DOWN",
+        state.interface_up,
+        state.carrier_up,
+        (unsigned long long)sock->stats.link_transitions);
 }
 
 int leap_linux_send_leap(
@@ -212,6 +409,7 @@ void leap_linux_controller_parse_args(
     options->exchange         = 0;
     options->stats            = 0;
     options->stats_interval   = 100u;
+    options->diag             = 0;
 
     for (i = 1; i < argc; i++)
     {
@@ -261,6 +459,10 @@ void leap_linux_controller_parse_args(
                     options->stats_interval = 100u;
                 }
             }
+        }
+        else if (strcmp(argv[i], "--diag") == 0)
+        {
+            options->diag = 1;
         }
         else if (argv[i][0] != '-')
         {
