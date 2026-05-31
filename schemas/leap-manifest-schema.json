@@ -24,7 +24,7 @@
       "maximum": 4294967295
     },
     "serial_number": {
-      "description": "32-bit serial number. Aligned with LeapIdentity.serial_number on the wire.",
+      "description": "32-bit serial number. Instance-specific; optional in the manifest since it can be read at runtime from LeapIdentity via LEAP-DISC or LEAP-DIR. Include when the manifest is generated per-unit rather than per-model.",
       "type": "integer",
       "minimum": 0,
       "maximum": 4294967295
@@ -187,7 +187,6 @@
     "schema_version",
     "vendor_id",
     "product_code",
-    "serial_number",
     "product_name",
     "revision",
     "supported_services",

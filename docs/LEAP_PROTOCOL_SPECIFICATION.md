@@ -1175,11 +1175,16 @@ Minimum manifest fields:
 
 - `vendor_id` (16-bit integer, aligned with `LeapIdentity.vendor_id`)
 - `product_code` (integer)
-- `serial_number` (integer)
 - `product_name` (string)
 - `revision` (integer)
 - `supported_services` (array of 16-bit service IDs)
 - `profiles` (array of profile objects)
+
+`serial_number` is intentionally not required. The manifest describes a device
+model or firmware build, not an individual unit. Serial number is instance data,
+read at runtime from `LeapIdentity` via `LEAP-DISC` or `LEAP-DIR`. Include it
+in the manifest when generating a per-unit file, but tooling MUST NOT require it
+to be present for channel mapping or profile discovery purposes.
 
 Each profile object SHOULD include:
 
