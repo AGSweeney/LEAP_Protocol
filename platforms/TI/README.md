@@ -4,4 +4,5 @@ Placeholder for LEAP device ports on TI hardware.
 
 | Target | Path |
 | --- | --- |
+| BeagleBone | [BeagleBone/](BeagleBone/) |
 | LP-AM243 | [LP-AM243/](LP-AM243/) |
