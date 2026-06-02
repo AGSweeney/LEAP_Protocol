@@ -49,6 +49,7 @@ Each process needs its **own Ethernet MAC**. Opening the same Mellanox adapter i
 
 ```powershell
 .\build-win\Release\leap_win_controller.exe $adp
+.\build-win\Release\leap_win_controller.exe $adp --outputs 0x0001
 .\build-win\Release\leap_win_controller.exe $adp --cyclic --cyclic-ms 50
 .\build-win\Release\leap_win_controller.exe $adp --diag
 ```
@@ -170,4 +171,4 @@ For local CI-style validation without a second process, keep using `leap_win_smo
 
 ## Controller options
 
-Same as Linux `leap_linux_controller`: `--cyclic`, `--cyclic-ms`, `--exchange`, `--lease-demo`, `--diag`, `--promisc`, `--stats`, `--list`.
+Same as Linux `leap_linux_controller`: `--cyclic`, `--cyclic-ms`, `--exchange`, `--lease-demo`, `--diag`, `--promisc`, `--stats`, `--outputs MASK`, `--list`.

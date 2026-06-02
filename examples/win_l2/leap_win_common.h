@@ -28,6 +28,7 @@ typedef struct LeapWinControllerOptions
     unsigned    stats_interval;
     int         diag;
     int         list_adapters;
+    uint16_t    outputs;
 } LeapWinControllerOptions;
 
 typedef struct LeapWinHubOptions

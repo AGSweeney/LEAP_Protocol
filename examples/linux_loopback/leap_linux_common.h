@@ -29,6 +29,7 @@ typedef struct LeapLinuxControllerOptions
     int         stats;
     unsigned    stats_interval;
     int         diag;
+    uint16_t    outputs;
 } LeapLinuxControllerOptions;
 
 #ifdef __cplusplus

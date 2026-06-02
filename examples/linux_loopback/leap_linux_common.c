@@ -461,6 +461,7 @@ void leap_linux_controller_parse_args(
     options->stats            = 0;
     options->stats_interval   = 100u;
     options->diag             = 0;
+    options->outputs          = 0x0015u;
 
     for (i = 1; i < argc; i++)
     {
@@ -514,6 +515,14 @@ void leap_linux_controller_parse_args(
         else if (strcmp(argv[i], "--diag") == 0)
         {
             options->diag = 1;
+        }
+        else if (strcmp(argv[i], "--outputs") == 0)
+        {
+            if (i + 1 < argc && argv[i + 1][0] != '-')
+            {
+                i++;
+                options->outputs = (uint16_t)strtoul(argv[i], NULL, 0);
+            }
         }
         else if (argv[i][0] != '-')
         {

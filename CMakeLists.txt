@@ -178,6 +178,9 @@ if(WIN32 AND LEAP_BUILD_WIN_L2)
     examples/win_l2/leap_win_common.c
     examples/win_smoke/leap_win_io.c
   )
+  add_executable(leap_win_raw_tx
+    examples/win_l2/raw_tx_main.c
+  )
   target_include_directories(leap_win_controller PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
@@ -194,14 +197,19 @@ if(WIN32 AND LEAP_BUILD_WIN_L2)
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
     ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
   )
+  target_include_directories(leap_win_raw_tx PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
+  )
   target_link_libraries(leap_win_controller PRIVATE leap_core ws2_32)
   target_link_libraries(leap_win_device PRIVATE leap_core ws2_32)
   target_link_libraries(leap_win_discover PRIVATE leap_core ws2_32)
   target_link_libraries(leap_win_hub PRIVATE leap_core ws2_32)
+  target_link_libraries(leap_win_raw_tx PRIVATE leap_core ws2_32)
   if(MSVC)
     target_compile_options(leap_win_controller PRIVATE /utf-8)
     target_compile_options(leap_win_device PRIVATE /utf-8)
     target_compile_options(leap_win_discover PRIVATE /utf-8)
     target_compile_options(leap_win_hub PRIVATE /utf-8)
+    target_compile_options(leap_win_raw_tx PRIVATE /utf-8)
   endif()
 endif()

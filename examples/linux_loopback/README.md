@@ -71,6 +71,7 @@ Terminal 2 (controller — single PD write, stats at end):
 
 ```bash
 sudo ./build/leap_linux_controller lo
+sudo ./build/leap_linux_controller --outputs 0x0001 lo
 ```
 
 ### Cyclic PD (default 100 ms; Ctrl+C to stop)
@@ -187,6 +188,7 @@ sudo ./build/leap_linux_controller --lease-demo lo
 sudo ./build/leap_linux_controller --stats-interval 50 --cyclic lo
 sudo ./build/leap_linux_device --stats lo
 sudo ./build/leap_linux_controller --promisc eth0
+sudo ./build/leap_linux_controller --outputs 0x0008 eth0
 ```
 
 Flags can appear before or after the interface name.

@@ -415,6 +415,7 @@ int leap_raw_linux_send(
 {
     uint8_t  frame[LEAP_MAX_ETHERNET_PAYLOAD + 14u];
     size_t   total;
+    size_t   wire_total;
     ssize_t  sent;
 
     if (sock == NULL || sock->fd < 0 || dst_mac == NULL || payload == NULL)
@@ -428,7 +429,8 @@ int leap_raw_linux_send(
     }
 
     total = 14u + payload_length;
-    if (total > sizeof(frame))
+    wire_total = total < 60u ? 60u : total;
+    if (wire_total > sizeof(frame))
     {
         return -1;
     }
@@ -439,9 +441,13 @@ int leap_raw_linux_send(
     frame[12] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
     frame[13] = (uint8_t)(sock->ethertype & 0xFFu);
     memcpy(frame + 14, payload, payload_length);
+    if (wire_total > total)
+    {
+        memset(frame + total, 0, wire_total - total);
+    }
 
-    sent = leap_raw_linux_send_all(sock, frame, total);
-    if (sent != (ssize_t)total)
+    sent = leap_raw_linux_send_all(sock, frame, wire_total);
+    if (sent != (ssize_t)wire_total)
     {
         return -1;
     }

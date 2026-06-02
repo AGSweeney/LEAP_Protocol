@@ -161,13 +161,13 @@ int main(int argc, char** argv)
         else if (options.diag == 0)
         {
             if (leap_controller_stack_pd_single_write(
-                    &stack, &pd_io, 0x0015u) != LEAP_PD_CTRL_OK)
+                    &stack, &pd_io, options.outputs) != LEAP_PD_CTRL_OK)
             {
                 controller_shutdown(&stack, &stack_io, &transport);
                 return 1;
             }
 
-            printf("sent PD WRITE (outputs=0x0015)\n");
+            printf("sent PD WRITE (outputs=0x%04X)\n", options.outputs);
         }
 
         if (options.diag != 0)

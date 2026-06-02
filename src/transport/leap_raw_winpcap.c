@@ -974,6 +974,7 @@ int leap_raw_winpcap_send(
 {
     uint8_t frame[LEAP_MAX_ETHERNET_PAYLOAD + 14u];
     size_t  total;
+    size_t  wire_total;
 
     if (sock == NULL || sock->pcap == NULL || dst_mac == NULL || payload == NULL)
     {
@@ -986,17 +987,22 @@ int leap_raw_winpcap_send(
     }
 
     total = 14u + payload_length;
+    wire_total = total < 60u ? 60u : total;
     memcpy(frame, dst_mac, 6);
     memcpy(frame + 6, sock->local_mac, 6);
     /* Ethernet II type field is big-endian on the wire. */
     frame[12] = (uint8_t)((sock->ethertype >> 8) & 0xFFu);
     frame[13] = (uint8_t)(sock->ethertype & 0xFFu);
     memcpy(frame + 14, payload, payload_length);
+    if (wire_total > total)
+    {
+        memset(frame + total, 0, wire_total - total);
+    }
 
     {
         pcap_t* tx_handle = (pcap_t*)sock->pcap;
 
-        if (g_winpcap.sendpacket(tx_handle, frame, (int)total) != 0)
+        if (g_winpcap.sendpacket(tx_handle, frame, (int)wire_total) != 0)
         {
             sock->stats.tx_errors++;
             leap_winpcap_set_errno((int)GetLastError());
@@ -1006,11 +1012,11 @@ int leap_raw_winpcap_send(
 
     if (leap_winpcap_is_loopback_device(sock->device_name) != 0)
     {
-        leap_winpcap_relay_push(frame, total);
+        leap_winpcap_relay_push(frame, wire_total);
     }
 
     sock->stats.tx_frames_ok++;
-    sock->stats.tx_bytes += total;
+    sock->stats.tx_bytes += wire_total;
     leap_winpcap_clear_errno();
     return 0;
 }

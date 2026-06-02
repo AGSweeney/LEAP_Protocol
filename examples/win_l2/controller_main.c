@@ -63,6 +63,7 @@ static void controller_print_usage(const char* prog)
         "  --diag               Read device DIAG after bootstrap\n"
         "  --promisc            Open adapter in promiscuous mode\n"
         "  --stats              Print transport stats on exit\n"
+        "  --outputs MASK       One-shot PD output mask (default 0x0015)\n"
         "\n"
         "Example (Mellanox 10G):\n"
         "  leap_win_device.exe \"\\\\Device\\\\NPF_{6350838F-D1D5-407E-874E-8EBF642EE1DE}\"\n"
@@ -213,13 +214,13 @@ int main(int argc, char** argv)
         else if (options.diag == 0)
         {
             if (leap_controller_stack_pd_single_write(
-                    &stack, &pd_io, 0x0015u) != LEAP_PD_CTRL_OK)
+                    &stack, &pd_io, options.outputs) != LEAP_PD_CTRL_OK)
             {
                 controller_shutdown(&stack, &stack_io, &transport);
                 return 1;
             }
 
-            leap_log_printf("sent PD WRITE (outputs=0x0015)\n");
+            leap_log_printf("sent PD WRITE (outputs=0x%04X)\n", options.outputs);
         }
 
         if (options.diag != 0)
