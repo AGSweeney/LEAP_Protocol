@@ -1,0 +1,65 @@
+/* LEAP Conformance Studio — light theme */
+
+QWidget {
+    background-color: #f0f0f0;
+    color: #1a1a1a;
+}
+
+#StudioTabs::pane {
+    border: 1px solid #c8c8c8;
+    background-color: #f0f0f0;
+}
+
+#StudioTabs QTabBar::tab:selected {
+    background-color: #0078d7;
+    color: #ffffff;
+}
+
+#ToolbarButton {
+    background-color: #ffffff;
+    border: 1px solid #c8c8c8;
+    border-radius: 2px;
+    padding: 6px 12px;
+}
+
+#ToolbarButton:pressed {
+    background-color: #0078d7;
+    color: #ffffff;
+}
+
+QLineEdit, QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #c8c8c8;
+}
+
+QTableWidget, QTreeWidget {
+    background-color: #ffffff;
+    alternate-background-color: #f8f8f8;
+}
+
+#DiagnosticsSplitter::handle:horizontal {
+    background: #d0d0d0;
+    width: 6px;
+    margin: 6px 0;
+}
+
+#DeviceStatusPanel,
+#LatencyAnalysisPanel {
+    border: 1px solid #c8c8c8;
+    border-radius: 4px;
+    margin-top: 2px;
+    padding-top: 10px;
+    background-color: #ffffff;
+}
+
+QSplitter::handle:vertical {
+    background: #d0d0d0;
+    height: 4px;
+}
+
+#OutputLog {
+    font-family: Consolas;
+    font-size: 11px;
+    background-color: #2d325a;
+    color: #ffffff;
+}

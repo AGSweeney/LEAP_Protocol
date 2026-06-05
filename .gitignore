@@ -13,7 +13,8 @@ build/
 build-win/
 build-wsl/
 out/
-dist/
+dist/*
+!dist/LEAP_Conformance_Studio_*_x64_Setup.exe
 bin/
 obj/
 *.o
@@ -23,6 +24,7 @@ obj/
 *.so
 *.dll
 *.exe
+!dist/LEAP_Conformance_Studio_*_x64_Setup.exe
 
 # Python tooling (for scripts/utilities)
 __pycache__/

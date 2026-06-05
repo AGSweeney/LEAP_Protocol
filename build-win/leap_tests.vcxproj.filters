@@ -88,6 +88,12 @@
     <ClCompile Include="D:\LEAP_Protocol\tests\test_util.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\LEAP_Protocol\tests\test_negative_frames.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\LEAP_Protocol\tests\test_conformance_engine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\LEAP_Protocol\tests\leap_test_frame.c">
       <Filter>Source Files</Filter>
     </ClCompile>

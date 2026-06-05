@@ -7,6 +7,8 @@
 
 #include "test_harness.h"
 
+#include "leap/leap_build_info.h"
+
 void leap_run_crc_tests(void);
 void leap_run_frame_vector_tests(void);
 void leap_run_frame_roundtrip_tests(void);
@@ -33,10 +35,12 @@ void leap_run_comms_loss_tests(void);
 void leap_run_raw_linux_stats_tests(void);
 void leap_run_win_time_tests(void);
 void leap_run_log_tests(void);
+void leap_run_negative_frame_tests(void);
+void leap_run_conformance_engine_tests(void);
 
 int main(void)
 {
-    printf("LEAP conformance tests\n");
+    leap_build_info_print(stdout, "leap_tests");
 
     leap_run_crc_tests();
     leap_run_frame_vector_tests();
@@ -60,6 +64,8 @@ int main(void)
     leap_run_controller_session_hub_tests();
     leap_run_mgmt_controller_tests();
     leap_run_device_stack_tests();
+    leap_run_negative_frame_tests();
+    leap_run_conformance_engine_tests();
     leap_run_comms_loss_tests();
     leap_run_raw_linux_stats_tests();
     leap_run_win_time_tests();

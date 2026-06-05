@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/themes">
+        <file alias="studio_dark.qss">../themes/studio_dark.qss</file>
+        <file alias="studio_light.qss">../themes/studio_light.qss</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>icons/leap_studio_16.png</file>
+        <file>icons/leap_studio_24.png</file>
+        <file>icons/leap_studio_32.png</file>
+        <file>icons/leap_studio_48.png</file>
+        <file>icons/leap_studio_64.png</file>
+        <file>icons/leap_studio_128.png</file>
+        <file>icons/leap_studio_256.png</file>
+        <file>icons/leap_studio.ico</file>
+    </qresource>
+</RCC>

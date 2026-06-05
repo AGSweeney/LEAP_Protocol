@@ -55,6 +55,9 @@
     <ClCompile Include="D:\LEAP_Protocol\src\leap_log.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\LEAP_Protocol\src\leap_build_info.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\LEAP_Protocol\src\services\diag\leap_diag_device.c">
       <Filter>Source Files</Filter>
     </ClCompile>

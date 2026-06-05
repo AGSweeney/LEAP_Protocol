@@ -21,6 +21,26 @@ TEST(test_disc_controller_build_hello)
     ASSERT_TRUE(length == sizeof(LeapHelloRequest));
 }
 
+TEST(test_disc_controller_build_identify_and_locate)
+{
+    uint8_t payload[32];
+    size_t  length;
+    uint8_t peer_mac[6] = { 0x94, 0x51, 0xdc, 0x21, 0xf0, 0x2f };
+
+    length = leap_disc_controller_build_identify(
+        peer_mac, 0u, payload, sizeof(payload));
+    ASSERT_TRUE(length == sizeof(LeapIdentifyRequest));
+    ASSERT_TRUE(memcmp(payload, peer_mac, 6) == 0);
+
+    length = leap_disc_controller_build_locate_device(
+        3000u,
+        LEAP_LOCATE_PATTERN_SLOW_BLINK,
+        LEAP_LOCATE_FLAG_LED,
+        payload,
+        sizeof(payload));
+    ASSERT_TRUE(length == sizeof(LeapLocateDeviceRequest));
+}
+
 TEST(test_disc_controller_parse_hello_reply)
 {
     LeapHelloReply reply;
@@ -44,5 +64,6 @@ void leap_run_disc_controller_tests(void)
 {
     printf("disc controller\n");
     RUN_TEST(test_disc_controller_build_hello);
+    RUN_TEST(test_disc_controller_build_identify_and_locate);
     RUN_TEST(test_disc_controller_parse_hello_reply);
 }

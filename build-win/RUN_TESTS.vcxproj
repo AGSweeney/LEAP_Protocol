@@ -68,7 +68,7 @@
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" --force-new-ctest-process -C $(Configuration)
+C:\Users\Adam\.espressif\tools\cmake\3.30.2\bin\ctest.exe --force-new-ctest-process -C $(Configuration)
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -82,7 +82,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" --force-new-ctest-process -C $(Configuration)
+C:\Users\Adam\.espressif\tools\cmake\3.30.2\bin\ctest.exe --force-new-ctest-process -C $(Configuration)
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -96,7 +96,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" --force-new-ctest-process -C $(Configuration)
+C:\Users\Adam\.espressif\tools\cmake\3.30.2\bin\ctest.exe --force-new-ctest-process -C $(Configuration)
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -110,7 +110,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" --force-new-ctest-process -C $(Configuration)
+C:\Users\Adam\.espressif\tools\cmake\3.30.2\bin\ctest.exe --force-new-ctest-process -C $(Configuration)
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -184,7 +184,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</VerifyInputsAndOutputsExist>
     </CustomBuild>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="D:\LEAP_Protocol\build-win\ZERO_CHECK.vcxproj">
       <Project>{992F34FA-44DE-32DA-984D-09ECDF0146FA}</Project>

@@ -154,10 +154,94 @@ TEST(test_disc_stack_hello_via_device_stack)
     ASSERT_EQ_U16(result.disc_message_type, LEAP_DISC_HELLO_REPLY);
 }
 
+TEST(test_disc_locate_device_reply)
+{
+    LeapDiscDeviceContext      disc;
+    LeapMgmtDeviceContext      mgmt;
+    LeapDiscDeviceResult       result;
+    LeapLocateDeviceRequest    locate_req;
+    const LeapLocateDeviceReply* reply;
+    uint8_t                    frame[TEST_DISC_BUF_SIZE];
+    size_t                     frame_length = 0u;
+
+    disc_setup(&disc, &mgmt);
+
+    memset(&locate_req, 0, sizeof(locate_req));
+    locate_req.duration_ms = 2500u;
+    locate_req.pattern     = LEAP_LOCATE_PATTERN_SLOW_BLINK;
+    locate_req.flags       = LEAP_LOCATE_FLAG_LED;
+
+    ASSERT_TRUE(
+        leap_test_frame_build(
+            frame,
+            TEST_DISC_BUF_SIZE,
+            &frame_length,
+            0u,
+            (uint16_t)LEAP_SERVICE_DISC,
+            LEAP_DISC_LOCATE_DEVICE,
+            0u,
+            3u,
+            (const uint8_t*)&locate_req,
+            sizeof(locate_req)) == 0);
+
+    ASSERT_EQ_INT(
+        leap_disc_device_process_frame(
+            &disc, &mgmt, k_controller_mac, frame, frame_length, &result),
+        LEAP_DISC_DEVICE_OK);
+    ASSERT_EQ_U16(result.message_type, LEAP_DISC_LOCATE_DEVICE_REPLY);
+    ASSERT_TRUE(result.payload_length >= sizeof(LeapLocateDeviceReply));
+
+    reply = (const LeapLocateDeviceReply*)result.payload;
+    ASSERT_EQ_INT(reply->supported, 1);
+    ASSERT_EQ_INT(reply->active, 1);
+    ASSERT_EQ_U16(reply->remaining_ms, 2500u);
+}
+
+TEST(test_disc_locate_device_reply_honors_requested_duration)
+{
+    LeapDiscDeviceContext      disc;
+    LeapMgmtDeviceContext      mgmt;
+    LeapDiscDeviceResult       result;
+    LeapLocateDeviceRequest    locate_req;
+    const LeapLocateDeviceReply* reply;
+    uint8_t                    frame[TEST_DISC_BUF_SIZE];
+    size_t                     frame_length = 0u;
+
+    disc_setup(&disc, &mgmt);
+
+    memset(&locate_req, 0, sizeof(locate_req));
+    locate_req.duration_ms = 1500u;
+    locate_req.pattern     = LEAP_LOCATE_PATTERN_SLOW_BLINK;
+    locate_req.flags       = LEAP_LOCATE_FLAG_LED;
+
+    ASSERT_TRUE(
+        leap_test_frame_build(
+            frame,
+            TEST_DISC_BUF_SIZE,
+            &frame_length,
+            0u,
+            (uint16_t)LEAP_SERVICE_DISC,
+            LEAP_DISC_LOCATE_DEVICE,
+            0u,
+            4u,
+            (const uint8_t*)&locate_req,
+            sizeof(locate_req)) == 0);
+
+    ASSERT_EQ_INT(
+        leap_disc_device_process_frame(
+            &disc, &mgmt, k_controller_mac, frame, frame_length, &result),
+        LEAP_DISC_DEVICE_OK);
+
+    reply = (const LeapLocateDeviceReply*)result.payload;
+    ASSERT_EQ_U16(reply->remaining_ms, 1500u);
+}
+
 void leap_run_disc_device_tests(void)
 {
     printf("disc device\n");
     RUN_TEST(test_disc_hello_reply_contains_identity);
     RUN_TEST(test_disc_does_not_change_mgmt_state);
     RUN_TEST(test_disc_stack_hello_via_device_stack);
+    RUN_TEST(test_disc_locate_device_reply);
+    RUN_TEST(test_disc_locate_device_reply_honors_requested_duration);
 }

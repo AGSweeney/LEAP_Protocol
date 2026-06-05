@@ -16,6 +16,7 @@ D:\LEAP_Protocol\src\leap_controller_peer.c;D:\LEAP_Protocol\build-win\leap_core
 D:\LEAP_Protocol\src\leap_controller_sequence.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_controller_sequence.obj
 D:\LEAP_Protocol\src\leap_controller_session_hub.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_controller_session_hub.obj
 D:\LEAP_Protocol\src\leap_log.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_log.obj
+D:\LEAP_Protocol\src\leap_build_info.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_build_info.obj
 D:\LEAP_Protocol\src\services\diag\leap_diag_device.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_diag_device.obj
 D:\LEAP_Protocol\src\services\diag\leap_diag_controller.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_diag_controller.obj
 D:\LEAP_Protocol\src\transport\leap_raw_winpcap.c;D:\LEAP_Protocol\build-win\leap_core.dir\Release\leap_raw_winpcap.obj

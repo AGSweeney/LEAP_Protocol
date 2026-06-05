@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
-project(LEAP_Protocol C)
+
+option(LEAP_BUILD_STUDIO_QT "Build LEAP Conformance Studio (Qt6)" OFF)
+
+if(LEAP_BUILD_STUDIO_QT)
+  project(LEAP_Protocol C CXX)
+else()
+  project(LEAP_Protocol C)
+endif()
 
 if(MSVC)
   set(CMAKE_C_STANDARD 11)
@@ -18,41 +25,8 @@ else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-add_library(leap_core STATIC
-  src/crc/leap_crc.c
-  src/frame/leap_frame.c
-  src/services/disc/leap_disc_device.c
-  src/services/disc/leap_disc_controller.c
-  src/services/mgmt/leap_mgmt_device.c
-  src/services/mgmt/leap_mgmt_process.c
-  src/services/mgmt/leap_mgmt_controller.c
-  src/services/dir/leap_dir_device.c
-  src/services/dir/leap_dir_controller.c
-  src/services/pd/leap_pd_device.c
-  src/services/pd/leap_pd_common.c
-  src/services/pd/leap_pd_controller.c
-  src/leap_device_stack.c
-  src/leap_controller_stack.c
-  src/leap_controller_peer.c
-  src/leap_controller_sequence.c
-  src/leap_controller_session_hub.c
-  src/leap_log.c
-  src/services/diag/leap_diag_device.c
-  src/services/diag/leap_diag_controller.c
-)
-
-if(WIN32)
-  target_sources(leap_core PRIVATE src/transport/leap_raw_winpcap.c)
-  target_sources(leap_core PRIVATE src/transport/leap_raw_linux.c)
-  target_sources(leap_core PRIVATE src/platform/leap_win_time.c)
-  target_link_libraries(leap_core PUBLIC iphlpapi ws2_32 winmm)
-else()
-  target_sources(leap_core PRIVATE src/transport/leap_raw_linux.c)
-endif()
-
-target_include_directories(leap_core PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/inc
-)
+add_subdirectory(leap_core)
+add_subdirectory(leap_cli)
 
 add_executable(leap_tests
   tests/test_main.c
@@ -84,6 +58,8 @@ add_executable(leap_tests
   tests/test_win_time.c
   tests/test_log.c
   tests/test_util.c
+  tests/test_negative_frames.c
+  tests/test_conformance_engine.c
   tests/leap_test_frame.c
 )
 
@@ -141,75 +117,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(leap_linux_hub PRIVATE leap_core)
 endif()
 
-if(WIN32 AND LEAP_BUILD_WIN_SMOKE)
-  add_executable(leap_win_smoke
-    examples/win_smoke/wire_smoke_main.c
-    examples/win_smoke/leap_win_io.c
-    examples/win_smoke/leap_win_smoke.c
-  )
-  target_include_directories(leap_win_smoke PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
-  )
-  target_link_libraries(leap_win_smoke PRIVATE leap_core ws2_32)
-  if(MSVC)
-    target_compile_options(leap_win_smoke PRIVATE /utf-8)
-  endif()
-endif()
-
-if(WIN32 AND LEAP_BUILD_WIN_L2)
-  add_executable(leap_win_controller
-    examples/win_l2/controller_main.c
-    examples/win_l2/leap_win_common.c
-    examples/win_smoke/leap_win_io.c
-  )
-  add_executable(leap_win_device
-    examples/win_l2/device_main.c
-    examples/win_l2/leap_win_common.c
-    examples/win_l2/leap_win_device_io.c
-    examples/win_smoke/leap_win_io.c
-  )
-  add_executable(leap_win_discover
-    examples/win_l2/discover_main.c
-    examples/win_l2/leap_win_common.c
-    examples/win_smoke/leap_win_io.c
-  )
-  add_executable(leap_win_hub
-    examples/win_l2/hub_main.c
-    examples/win_l2/leap_win_common.c
-    examples/win_smoke/leap_win_io.c
-  )
-  add_executable(leap_win_raw_tx
-    examples/win_l2/raw_tx_main.c
-  )
-  target_include_directories(leap_win_controller PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
-  )
-  target_include_directories(leap_win_device PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
-  )
-  target_include_directories(leap_win_discover PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
-  )
-  target_include_directories(leap_win_hub PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_smoke
-  )
-  target_include_directories(leap_win_raw_tx PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/win_l2
-  )
-  target_link_libraries(leap_win_controller PRIVATE leap_core ws2_32)
-  target_link_libraries(leap_win_device PRIVATE leap_core ws2_32)
-  target_link_libraries(leap_win_discover PRIVATE leap_core ws2_32)
-  target_link_libraries(leap_win_hub PRIVATE leap_core ws2_32)
-  target_link_libraries(leap_win_raw_tx PRIVATE leap_core ws2_32)
-  if(MSVC)
-    target_compile_options(leap_win_controller PRIVATE /utf-8)
-    target_compile_options(leap_win_device PRIVATE /utf-8)
-    target_compile_options(leap_win_discover PRIVATE /utf-8)
-    target_compile_options(leap_win_hub PRIVATE /utf-8)
-    target_compile_options(leap_win_raw_tx PRIVATE /utf-8)
-  endif()
+if(LEAP_BUILD_STUDIO_QT)
+  add_subdirectory(leap_studio_qt)
 endif()
