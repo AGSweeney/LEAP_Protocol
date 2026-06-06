@@ -101,6 +101,16 @@ void leap_diag_device_on_frame_parse_error(
 
 void leap_diag_device_on_frame_accepted(LeapDiagDeviceContext* ctx);
 
+void leap_diag_device_on_frame_transmitted(
+    LeapDiagDeviceContext* ctx,
+    uint64_t               reply_latency_us);
+
+void leap_diag_device_on_frame_tx_dropped(LeapDiagDeviceContext* ctx);
+
+void leap_diag_device_on_pd_cycle_time(
+    LeapDiagDeviceContext* ctx,
+    uint32_t               cycle_time_us);
+
 void leap_diag_device_on_frame_rejected(LeapDiagDeviceContext* ctx);
 
 void leap_diag_device_on_unsupported_service(LeapDiagDeviceContext* ctx);

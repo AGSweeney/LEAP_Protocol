@@ -46,6 +46,7 @@ static int                   g_stats_enabled = 0;
 static uint64_t              g_frames_rx = 0u;
 
 static void device_send_reply(
+    LeapDeviceStack*             stack,
     const LeapRawWinpcapSocket*  transport,
     const uint8_t*               dst_mac,
     const LeapDeviceStackResult* result,
@@ -66,10 +67,63 @@ static void device_send_reply(
             payload,
             payload_length) != 0)
     {
+        if (stack != NULL)
+        {
+            leap_device_stack_notify_tx_drop(stack);
+        }
         return;
     }
 
+    if (stack != NULL)
+    {
+        leap_device_stack_notify_tx_ok(stack, leap_raw_winpcap_monotonic_us());
+    }
+
     printf("sent reply (service=0x%04X message=0x%04X)\n", service_id, message_type);
+}
+
+static void device_send_error_reply(
+    LeapDeviceStack*             stack,
+    const LeapRawWinpcapSocket*  transport,
+    const uint8_t*               dst_mac,
+    const LeapDeviceStackResult* result,
+    uint16_t                     service_id,
+    uint16_t                     message_type,
+    uint16_t                     status_code)
+{
+    LeapErrorPayload err;
+
+    memset(&err, 0, sizeof(err));
+    err.status_code = status_code;
+
+    if (leap_win_send_leap(
+            (LeapRawWinpcapSocket*)transport,
+            dst_mac,
+            (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ERROR | LEAP_FLAG_ACK_REQUESTED),
+            service_id,
+            message_type,
+            result->frame.header.session_id,
+            result->frame.header.sequence,
+            result->frame.header.ack_sequence,
+            (const uint8_t*)&err,
+            sizeof(err)) != 0)
+    {
+        if (stack != NULL)
+        {
+            leap_device_stack_notify_tx_drop(stack);
+        }
+        return;
+    }
+
+    if (stack != NULL)
+    {
+        leap_device_stack_notify_tx_ok(stack, leap_raw_winpcap_monotonic_us());
+    }
+
+    printf("sent error reply (service=0x%04X message=0x%04X status=0x%04X)\n",
+           service_id,
+           message_type,
+           status_code);
 }
 
 static void device_log_rx(const LeapDeviceStackResult* result)
@@ -289,6 +343,7 @@ int main(int argc, char** argv)
                 if ((result.flags & LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY) != 0u)
                 {
                     device_send_reply(
+                        &stack,
                         &transport,
                         src_mac,
                         &result,
@@ -305,6 +360,7 @@ int main(int argc, char** argv)
                     }
 
                     device_send_reply(
+                        &stack,
                         &transport,
                         src_mac,
                         &result,
@@ -321,6 +377,7 @@ int main(int argc, char** argv)
                     }
 
                     device_send_reply(
+                        &stack,
                         &transport,
                         src_mac,
                         &result,
@@ -332,6 +389,7 @@ int main(int argc, char** argv)
                 else if ((result.flags & LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY) != 0u)
                 {
                     device_send_reply(
+                        &stack,
                         &transport,
                         src_mac,
                         &result,
@@ -343,7 +401,43 @@ int main(int argc, char** argv)
             }
             else if (status == LEAP_DEVICE_STACK_PD_REJECTED)
             {
+                device_send_error_reply(
+                    &stack,
+                    &transport,
+                    src_mac,
+                    &result,
+                    (uint16_t)LEAP_SERVICE_PD,
+                    result.frame.header.message_type,
+                    result.error_code);
                 printf("PD rejected (status=0x%04X state=%u)\n",
+                       result.error_code,
+                       (unsigned)result.device_state);
+            }
+            else if (status == LEAP_DEVICE_STACK_DIR_ERROR)
+            {
+                device_send_error_reply(
+                    &stack,
+                    &transport,
+                    src_mac,
+                    &result,
+                    (uint16_t)LEAP_SERVICE_DIR,
+                    result.frame.header.message_type,
+                    result.error_code);
+                printf("DIR error (status=0x%04X state=%u)\n",
+                       result.error_code,
+                       (unsigned)result.device_state);
+            }
+            else if (status == LEAP_DEVICE_STACK_DIAG_ERROR)
+            {
+                device_send_error_reply(
+                    &stack,
+                    &transport,
+                    src_mac,
+                    &result,
+                    (uint16_t)LEAP_SERVICE_DIAG,
+                    result.frame.header.message_type,
+                    result.error_code);
+                printf("DIAG error (status=0x%04X state=%u)\n",
                        result.error_code,
                        (unsigned)result.device_state);
             }

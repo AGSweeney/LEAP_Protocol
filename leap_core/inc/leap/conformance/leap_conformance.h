@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "leap/conformance/leap_conformance_capabilities.h"
 #include "leap/conformance/leap_conformance_metrics.h"
 #include "leap/conformance/leap_conformance_result.h"
 #include "leap/conformance/leap_conformance_scenario.h"
@@ -50,6 +51,8 @@ typedef struct LeapConformanceIo
 
     int (*discover_peers)(void* user_ctx, int scan_ms, unsigned* peer_count_out);
     int (*find_peer_mac)(void* user_ctx, const uint8_t* expected_mac, int* found_out);
+    int (*probe_capabilities)(void* user_ctx, const uint8_t* peer_mac,
+                              LeapConformanceDeviceCaps* caps_out);
 
     int (*bootstrap)(void* user_ctx, uint16_t outputs, int* op_out);
     int (*pd_write)(void* user_ctx, uint16_t outputs, int* sent_out);
@@ -76,6 +79,7 @@ typedef struct LeapConformanceRunConfig
     uint8_t                   peer_mac[6];
     int                       has_peer_mac;
     unsigned                  cyclic_seconds;
+    unsigned                  cyclic_period_ms;   /* 0 = freerun (no cycle delay) */
     unsigned                  bootstrap_retries;
     unsigned                  retry_delay_ms;
     const char*               capture_pcap_path;

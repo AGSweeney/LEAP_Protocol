@@ -5,6 +5,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if !defined(_WIN32) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "leap/conformance/leap_conformance.h"
 
 #include <stdio.h>
@@ -13,6 +17,7 @@
 #if defined(_WIN32)
 #include <windows.h>
 #else
+#include <time.h>
 #include <unistd.h>
 #endif
 
@@ -170,9 +175,33 @@ static void leap_conf_update_summary(LeapConformanceRunResult* result)
                             result->summary.skipped;
 }
 
+typedef struct LeapConformanceRunState
+{
+    LeapConformanceDeviceCaps device_caps;
+    int                       device_caps_valid;
+} LeapConformanceRunState;
+
+static uint16_t leap_conf_step_outputs(
+    const LeapConformanceScenarioStep* def,
+    const LeapConformanceRunState*       run_state,
+    int                                  use_cyclic_outputs)
+{
+    if (run_state != NULL && run_state->device_caps_valid)
+    {
+        if (use_cyclic_outputs)
+        {
+            return run_state->device_caps.cyclic_outputs;
+        }
+        return run_state->device_caps.bootstrap_outputs;
+    }
+
+    return def != NULL ? def->pd_outputs : 0u;
+}
+
 static LeapConformanceStatus leap_conf_run_one(
     const LeapConformanceRunConfig*      config,
     LeapConformanceRunResult*            result,
+    LeapConformanceRunState*             run_state,
     const LeapConformanceScenarioStep*   def,
     uint64_t                             run_start_ms,
     unsigned                             step_index,
@@ -261,11 +290,70 @@ static LeapConformanceStatus leap_conf_run_one(
         break;
     }
 
+    case LEAP_CONF_KIND_PROBE_CAPS:
+    {
+        LeapConformanceDeviceCaps caps;
+
+        leap_conformance_device_caps_init(&caps);
+        if (!config->has_peer_mac || io->probe_capabilities == NULL)
+        {
+            row = leap_conf_add_step(result);
+            leap_conf_fill_step(
+                row,
+                def,
+                "read device capabilities",
+                LEAP_CONF_STEP_FAIL,
+                (uint32_t)(leap_conf_now_ms() - step_start),
+                "peer MAC or probe_capabilities missing");
+            break;
+        }
+
+        sub = io->probe_capabilities(io->user_ctx, config->peer_mac, &caps);
+        row = leap_conf_add_step(result);
+        ok  = (sub == 0 && caps.valid);
+        if (ok && run_state != NULL)
+        {
+            run_state->device_caps       = caps;
+            run_state->device_caps_valid = 1;
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "profile=0x%08X outputs=%u inputs=%u masks=%u endpoints=%u",
+                caps.dir.active_profile_id != 0u ?
+                    caps.dir.active_profile_id : caps.dir.default_profile_id,
+                caps.dir.output_bit_count,
+                caps.dir.input_bit_count,
+                (unsigned)caps.pd_mask_count,
+                (unsigned)caps.dir.endpoint_count);
+        }
+        else if (caps.probe_detail[0] != '\0')
+        {
+            (void)snprintf(detail, sizeof(detail), "%s", caps.probe_detail);
+        }
+        else
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "LEAP-DIR probe failed (no endpoint descriptors)");
+        }
+        leap_conf_fill_step(
+            row,
+            def,
+            "read device capabilities",
+            ok ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
+            (uint32_t)(leap_conf_now_ms() - step_start),
+            detail);
+        break;
+    }
+
     case LEAP_CONF_KIND_BOOTSTRAP:
     {
-        int op = 0;
+        int      op = 0;
+        uint16_t outputs =
+            leap_conf_step_outputs(def, run_state, 0);
 
-        sub = io->bootstrap(io->user_ctx, def->pd_outputs, &op);
+        sub = io->bootstrap(io->user_ctx, outputs, &op);
         row = leap_conf_add_step(result);
         leap_conf_fill_step(
             row,
@@ -275,9 +363,9 @@ static LeapConformanceStatus leap_conf_run_one(
             (uint32_t)(leap_conf_now_ms() - step_start),
             config->peer_mac_text != NULL ? config->peer_mac_text : "");
 
-        sub = io->pd_write(io->user_ctx, def->pd_outputs, &ok);
+        sub = io->pd_write(io->user_ctx, outputs, &ok);
         row = leap_conf_add_step(result);
-        (void)snprintf(detail, sizeof(detail), "outputs=0x%04X", def->pd_outputs);
+        (void)snprintf(detail, sizeof(detail), "outputs=0x%04X", outputs);
         leap_conf_fill_step(
             row,
             def,
@@ -316,24 +404,40 @@ static LeapConformanceStatus leap_conf_run_one(
     {
         LeapPdControllerStats stats;
         unsigned              seconds = def->cyclic_seconds;
+        uint16_t              outputs =
+            leap_conf_step_outputs(def, run_state, 1);
 
         if (config->cyclic_seconds > 0u)
         {
             seconds = config->cyclic_seconds;
         }
 
+        unsigned period = config->cyclic_period_ms;
+
         memset(&stats, 0, sizeof(stats));
         sub = io->cyclic_pd(
             io->user_ctx,
-            def->pd_outputs,
+            outputs,
             0,
             seconds,
-            100u,
+            period,
             &stats,
             &ok);
 
         row = leap_conf_add_step(result);
-        (void)snprintf(detail, sizeof(detail), "ran %us", seconds);
+        if (period == 0u)
+        {
+            (void)snprintf(detail, sizeof(detail), "freerun ran %us", seconds);
+        }
+        else
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "period=%ums ran %us",
+                period,
+                seconds);
+        }
         leap_conf_fill_step(
             row,
             def,
@@ -374,19 +478,41 @@ static LeapConformanceStatus leap_conf_run_one(
     {
         LeapPdControllerStats stats;
         unsigned              seconds = def->cyclic_seconds;
+        uint16_t              outputs =
+            leap_conf_step_outputs(def, run_state, 1);
+        const char*           exchange_detail = "PD EXCHANGE";
+
+        if (run_state != NULL && run_state->device_caps_valid)
+        {
+            exchange_detail = run_state->device_caps.cyclic_exchange_detail;
+            if (run_state->device_caps.skip_cyclic_exchange)
+            {
+                row = leap_conf_add_step(result);
+                leap_conf_fill_step(
+                    row,
+                    def,
+                    "PD EXCHANGE cyclic",
+                    LEAP_CONF_STEP_SKIP,
+                    (uint32_t)(leap_conf_now_ms() - step_start),
+                    exchange_detail);
+                break;
+            }
+        }
 
         if (config->cyclic_seconds > 0u)
         {
             seconds = config->cyclic_seconds;
         }
 
+        unsigned period = config->cyclic_period_ms;
+
         memset(&stats, 0, sizeof(stats));
         sub = io->cyclic_pd(
             io->user_ctx,
-            def->pd_outputs,
+            outputs,
             1,
             seconds,
-            100u,
+            period,
             &stats,
             &ok);
 
@@ -398,45 +524,57 @@ static LeapConformanceStatus leap_conf_run_one(
             (sub == 0 && ok && stats.pd_sent_fail == 0u) ?
                 LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
             (uint32_t)(leap_conf_now_ms() - step_start),
-            "inputs=0x0000 (no exposed DI)");
+            exchange_detail);
         break;
     }
 
     case LEAP_CONF_KIND_PD_MASK_WALK:
     {
-        static const struct
-        {
-            uint16_t    mask;
-            const char* label;
-        } k_masks[] = {
-            { 0x0002u, "CH0 green" },
-            { 0x0004u, "CH0 blue" },
-            { 0x0008u, "CH0 white" },
-            { 0x0010u, "CH1 red" },
-        };
         size_t m;
         int    op = 0;
+        size_t mask_count = 0u;
+        const LeapConformancePdMaskStep* masks = NULL;
 
-        for (m = 0u; m < sizeof(k_masks) / sizeof(k_masks[0]); m++)
+        if (run_state != NULL && run_state->device_caps_valid)
         {
-            char name[LEAP_CONF_NAME_MAX];
+            masks      = run_state->device_caps.pd_masks;
+            mask_count = run_state->device_caps.pd_mask_count;
+        }
 
-            sub = io->bootstrap(io->user_ctx, k_masks[m].mask, &op);
+        if (masks == NULL || mask_count == 0u)
+        {
+            row = leap_conf_add_step(result);
+            leap_conf_fill_step(
+                row,
+                def,
+                "PD output masks",
+                LEAP_CONF_STEP_FAIL,
+                (uint32_t)(leap_conf_now_ms() - step_start),
+                "device capabilities not probed or no outputs");
+            break;
+        }
+
+        for (m = 0u; m < mask_count; m++)
+        {
+            const LeapConformancePdMaskStep* mask_step = &masks[m];
+            char                             name[LEAP_CONF_NAME_MAX];
+
+            sub = io->bootstrap(io->user_ctx, mask_step->mask, &op);
             if (sub != 0)
             {
-                sub = io->pd_write(io->user_ctx, k_masks[m].mask, &ok);
+                sub = io->pd_write(io->user_ctx, mask_step->mask, &ok);
             }
             else
             {
-                sub = io->pd_write(io->user_ctx, k_masks[m].mask, &ok);
+                sub = io->pd_write(io->user_ctx, mask_step->mask, &ok);
             }
 
             (void)snprintf(
                 name,
                 sizeof(name),
                 "PD mask 0x%04X %s",
-                k_masks[m].mask,
-                k_masks[m].label);
+                mask_step->mask,
+                mask_step->label);
             row = leap_conf_add_step(result);
             leap_conf_fill_step(
                 row,
@@ -470,7 +608,9 @@ static LeapConformanceStatus leap_conf_run_one(
             "DISC IDENTIFY",
             (sub == 0 && ok) ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
             (uint32_t)(leap_conf_now_ms() - step_start),
-            "releases stale OP first; no LED");
+            (run_state != NULL && run_state->device_caps_valid) ?
+                run_state->device_caps.identify_detail :
+                "DISC IDENTIFY");
         break;
 
     case LEAP_CONF_KIND_LOCATE:
@@ -479,6 +619,19 @@ static LeapConformanceStatus leap_conf_run_one(
             row = leap_conf_add_step(result);
             leap_conf_fill_step(row, def, "DISC LOCATE_DEVICE", LEAP_CONF_STEP_FAIL,
                                 0u, "peer MAC required");
+            break;
+        }
+        if (run_state != NULL && run_state->device_caps_valid &&
+            run_state->device_caps.skip_locate)
+        {
+            row = leap_conf_add_step(result);
+            leap_conf_fill_step(
+                row,
+                def,
+                "DISC LOCATE_DEVICE",
+                LEAP_CONF_STEP_SKIP,
+                (uint32_t)(leap_conf_now_ms() - step_start),
+                run_state->device_caps.locate_detail);
             break;
         }
         sub = io->locate(
@@ -493,7 +646,9 @@ static LeapConformanceStatus leap_conf_run_one(
             "DISC LOCATE_DEVICE",
             (sub == 0 && ok) ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
             (uint32_t)(leap_conf_now_ms() - step_start),
-            "GPIO13 blink ~1.5s");
+            (run_state != NULL && run_state->device_caps_valid) ?
+                run_state->device_caps.locate_detail :
+                "LOCATE_DEVICE");
         break;
 
     default:
@@ -523,8 +678,11 @@ LeapConformanceStatus leap_conformance_run_steps(
 
     memset(result_out, 0, sizeof(*result_out));
 
-    scenario = leap_conformance_scenario_by_id(
-        config->scenario_id != NULL ? config->scenario_id : "glc618wl_bench_v1");
+    scenario = leap_conformance_scenario_by_id(config->scenario_id);
+    if (scenario == NULL)
+    {
+        scenario = leap_conformance_scenario_at(0u);
+    }
     if (scenario == NULL)
     {
         return LEAP_CONF_SCENARIO_UNKNOWN;
@@ -571,24 +729,31 @@ LeapConformanceStatus leap_conformance_run_steps(
         return LEAP_CONF_TRANSPORT_ERROR;
     }
 
-    for (i = 0u; i < (unsigned)scenario->step_count; i++)
     {
-        status = leap_conf_run_one(
-            config,
-            result_out,
-            &scenario->steps[i],
-            start_ms,
-            i,
-            (unsigned)scenario->step_count);
-        if (status != LEAP_CONF_OK)
+        LeapConformanceRunState run_state;
+
+        memset(&run_state, 0, sizeof(run_state));
+
+        for (i = 0u; i < (unsigned)scenario->step_count; i++)
         {
-            break;
-        }
+            status = leap_conf_run_one(
+                config,
+                result_out,
+                &run_state,
+                &scenario->steps[i],
+                start_ms,
+                i,
+                (unsigned)scenario->step_count);
+            if (status != LEAP_CONF_OK)
+            {
+                break;
+            }
 #if defined(_WIN32)
-        Sleep(500);
+            Sleep(500);
 #else
-        usleep(500000);
+            usleep(500000);
 #endif
+        }
     }
 
     result_out->summary.elapsed_ms = (uint32_t)(leap_conf_now_ms() - start_ms);

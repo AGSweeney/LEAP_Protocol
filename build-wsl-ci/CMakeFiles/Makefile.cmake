@@ -10,6 +10,10 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/mnt/d/LEAP_Protocol/CMakeLists.txt"
   "CMakeFiles/3.28.3/CMakeCCompiler.cmake"
   "CMakeFiles/3.28.3/CMakeSystem.cmake"
+  "/mnt/d/LEAP_Protocol/leap_cli/CMakeLists.txt"
+  "/mnt/d/LEAP_Protocol/leap_core/CMakeLists.txt"
+  "/mnt/d/LEAP_Protocol/leap_core/cmake/LeapBuildInfo.cmake"
+  "/mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_build_info.h.in"
   "/usr/share/cmake-3.28/Modules/CMakeCInformation.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeCommonLanguageInclude.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeGenericSystem.cmake"
@@ -20,6 +24,9 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/share/cmake-3.28/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
   "/usr/share/cmake-3.28/Modules/Compiler/GNU-C.cmake"
   "/usr/share/cmake-3.28/Modules/Compiler/GNU.cmake"
+  "/usr/share/cmake-3.28/Modules/FindGit.cmake"
+  "/usr/share/cmake-3.28/Modules/FindPackageHandleStandardArgs.cmake"
+  "/usr/share/cmake-3.28/Modules/FindPackageMessage.cmake"
   "/usr/share/cmake-3.28/Modules/Platform/Linux-GNU-C.cmake"
   "/usr/share/cmake-3.28/Modules/Platform/Linux-GNU.cmake"
   "/usr/share/cmake-3.28/Modules/Platform/Linux-Initialize.cmake"
@@ -36,15 +43,18 @@ set(CMAKE_MAKEFILE_OUTPUTS
 # Byproducts of CMake generate step:
 set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/CMakeDirectoryInformation.cmake"
+  "generated/leap_build_info_gen.h"
+  "leap_core/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "leap_cli/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
-  "CMakeFiles/leap_core.dir/DependInfo.cmake"
   "CMakeFiles/leap_tests.dir/DependInfo.cmake"
   "CMakeFiles/device_minimal.dir/DependInfo.cmake"
   "CMakeFiles/leap_linux_device.dir/DependInfo.cmake"
   "CMakeFiles/leap_linux_controller.dir/DependInfo.cmake"
   "CMakeFiles/leap_linux_discover.dir/DependInfo.cmake"
   "CMakeFiles/leap_linux_hub.dir/DependInfo.cmake"
+  "leap_core/CMakeFiles/leap_core.dir/DependInfo.cmake"
   )

@@ -18,6 +18,7 @@ class QLineEdit;
 class QPlainTextEdit;
 class QProgressBar;
 class QPushButton;
+class QSpinBox;
 class QTabWidget;
 class QTableWidget;
 class QTimer;
@@ -74,6 +75,7 @@ private:
     void refreshAdapterList();
     QString selectedAdapterPath() const;
     QString selectedAdapterLabel() const;
+    QString selectedScenarioId() const;
     void setStatusText(const QString& text);
     void showTab(int index);
     void populateDiscoveryTable(const QVector<DiscoveryPeerRow>& peers);
@@ -94,6 +96,7 @@ private:
     QPlainTextEdit* log_ = nullptr;
     QComboBox* adapterCombo_ = nullptr;
     QLineEdit* peerMacEdit_ = nullptr;
+    QSpinBox*  cyclePeriodSpin_ = nullptr;
     QLabel* connectionStatus_ = nullptr;
     QTableWidget* discoveryTable_ = nullptr;
     QHash<QString, QString> conformanceByMac_;

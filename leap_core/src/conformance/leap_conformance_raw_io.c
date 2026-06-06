@@ -307,15 +307,15 @@ static int leap_conf_raw_pd_wait_exchange(
     }
 }
 
-int leap_conformance_raw_send_disc(
+int leap_conformance_raw_send_service(
     LeapConformanceRawIo* io,
     const uint8_t*        peer_mac,
+    uint16_t              service_id,
     uint16_t              message_type,
     const uint8_t*        payload,
     size_t                payload_length)
 {
-    if (io == NULL || peer_mac == NULL || payload == NULL ||
-        payload_length == 0u || io->stack_io.send_frame == NULL)
+    if (io == NULL || peer_mac == NULL || io->stack_io.send_frame == NULL)
     {
         return -1;
     }
@@ -324,11 +324,32 @@ int leap_conformance_raw_send_disc(
         io->stack_io.user_ctx,
         peer_mac,
         0u,
-        (uint16_t)LEAP_SERVICE_DISC,
+        service_id,
         message_type,
         0u,
         1u,
         0u,
+        payload,
+        payload_length);
+}
+
+int leap_conformance_raw_send_disc(
+    LeapConformanceRawIo* io,
+    const uint8_t*        peer_mac,
+    uint16_t              message_type,
+    const uint8_t*        payload,
+    size_t                payload_length)
+{
+    if (payload == NULL || payload_length == 0u)
+    {
+        return -1;
+    }
+
+    return leap_conformance_raw_send_service(
+        io,
+        peer_mac,
+        (uint16_t)LEAP_SERVICE_DISC,
+        message_type,
         payload,
         payload_length);
 }

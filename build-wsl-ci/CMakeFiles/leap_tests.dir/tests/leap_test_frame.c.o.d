@@ -18,7 +18,7 @@ CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h /usr/include/string.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_frame.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_protocol.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_crc.h /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

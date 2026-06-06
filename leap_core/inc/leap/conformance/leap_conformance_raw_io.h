@@ -36,6 +36,14 @@ int leap_conformance_raw_send_disc(
     const uint8_t*        payload,
     size_t                payload_length);
 
+int leap_conformance_raw_send_service(
+    LeapConformanceRawIo* io,
+    const uint8_t*        peer_mac,
+    uint16_t              service_id,
+    uint16_t              message_type,
+    const uint8_t*        payload,
+    size_t                payload_length);
+
 #ifdef __cplusplus
 }
 #endif

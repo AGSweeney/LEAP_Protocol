@@ -36,6 +36,6 @@ CMakeFiles/leap_tests.dir/tests/test_frame_vectors.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
  /mnt/d/LEAP_Protocol/tests/test_util.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_crc.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_frame.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_protocol.h

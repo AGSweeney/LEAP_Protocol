@@ -26,7 +26,10 @@ add_library(leap_core STATIC
   src/services/diag/leap_diag_device.c
   src/services/diag/leap_diag_controller.c
   src/conformance/leap_conformance_engine.c
-  src/conformance/leap_conformance_scenario_glc618wl.c
+  src/conformance/leap_conformance_capabilities.c
+  src/conformance/leap_conformance_scenario_digital_io.c
+  src/conformance/leap_conformance_scenarios.c
+  src/services/dir/leap_dir_controller_capabilities.c
   src/conformance/leap_conformance_export.c
   src/conformance/leap_conformance_raw_io.c
   src/conformance/leap_commissioning.c

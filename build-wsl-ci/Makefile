@@ -127,19 +127,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named leap_core
-
-# Build rule for target.
-leap_core: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 leap_core
-.PHONY : leap_core
-
-# fast build rule for target.
-leap_core/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/build
-.PHONY : leap_core/fast
-
-#=============================================================================
 # Target rules for targets named leap_tests
 
 # Build rule for target.
@@ -216,6 +203,19 @@ leap_linux_hub: cmake_check_build_system
 leap_linux_hub/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_hub.dir/build.make CMakeFiles/leap_linux_hub.dir/build
 .PHONY : leap_linux_hub/fast
+
+#=============================================================================
+# Target rules for targets named leap_core
+
+# Build rule for target.
+leap_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 leap_core
+.PHONY : leap_core
+
+# fast build rule for target.
+leap_core/fast:
+	$(MAKE) $(MAKESILENT) -f leap_core/CMakeFiles/leap_core.dir/build.make leap_core/CMakeFiles/leap_core.dir/build
+.PHONY : leap_core/fast
 
 examples/device_minimal/main.o: examples/device_minimal/main.c.o
 .PHONY : examples/device_minimal/main.o
@@ -475,510 +475,6 @@ examples/linux_loopback/leap_linux_stats.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_linux_device.dir/build.make CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.s
 .PHONY : examples/linux_loopback/leap_linux_stats.c.s
 
-src/crc/leap_crc.o: src/crc/leap_crc.c.o
-.PHONY : src/crc/leap_crc.o
-
-# target to build an object file
-src/crc/leap_crc.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/crc/leap_crc.c.o
-.PHONY : src/crc/leap_crc.c.o
-
-src/crc/leap_crc.i: src/crc/leap_crc.c.i
-.PHONY : src/crc/leap_crc.i
-
-# target to preprocess a source file
-src/crc/leap_crc.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/crc/leap_crc.c.i
-.PHONY : src/crc/leap_crc.c.i
-
-src/crc/leap_crc.s: src/crc/leap_crc.c.s
-.PHONY : src/crc/leap_crc.s
-
-# target to generate assembly for a file
-src/crc/leap_crc.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/crc/leap_crc.c.s
-.PHONY : src/crc/leap_crc.c.s
-
-src/frame/leap_frame.o: src/frame/leap_frame.c.o
-.PHONY : src/frame/leap_frame.o
-
-# target to build an object file
-src/frame/leap_frame.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/frame/leap_frame.c.o
-.PHONY : src/frame/leap_frame.c.o
-
-src/frame/leap_frame.i: src/frame/leap_frame.c.i
-.PHONY : src/frame/leap_frame.i
-
-# target to preprocess a source file
-src/frame/leap_frame.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/frame/leap_frame.c.i
-.PHONY : src/frame/leap_frame.c.i
-
-src/frame/leap_frame.s: src/frame/leap_frame.c.s
-.PHONY : src/frame/leap_frame.s
-
-# target to generate assembly for a file
-src/frame/leap_frame.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/frame/leap_frame.c.s
-.PHONY : src/frame/leap_frame.c.s
-
-src/leap_controller_peer.o: src/leap_controller_peer.c.o
-.PHONY : src/leap_controller_peer.o
-
-# target to build an object file
-src/leap_controller_peer.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_peer.c.o
-.PHONY : src/leap_controller_peer.c.o
-
-src/leap_controller_peer.i: src/leap_controller_peer.c.i
-.PHONY : src/leap_controller_peer.i
-
-# target to preprocess a source file
-src/leap_controller_peer.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_peer.c.i
-.PHONY : src/leap_controller_peer.c.i
-
-src/leap_controller_peer.s: src/leap_controller_peer.c.s
-.PHONY : src/leap_controller_peer.s
-
-# target to generate assembly for a file
-src/leap_controller_peer.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_peer.c.s
-.PHONY : src/leap_controller_peer.c.s
-
-src/leap_controller_sequence.o: src/leap_controller_sequence.c.o
-.PHONY : src/leap_controller_sequence.o
-
-# target to build an object file
-src/leap_controller_sequence.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.o
-.PHONY : src/leap_controller_sequence.c.o
-
-src/leap_controller_sequence.i: src/leap_controller_sequence.c.i
-.PHONY : src/leap_controller_sequence.i
-
-# target to preprocess a source file
-src/leap_controller_sequence.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.i
-.PHONY : src/leap_controller_sequence.c.i
-
-src/leap_controller_sequence.s: src/leap_controller_sequence.c.s
-.PHONY : src/leap_controller_sequence.s
-
-# target to generate assembly for a file
-src/leap_controller_sequence.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_sequence.c.s
-.PHONY : src/leap_controller_sequence.c.s
-
-src/leap_controller_session_hub.o: src/leap_controller_session_hub.c.o
-.PHONY : src/leap_controller_session_hub.o
-
-# target to build an object file
-src/leap_controller_session_hub.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_session_hub.c.o
-.PHONY : src/leap_controller_session_hub.c.o
-
-src/leap_controller_session_hub.i: src/leap_controller_session_hub.c.i
-.PHONY : src/leap_controller_session_hub.i
-
-# target to preprocess a source file
-src/leap_controller_session_hub.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_session_hub.c.i
-.PHONY : src/leap_controller_session_hub.c.i
-
-src/leap_controller_session_hub.s: src/leap_controller_session_hub.c.s
-.PHONY : src/leap_controller_session_hub.s
-
-# target to generate assembly for a file
-src/leap_controller_session_hub.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_session_hub.c.s
-.PHONY : src/leap_controller_session_hub.c.s
-
-src/leap_controller_stack.o: src/leap_controller_stack.c.o
-.PHONY : src/leap_controller_stack.o
-
-# target to build an object file
-src/leap_controller_stack.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_stack.c.o
-.PHONY : src/leap_controller_stack.c.o
-
-src/leap_controller_stack.i: src/leap_controller_stack.c.i
-.PHONY : src/leap_controller_stack.i
-
-# target to preprocess a source file
-src/leap_controller_stack.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_stack.c.i
-.PHONY : src/leap_controller_stack.c.i
-
-src/leap_controller_stack.s: src/leap_controller_stack.c.s
-.PHONY : src/leap_controller_stack.s
-
-# target to generate assembly for a file
-src/leap_controller_stack.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_controller_stack.c.s
-.PHONY : src/leap_controller_stack.c.s
-
-src/leap_device_stack.o: src/leap_device_stack.c.o
-.PHONY : src/leap_device_stack.o
-
-# target to build an object file
-src/leap_device_stack.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_device_stack.c.o
-.PHONY : src/leap_device_stack.c.o
-
-src/leap_device_stack.i: src/leap_device_stack.c.i
-.PHONY : src/leap_device_stack.i
-
-# target to preprocess a source file
-src/leap_device_stack.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_device_stack.c.i
-.PHONY : src/leap_device_stack.c.i
-
-src/leap_device_stack.s: src/leap_device_stack.c.s
-.PHONY : src/leap_device_stack.s
-
-# target to generate assembly for a file
-src/leap_device_stack.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_device_stack.c.s
-.PHONY : src/leap_device_stack.c.s
-
-src/leap_log.o: src/leap_log.c.o
-.PHONY : src/leap_log.o
-
-# target to build an object file
-src/leap_log.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_log.c.o
-.PHONY : src/leap_log.c.o
-
-src/leap_log.i: src/leap_log.c.i
-.PHONY : src/leap_log.i
-
-# target to preprocess a source file
-src/leap_log.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_log.c.i
-.PHONY : src/leap_log.c.i
-
-src/leap_log.s: src/leap_log.c.s
-.PHONY : src/leap_log.s
-
-# target to generate assembly for a file
-src/leap_log.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/leap_log.c.s
-.PHONY : src/leap_log.c.s
-
-src/services/diag/leap_diag_controller.o: src/services/diag/leap_diag_controller.c.o
-.PHONY : src/services/diag/leap_diag_controller.o
-
-# target to build an object file
-src/services/diag/leap_diag_controller.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_controller.c.o
-.PHONY : src/services/diag/leap_diag_controller.c.o
-
-src/services/diag/leap_diag_controller.i: src/services/diag/leap_diag_controller.c.i
-.PHONY : src/services/diag/leap_diag_controller.i
-
-# target to preprocess a source file
-src/services/diag/leap_diag_controller.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_controller.c.i
-.PHONY : src/services/diag/leap_diag_controller.c.i
-
-src/services/diag/leap_diag_controller.s: src/services/diag/leap_diag_controller.c.s
-.PHONY : src/services/diag/leap_diag_controller.s
-
-# target to generate assembly for a file
-src/services/diag/leap_diag_controller.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_controller.c.s
-.PHONY : src/services/diag/leap_diag_controller.c.s
-
-src/services/diag/leap_diag_device.o: src/services/diag/leap_diag_device.c.o
-.PHONY : src/services/diag/leap_diag_device.o
-
-# target to build an object file
-src/services/diag/leap_diag_device.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_device.c.o
-.PHONY : src/services/diag/leap_diag_device.c.o
-
-src/services/diag/leap_diag_device.i: src/services/diag/leap_diag_device.c.i
-.PHONY : src/services/diag/leap_diag_device.i
-
-# target to preprocess a source file
-src/services/diag/leap_diag_device.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_device.c.i
-.PHONY : src/services/diag/leap_diag_device.c.i
-
-src/services/diag/leap_diag_device.s: src/services/diag/leap_diag_device.c.s
-.PHONY : src/services/diag/leap_diag_device.s
-
-# target to generate assembly for a file
-src/services/diag/leap_diag_device.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/diag/leap_diag_device.c.s
-.PHONY : src/services/diag/leap_diag_device.c.s
-
-src/services/dir/leap_dir_controller.o: src/services/dir/leap_dir_controller.c.o
-.PHONY : src/services/dir/leap_dir_controller.o
-
-# target to build an object file
-src/services/dir/leap_dir_controller.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.o
-.PHONY : src/services/dir/leap_dir_controller.c.o
-
-src/services/dir/leap_dir_controller.i: src/services/dir/leap_dir_controller.c.i
-.PHONY : src/services/dir/leap_dir_controller.i
-
-# target to preprocess a source file
-src/services/dir/leap_dir_controller.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.i
-.PHONY : src/services/dir/leap_dir_controller.c.i
-
-src/services/dir/leap_dir_controller.s: src/services/dir/leap_dir_controller.c.s
-.PHONY : src/services/dir/leap_dir_controller.s
-
-# target to generate assembly for a file
-src/services/dir/leap_dir_controller.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/dir/leap_dir_controller.c.s
-.PHONY : src/services/dir/leap_dir_controller.c.s
-
-src/services/dir/leap_dir_device.o: src/services/dir/leap_dir_device.c.o
-.PHONY : src/services/dir/leap_dir_device.o
-
-# target to build an object file
-src/services/dir/leap_dir_device.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.o
-.PHONY : src/services/dir/leap_dir_device.c.o
-
-src/services/dir/leap_dir_device.i: src/services/dir/leap_dir_device.c.i
-.PHONY : src/services/dir/leap_dir_device.i
-
-# target to preprocess a source file
-src/services/dir/leap_dir_device.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.i
-.PHONY : src/services/dir/leap_dir_device.c.i
-
-src/services/dir/leap_dir_device.s: src/services/dir/leap_dir_device.c.s
-.PHONY : src/services/dir/leap_dir_device.s
-
-# target to generate assembly for a file
-src/services/dir/leap_dir_device.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/dir/leap_dir_device.c.s
-.PHONY : src/services/dir/leap_dir_device.c.s
-
-src/services/disc/leap_disc_controller.o: src/services/disc/leap_disc_controller.c.o
-.PHONY : src/services/disc/leap_disc_controller.o
-
-# target to build an object file
-src/services/disc/leap_disc_controller.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_controller.c.o
-.PHONY : src/services/disc/leap_disc_controller.c.o
-
-src/services/disc/leap_disc_controller.i: src/services/disc/leap_disc_controller.c.i
-.PHONY : src/services/disc/leap_disc_controller.i
-
-# target to preprocess a source file
-src/services/disc/leap_disc_controller.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_controller.c.i
-.PHONY : src/services/disc/leap_disc_controller.c.i
-
-src/services/disc/leap_disc_controller.s: src/services/disc/leap_disc_controller.c.s
-.PHONY : src/services/disc/leap_disc_controller.s
-
-# target to generate assembly for a file
-src/services/disc/leap_disc_controller.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_controller.c.s
-.PHONY : src/services/disc/leap_disc_controller.c.s
-
-src/services/disc/leap_disc_device.o: src/services/disc/leap_disc_device.c.o
-.PHONY : src/services/disc/leap_disc_device.o
-
-# target to build an object file
-src/services/disc/leap_disc_device.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_device.c.o
-.PHONY : src/services/disc/leap_disc_device.c.o
-
-src/services/disc/leap_disc_device.i: src/services/disc/leap_disc_device.c.i
-.PHONY : src/services/disc/leap_disc_device.i
-
-# target to preprocess a source file
-src/services/disc/leap_disc_device.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_device.c.i
-.PHONY : src/services/disc/leap_disc_device.c.i
-
-src/services/disc/leap_disc_device.s: src/services/disc/leap_disc_device.c.s
-.PHONY : src/services/disc/leap_disc_device.s
-
-# target to generate assembly for a file
-src/services/disc/leap_disc_device.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/disc/leap_disc_device.c.s
-.PHONY : src/services/disc/leap_disc_device.c.s
-
-src/services/mgmt/leap_mgmt_controller.o: src/services/mgmt/leap_mgmt_controller.c.o
-.PHONY : src/services/mgmt/leap_mgmt_controller.o
-
-# target to build an object file
-src/services/mgmt/leap_mgmt_controller.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.o
-.PHONY : src/services/mgmt/leap_mgmt_controller.c.o
-
-src/services/mgmt/leap_mgmt_controller.i: src/services/mgmt/leap_mgmt_controller.c.i
-.PHONY : src/services/mgmt/leap_mgmt_controller.i
-
-# target to preprocess a source file
-src/services/mgmt/leap_mgmt_controller.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.i
-.PHONY : src/services/mgmt/leap_mgmt_controller.c.i
-
-src/services/mgmt/leap_mgmt_controller.s: src/services/mgmt/leap_mgmt_controller.c.s
-.PHONY : src/services/mgmt/leap_mgmt_controller.s
-
-# target to generate assembly for a file
-src/services/mgmt/leap_mgmt_controller.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_controller.c.s
-.PHONY : src/services/mgmt/leap_mgmt_controller.c.s
-
-src/services/mgmt/leap_mgmt_device.o: src/services/mgmt/leap_mgmt_device.c.o
-.PHONY : src/services/mgmt/leap_mgmt_device.o
-
-# target to build an object file
-src/services/mgmt/leap_mgmt_device.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_device.c.o
-.PHONY : src/services/mgmt/leap_mgmt_device.c.o
-
-src/services/mgmt/leap_mgmt_device.i: src/services/mgmt/leap_mgmt_device.c.i
-.PHONY : src/services/mgmt/leap_mgmt_device.i
-
-# target to preprocess a source file
-src/services/mgmt/leap_mgmt_device.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_device.c.i
-.PHONY : src/services/mgmt/leap_mgmt_device.c.i
-
-src/services/mgmt/leap_mgmt_device.s: src/services/mgmt/leap_mgmt_device.c.s
-.PHONY : src/services/mgmt/leap_mgmt_device.s
-
-# target to generate assembly for a file
-src/services/mgmt/leap_mgmt_device.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_device.c.s
-.PHONY : src/services/mgmt/leap_mgmt_device.c.s
-
-src/services/mgmt/leap_mgmt_process.o: src/services/mgmt/leap_mgmt_process.c.o
-.PHONY : src/services/mgmt/leap_mgmt_process.o
-
-# target to build an object file
-src/services/mgmt/leap_mgmt_process.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.o
-.PHONY : src/services/mgmt/leap_mgmt_process.c.o
-
-src/services/mgmt/leap_mgmt_process.i: src/services/mgmt/leap_mgmt_process.c.i
-.PHONY : src/services/mgmt/leap_mgmt_process.i
-
-# target to preprocess a source file
-src/services/mgmt/leap_mgmt_process.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.i
-.PHONY : src/services/mgmt/leap_mgmt_process.c.i
-
-src/services/mgmt/leap_mgmt_process.s: src/services/mgmt/leap_mgmt_process.c.s
-.PHONY : src/services/mgmt/leap_mgmt_process.s
-
-# target to generate assembly for a file
-src/services/mgmt/leap_mgmt_process.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/mgmt/leap_mgmt_process.c.s
-.PHONY : src/services/mgmt/leap_mgmt_process.c.s
-
-src/services/pd/leap_pd_common.o: src/services/pd/leap_pd_common.c.o
-.PHONY : src/services/pd/leap_pd_common.o
-
-# target to build an object file
-src/services/pd/leap_pd_common.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.o
-.PHONY : src/services/pd/leap_pd_common.c.o
-
-src/services/pd/leap_pd_common.i: src/services/pd/leap_pd_common.c.i
-.PHONY : src/services/pd/leap_pd_common.i
-
-# target to preprocess a source file
-src/services/pd/leap_pd_common.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.i
-.PHONY : src/services/pd/leap_pd_common.c.i
-
-src/services/pd/leap_pd_common.s: src/services/pd/leap_pd_common.c.s
-.PHONY : src/services/pd/leap_pd_common.s
-
-# target to generate assembly for a file
-src/services/pd/leap_pd_common.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_common.c.s
-.PHONY : src/services/pd/leap_pd_common.c.s
-
-src/services/pd/leap_pd_controller.o: src/services/pd/leap_pd_controller.c.o
-.PHONY : src/services/pd/leap_pd_controller.o
-
-# target to build an object file
-src/services/pd/leap_pd_controller.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.o
-.PHONY : src/services/pd/leap_pd_controller.c.o
-
-src/services/pd/leap_pd_controller.i: src/services/pd/leap_pd_controller.c.i
-.PHONY : src/services/pd/leap_pd_controller.i
-
-# target to preprocess a source file
-src/services/pd/leap_pd_controller.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.i
-.PHONY : src/services/pd/leap_pd_controller.c.i
-
-src/services/pd/leap_pd_controller.s: src/services/pd/leap_pd_controller.c.s
-.PHONY : src/services/pd/leap_pd_controller.s
-
-# target to generate assembly for a file
-src/services/pd/leap_pd_controller.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_controller.c.s
-.PHONY : src/services/pd/leap_pd_controller.c.s
-
-src/services/pd/leap_pd_device.o: src/services/pd/leap_pd_device.c.o
-.PHONY : src/services/pd/leap_pd_device.o
-
-# target to build an object file
-src/services/pd/leap_pd_device.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.o
-.PHONY : src/services/pd/leap_pd_device.c.o
-
-src/services/pd/leap_pd_device.i: src/services/pd/leap_pd_device.c.i
-.PHONY : src/services/pd/leap_pd_device.i
-
-# target to preprocess a source file
-src/services/pd/leap_pd_device.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.i
-.PHONY : src/services/pd/leap_pd_device.c.i
-
-src/services/pd/leap_pd_device.s: src/services/pd/leap_pd_device.c.s
-.PHONY : src/services/pd/leap_pd_device.s
-
-# target to generate assembly for a file
-src/services/pd/leap_pd_device.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/services/pd/leap_pd_device.c.s
-.PHONY : src/services/pd/leap_pd_device.c.s
-
-src/transport/leap_raw_linux.o: src/transport/leap_raw_linux.c.o
-.PHONY : src/transport/leap_raw_linux.o
-
-# target to build an object file
-src/transport/leap_raw_linux.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.o
-.PHONY : src/transport/leap_raw_linux.c.o
-
-src/transport/leap_raw_linux.i: src/transport/leap_raw_linux.c.i
-.PHONY : src/transport/leap_raw_linux.i
-
-# target to preprocess a source file
-src/transport/leap_raw_linux.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.i
-.PHONY : src/transport/leap_raw_linux.c.i
-
-src/transport/leap_raw_linux.s: src/transport/leap_raw_linux.c.s
-.PHONY : src/transport/leap_raw_linux.s
-
-# target to generate assembly for a file
-src/transport/leap_raw_linux.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_core.dir/build.make CMakeFiles/leap_core.dir/src/transport/leap_raw_linux.c.s
-.PHONY : src/transport/leap_raw_linux.c.s
-
 tests/leap_test_frame.o: tests/leap_test_frame.c.o
 .PHONY : tests/leap_test_frame.o
 
@@ -1026,6 +522,30 @@ tests/test_comms_loss.s: tests/test_comms_loss.c.s
 tests/test_comms_loss.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.s
 .PHONY : tests/test_comms_loss.c.s
+
+tests/test_conformance_engine.o: tests/test_conformance_engine.c.o
+.PHONY : tests/test_conformance_engine.o
+
+# target to build an object file
+tests/test_conformance_engine.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o
+.PHONY : tests/test_conformance_engine.c.o
+
+tests/test_conformance_engine.i: tests/test_conformance_engine.c.i
+.PHONY : tests/test_conformance_engine.i
+
+# target to preprocess a source file
+tests/test_conformance_engine.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.i
+.PHONY : tests/test_conformance_engine.c.i
+
+tests/test_conformance_engine.s: tests/test_conformance_engine.c.s
+.PHONY : tests/test_conformance_engine.s
+
+# target to generate assembly for a file
+tests/test_conformance_engine.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.s
+.PHONY : tests/test_conformance_engine.c.s
 
 tests/test_controller_peer.o: tests/test_controller_peer.c.o
 .PHONY : tests/test_controller_peer.o
@@ -1555,6 +1075,30 @@ tests/test_mgmt_process.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_mgmt_process.c.s
 .PHONY : tests/test_mgmt_process.c.s
 
+tests/test_negative_frames.o: tests/test_negative_frames.c.o
+.PHONY : tests/test_negative_frames.o
+
+# target to build an object file
+tests/test_negative_frames.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o
+.PHONY : tests/test_negative_frames.c.o
+
+tests/test_negative_frames.i: tests/test_negative_frames.c.i
+.PHONY : tests/test_negative_frames.i
+
+# target to preprocess a source file
+tests/test_negative_frames.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.i
+.PHONY : tests/test_negative_frames.c.i
+
+tests/test_negative_frames.s: tests/test_negative_frames.c.s
+.PHONY : tests/test_negative_frames.s
+
+# target to generate assembly for a file
+tests/test_negative_frames.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/leap_tests.dir/build.make CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.s
+.PHONY : tests/test_negative_frames.c.s
+
 tests/test_pd_common.o: tests/test_pd_common.c.o
 .PHONY : tests/test_pd_common.o
 
@@ -1745,75 +1289,15 @@ help:
 	@echo "... examples/linux_loopback/leap_linux_stats.o"
 	@echo "... examples/linux_loopback/leap_linux_stats.i"
 	@echo "... examples/linux_loopback/leap_linux_stats.s"
-	@echo "... src/crc/leap_crc.o"
-	@echo "... src/crc/leap_crc.i"
-	@echo "... src/crc/leap_crc.s"
-	@echo "... src/frame/leap_frame.o"
-	@echo "... src/frame/leap_frame.i"
-	@echo "... src/frame/leap_frame.s"
-	@echo "... src/leap_controller_peer.o"
-	@echo "... src/leap_controller_peer.i"
-	@echo "... src/leap_controller_peer.s"
-	@echo "... src/leap_controller_sequence.o"
-	@echo "... src/leap_controller_sequence.i"
-	@echo "... src/leap_controller_sequence.s"
-	@echo "... src/leap_controller_session_hub.o"
-	@echo "... src/leap_controller_session_hub.i"
-	@echo "... src/leap_controller_session_hub.s"
-	@echo "... src/leap_controller_stack.o"
-	@echo "... src/leap_controller_stack.i"
-	@echo "... src/leap_controller_stack.s"
-	@echo "... src/leap_device_stack.o"
-	@echo "... src/leap_device_stack.i"
-	@echo "... src/leap_device_stack.s"
-	@echo "... src/leap_log.o"
-	@echo "... src/leap_log.i"
-	@echo "... src/leap_log.s"
-	@echo "... src/services/diag/leap_diag_controller.o"
-	@echo "... src/services/diag/leap_diag_controller.i"
-	@echo "... src/services/diag/leap_diag_controller.s"
-	@echo "... src/services/diag/leap_diag_device.o"
-	@echo "... src/services/diag/leap_diag_device.i"
-	@echo "... src/services/diag/leap_diag_device.s"
-	@echo "... src/services/dir/leap_dir_controller.o"
-	@echo "... src/services/dir/leap_dir_controller.i"
-	@echo "... src/services/dir/leap_dir_controller.s"
-	@echo "... src/services/dir/leap_dir_device.o"
-	@echo "... src/services/dir/leap_dir_device.i"
-	@echo "... src/services/dir/leap_dir_device.s"
-	@echo "... src/services/disc/leap_disc_controller.o"
-	@echo "... src/services/disc/leap_disc_controller.i"
-	@echo "... src/services/disc/leap_disc_controller.s"
-	@echo "... src/services/disc/leap_disc_device.o"
-	@echo "... src/services/disc/leap_disc_device.i"
-	@echo "... src/services/disc/leap_disc_device.s"
-	@echo "... src/services/mgmt/leap_mgmt_controller.o"
-	@echo "... src/services/mgmt/leap_mgmt_controller.i"
-	@echo "... src/services/mgmt/leap_mgmt_controller.s"
-	@echo "... src/services/mgmt/leap_mgmt_device.o"
-	@echo "... src/services/mgmt/leap_mgmt_device.i"
-	@echo "... src/services/mgmt/leap_mgmt_device.s"
-	@echo "... src/services/mgmt/leap_mgmt_process.o"
-	@echo "... src/services/mgmt/leap_mgmt_process.i"
-	@echo "... src/services/mgmt/leap_mgmt_process.s"
-	@echo "... src/services/pd/leap_pd_common.o"
-	@echo "... src/services/pd/leap_pd_common.i"
-	@echo "... src/services/pd/leap_pd_common.s"
-	@echo "... src/services/pd/leap_pd_controller.o"
-	@echo "... src/services/pd/leap_pd_controller.i"
-	@echo "... src/services/pd/leap_pd_controller.s"
-	@echo "... src/services/pd/leap_pd_device.o"
-	@echo "... src/services/pd/leap_pd_device.i"
-	@echo "... src/services/pd/leap_pd_device.s"
-	@echo "... src/transport/leap_raw_linux.o"
-	@echo "... src/transport/leap_raw_linux.i"
-	@echo "... src/transport/leap_raw_linux.s"
 	@echo "... tests/leap_test_frame.o"
 	@echo "... tests/leap_test_frame.i"
 	@echo "... tests/leap_test_frame.s"
 	@echo "... tests/test_comms_loss.o"
 	@echo "... tests/test_comms_loss.i"
 	@echo "... tests/test_comms_loss.s"
+	@echo "... tests/test_conformance_engine.o"
+	@echo "... tests/test_conformance_engine.i"
+	@echo "... tests/test_conformance_engine.s"
 	@echo "... tests/test_controller_peer.o"
 	@echo "... tests/test_controller_peer.i"
 	@echo "... tests/test_controller_peer.s"
@@ -1880,6 +1364,9 @@ help:
 	@echo "... tests/test_mgmt_process.o"
 	@echo "... tests/test_mgmt_process.i"
 	@echo "... tests/test_mgmt_process.s"
+	@echo "... tests/test_negative_frames.o"
+	@echo "... tests/test_negative_frames.i"
+	@echo "... tests/test_negative_frames.s"
 	@echo "... tests/test_pd_common.o"
 	@echo "... tests/test_pd_common.i"
 	@echo "... tests/test_pd_common.s"

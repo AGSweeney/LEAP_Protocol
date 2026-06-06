@@ -35,6 +35,8 @@ typedef struct LeapDeviceStack
     LeapPdDeviceContext    pd;
     LeapPdDeviceIoBinding  pd_io;
     int                    pd_io_bound;
+    uint64_t               last_frame_rx_us;
+    uint16_t               last_frame_service_id;
 } LeapDeviceStack;
 
 typedef struct LeapDeviceStackConfig
@@ -117,6 +119,12 @@ LeapDeviceStackStatus leap_device_stack_tick(
     LeapDeviceStack* stack,
     uint64_t         now_us,
     uint32_t*        flags_out);
+
+void leap_device_stack_notify_tx_ok(
+    LeapDeviceStack* stack,
+    uint64_t         now_us);
+
+void leap_device_stack_notify_tx_drop(LeapDeviceStack* stack);
 
 #ifdef __cplusplus
 }

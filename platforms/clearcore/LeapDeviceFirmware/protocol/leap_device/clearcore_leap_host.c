@@ -96,6 +96,34 @@ static uint64_t clearcore_leap_monotonic_us(void)
 
 
 
+static void clearcore_leap_record_tx_result(int send_ok)
+
+{
+
+    if (send_ok == 0)
+
+    {
+
+        leap_device_stack_notify_tx_ok(&g_stack, clearcore_leap_monotonic_us());
+
+        ++g_stats.tx_ok;
+
+    }
+
+    else
+
+    {
+
+        leap_device_stack_notify_tx_drop(&g_stack);
+
+        ++g_stats.tx_drop;
+
+    }
+
+}
+
+
+
 static void clearcore_leap_send_error_reply(
 
     struct netif *               netif,
@@ -152,6 +180,8 @@ static void clearcore_leap_send_error_reply(
 
     {
 
+        leap_device_stack_notify_tx_drop(&g_stack);
+
         ++g_stats.tx_drop;
 
         return;
@@ -160,21 +190,9 @@ static void clearcore_leap_send_error_reply(
 
 
 
-    if (clearcore_leap_eth_send(netif, dst_mac, tx, tx_len) == 0)
+    clearcore_leap_record_tx_result(
 
-    {
-
-        ++g_stats.tx_ok;
-
-    }
-
-    else
-
-    {
-
-        ++g_stats.tx_drop;
-
-    }
+        clearcore_leap_eth_send(netif, dst_mac, tx, tx_len));
 
 }
 
@@ -232,6 +250,8 @@ static void clearcore_leap_send_reply(
 
     {
 
+        leap_device_stack_notify_tx_drop(&g_stack);
+
         ++g_stats.tx_drop;
 
         return;
@@ -242,21 +262,7 @@ static void clearcore_leap_send_reply(
 
     send_status = clearcore_leap_eth_send(netif, dst_mac, tx, tx_len);
 
-    if (send_status == 0)
-
-    {
-
-        ++g_stats.tx_ok;
-
-    }
-
-    else
-
-    {
-
-        ++g_stats.tx_drop;
-
-    }
+    clearcore_leap_record_tx_result(send_status);
 
 }
 
@@ -411,6 +417,24 @@ static void clearcore_leap_log_status(
             line,
             sizeof(line),
             "LEAP: PD rejected msg=0x%04X status=0x%04X",
+            result->frame.header.message_type,
+            result->error_code);
+        clearcore_leap_trace_queue(line);
+        break;
+    case LEAP_DEVICE_STACK_DIR_ERROR:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: DIR error msg=0x%04X status=0x%04X",
+            result->frame.header.message_type,
+            result->error_code);
+        clearcore_leap_trace_queue(line);
+        break;
+    case LEAP_DEVICE_STACK_DIAG_ERROR:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: DIAG error msg=0x%04X status=0x%04X",
             result->frame.header.message_type,
             result->error_code);
         clearcore_leap_trace_queue(line);
@@ -594,6 +618,50 @@ static void clearcore_leap_handle_result(
             result,
 
             (uint16_t)LEAP_SERVICE_PD,
+
+            result->frame.header.message_type,
+
+            result->error_code);
+
+        clearcore_leap_log_status(status, result);
+
+    }
+
+    else if (status == LEAP_DEVICE_STACK_DIR_ERROR)
+
+    {
+
+        clearcore_leap_send_error_reply(
+
+            netif,
+
+            src_mac,
+
+            result,
+
+            (uint16_t)LEAP_SERVICE_DIR,
+
+            result->frame.header.message_type,
+
+            result->error_code);
+
+        clearcore_leap_log_status(status, result);
+
+    }
+
+    else if (status == LEAP_DEVICE_STACK_DIAG_ERROR)
+
+    {
+
+        clearcore_leap_send_error_reply(
+
+            netif,
+
+            src_mac,
+
+            result,
+
+            (uint16_t)LEAP_SERVICE_DIAG,
 
             result->frame.header.message_type,
 

@@ -140,7 +140,7 @@ leap_linux_controller: CMakeFiles/leap_linux_controller.dir/examples/linux_loopb
 leap_linux_controller: CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_pd.c.o
 leap_linux_controller: CMakeFiles/leap_linux_controller.dir/examples/linux_loopback/leap_linux_controller_io.c.o
 leap_linux_controller: CMakeFiles/leap_linux_controller.dir/build.make
-leap_linux_controller: libleap_core.a
+leap_linux_controller: leap_core/libleap_core.a
 leap_linux_controller: CMakeFiles/leap_linux_controller.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking C executable leap_linux_controller"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/leap_linux_controller.dir/link.txt --verbose=$(VERBOSE)

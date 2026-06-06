@@ -19,23 +19,24 @@ CMakeFiles/leap_linux_hub.dir/examples/linux_loopback/hub_main.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_raw_linux.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_stack.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_session_hub.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_raw_linux.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_stack.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_dir_controller.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_protocol.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_dir_controller_capabilities.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_pd_common.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_dir_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_disc_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_frame.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_mgmt_controller.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_pd_controller.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_sequence.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_session_hub.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_peer.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_controller_io.h \
  /mnt/d/LEAP_Protocol/examples/linux_loopback/leap_linux_pd.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_log.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_log.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h /usr/include/stdio.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \

@@ -19,6 +19,7 @@ typedef enum LeapConformanceStepKind
 {
     LEAP_CONF_KIND_PREFLIGHT = 0,
     LEAP_CONF_KIND_DISCOVER,
+    LEAP_CONF_KIND_PROBE_CAPS,
     LEAP_CONF_KIND_BOOTSTRAP,
     LEAP_CONF_KIND_PD_WRITE,
     LEAP_CONF_KIND_DIAG_READ,
@@ -43,10 +44,10 @@ typedef struct LeapConformanceScenarioStep
 
 typedef struct LeapConformanceScenario
 {
-    const char*                    id;
-    const char*                    title;
+    const char*                        id;
+    const char*                        title;
     const LeapConformanceScenarioStep* steps;
-    size_t                         step_count;
+    size_t                             step_count;
 } LeapConformanceScenario;
 
 const LeapConformanceScenario* leap_conformance_scenario_by_id(const char* id);

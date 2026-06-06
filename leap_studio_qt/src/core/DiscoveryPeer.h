@@ -9,6 +9,7 @@ struct DiscoveryPeerRow {
     QString profile;
     QString state;
     uint16_t stateCode = 0;
+    uint32_t productCode = 0;
     QString leapVersion;
     QString fw;
     QString vendor;

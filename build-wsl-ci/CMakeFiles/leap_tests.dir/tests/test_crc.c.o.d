@@ -34,5 +34,5 @@ CMakeFiles/leap_tests.dir/tests/test_crc.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_crc.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_protocol.h

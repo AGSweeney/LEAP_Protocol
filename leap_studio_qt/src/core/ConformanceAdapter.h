@@ -27,7 +27,8 @@ public slots:
     void closeAdapter();
     void runScenario(const QString& scenarioId, const QStringList& stepFilter,
                      const QString& adapterPath, const QString& adapterLabel,
-                     const QString& peerMac, unsigned cyclicSeconds);
+                     const QString& peerMac, unsigned cyclicSeconds,
+                     unsigned cyclicPeriodMs = 100u);
     void exportReport(const QString& path, const DiscoveryPeerRow& device,
                       bool hasDevice);
     void cancelRun();
@@ -61,4 +62,5 @@ private:
     QString lastRunStartedLocal_;
     QString lastNicName_;
     unsigned lastCyclicSeconds_ = 0u;
+    unsigned lastCyclicPeriodMs_ = 100u;
 };

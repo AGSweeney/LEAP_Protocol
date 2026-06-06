@@ -75,3 +75,26 @@ size_t leap_dir_controller_build_read_directory(
 
     return sizeof(LeapReadDirectoryRequest);
 }
+
+size_t leap_dir_controller_build_read_object(
+    uint8_t* payload,
+    size_t   payload_capacity,
+    uint32_t object_id,
+    uint32_t offset,
+    uint32_t length)
+{
+    LeapReadObjectRequest* req;
+
+    if (payload == NULL || payload_capacity < sizeof(LeapReadObjectRequest))
+    {
+        return 0u;
+    }
+
+    memset(payload, 0, sizeof(LeapReadObjectRequest));
+    req = (LeapReadObjectRequest*)payload;
+    req->object_id = object_id;
+    req->offset    = offset;
+    req->length    = length;
+
+    return sizeof(LeapReadObjectRequest);
+}

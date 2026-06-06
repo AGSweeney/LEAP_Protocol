@@ -92,7 +92,7 @@ device_minimal_EXTERNAL_OBJECTS =
 
 device_minimal: CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o
 device_minimal: CMakeFiles/device_minimal.dir/build.make
-device_minimal: libleap_core.a
+device_minimal: leap_core/libleap_core.a
 device_minimal: CMakeFiles/device_minimal.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable device_minimal"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/device_minimal.dir/link.txt --verbose=$(VERBOSE)

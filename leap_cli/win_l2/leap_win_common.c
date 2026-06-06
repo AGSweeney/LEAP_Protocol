@@ -122,10 +122,19 @@ LeapPdControllerStatus leap_win_controller_run_cyclic_pd_with_link_watch(
         return LEAP_PD_CTRL_INVALID_ARG;
     }
 
-    leap_log_printf(
-        "cyclic PD (%u ms%s) - Ctrl+C or link-down to stop\n",
-        stack->pd.config.cycle_period_ms,
-        stack->pd.config.use_exchange != 0 ? ", exchange" : "");
+    if (stack->pd.config.cycle_period_ms == 0u)
+    {
+        leap_log_printf(
+            "cyclic PD (freerun%s) - Ctrl+C or link-down to stop\n",
+            stack->pd.config.use_exchange != 0 ? ", exchange" : "");
+    }
+    else
+    {
+        leap_log_printf(
+            "cyclic PD (%u ms%s) - Ctrl+C or link-down to stop\n",
+            stack->pd.config.cycle_period_ms,
+            stack->pd.config.use_exchange != 0 ? ", exchange" : "");
+    }
 
     while (*stop_flag == 0)
     {

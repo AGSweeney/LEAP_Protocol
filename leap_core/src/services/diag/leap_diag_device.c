@@ -376,6 +376,61 @@ void leap_diag_device_on_frame_accepted(LeapDiagDeviceContext* ctx)
     ctx->rx_frames_accepted++;
 }
 
+void leap_diag_device_on_frame_transmitted(
+    LeapDiagDeviceContext* ctx,
+    uint64_t               reply_latency_us)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    ctx->tx_frames_accepted++;
+
+    if (reply_latency_us == 0u)
+    {
+        return;
+    }
+
+    ctx->last_reply_latency_us = reply_latency_us;
+    if (reply_latency_us > ctx->max_reply_latency_us)
+    {
+        ctx->max_reply_latency_us = reply_latency_us;
+    }
+}
+
+void leap_diag_device_on_frame_tx_dropped(LeapDiagDeviceContext* ctx)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    ctx->tx_frames_dropped++;
+}
+
+void leap_diag_device_on_pd_cycle_time(
+    LeapDiagDeviceContext* ctx,
+    uint32_t               cycle_time_us)
+{
+    if (ctx == NULL || cycle_time_us == 0u)
+    {
+        return;
+    }
+
+    ctx->last_cycle_time_us = cycle_time_us;
+
+    if (ctx->min_cycle_time_us == 0u || cycle_time_us < ctx->min_cycle_time_us)
+    {
+        ctx->min_cycle_time_us = cycle_time_us;
+    }
+
+    if (cycle_time_us > ctx->max_cycle_time_us)
+    {
+        ctx->max_cycle_time_us = cycle_time_us;
+    }
+}
+
 void leap_diag_device_on_frame_rejected(LeapDiagDeviceContext* ctx)
 {
     if (ctx == NULL)

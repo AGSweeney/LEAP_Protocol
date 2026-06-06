@@ -50,6 +50,13 @@ size_t leap_dir_controller_build_read_directory(
     uint32_t start_object_id,
     uint16_t max_bytes);
 
+size_t leap_dir_controller_build_read_object(
+    uint8_t* payload,
+    size_t   payload_capacity,
+    uint32_t object_id,
+    uint32_t offset,
+    uint32_t length);
+
 #ifdef __cplusplus
 }
 #endif

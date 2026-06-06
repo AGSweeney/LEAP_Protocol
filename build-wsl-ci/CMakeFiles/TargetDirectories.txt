@@ -1,4 +1,3 @@
-/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles/leap_core.dir
 /mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles/leap_tests.dir
 /mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles/device_minimal.dir
 /mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles/leap_linux_device.dir
@@ -8,3 +7,10 @@
 /mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles/test.dir
 /mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles/edit_cache.dir
 /mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles/rebuild_cache.dir
+/mnt/d/LEAP_Protocol/build-wsl-ci/leap_core/CMakeFiles/leap_core.dir
+/mnt/d/LEAP_Protocol/build-wsl-ci/leap_core/CMakeFiles/test.dir
+/mnt/d/LEAP_Protocol/build-wsl-ci/leap_core/CMakeFiles/edit_cache.dir
+/mnt/d/LEAP_Protocol/build-wsl-ci/leap_core/CMakeFiles/rebuild_cache.dir
+/mnt/d/LEAP_Protocol/build-wsl-ci/leap_cli/CMakeFiles/test.dir
+/mnt/d/LEAP_Protocol/build-wsl-ci/leap_cli/CMakeFiles/edit_cache.dir
+/mnt/d/LEAP_Protocol/build-wsl-ci/leap_cli/CMakeFiles/rebuild_cache.dir

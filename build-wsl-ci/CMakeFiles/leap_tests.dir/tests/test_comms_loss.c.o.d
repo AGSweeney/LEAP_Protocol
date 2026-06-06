@@ -34,15 +34,16 @@ CMakeFiles/leap_tests.dir/tests/test_comms_loss.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_crc.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_device_stack.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_diag_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_process.h /usr/include/string.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_crc.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_device_stack.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_dir_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_disc_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_frame.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_protocol.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_diag_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_pd_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_pd_common.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_mgmt_process.h \
+ /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

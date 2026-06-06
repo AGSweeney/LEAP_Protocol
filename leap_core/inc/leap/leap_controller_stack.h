@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #include "leap/leap_dir_controller.h"
+#include "leap/leap_dir_controller_capabilities.h"
 #include "leap/leap_frame.h"
 #include "leap/leap_mgmt_controller.h"
 #include "leap/leap_pd_controller.h"
@@ -233,6 +234,37 @@ LeapControllerStackDiagStatus leap_controller_stack_read_diag_extended(
 
 void leap_controller_stack_log_diag(
     const LeapControllerStackDiagResult* result);
+
+/*
+ * Query LEAP-DIR profile endpoints without full bootstrap (SELECT_PROFILE only).
+ * Device returns PROFILE_REPLY with LeapEndpointDescriptor tail per spec.
+ */
+LeapControllerStackStatus leap_controller_stack_fetch_profile_reply(
+    LeapControllerStack*          stack,
+    const LeapControllerStackIo*  io,
+    const uint8_t*                peer_mac,
+    uint32_t                      profile_id,
+    uint8_t*                      reply_payload,
+    size_t                        reply_capacity,
+    size_t*                       reply_length_out);
+
+LeapControllerStackStatus leap_controller_stack_fetch_read_directory(
+    LeapControllerStack*          stack,
+    const LeapControllerStackIo*  io,
+    const uint8_t*                peer_mac,
+    uint8_t*                      reply_payload,
+    size_t                        reply_capacity,
+    size_t*                       reply_length_out);
+
+/*
+ * HELLO peer + LEAP-DIR READ_DIRECTORY (and SELECT_PROFILE when allowed).
+ * Fills caps_out with endpoint descriptors per spec.
+ */
+LeapControllerStackStatus leap_controller_stack_probe_directory(
+    LeapControllerStack*               stack,
+    const LeapControllerStackIo*       io,
+    const uint8_t*                     peer_mac,
+    LeapDirControllerCapabilities* caps_out);
 
 #ifdef __cplusplus
 }

@@ -262,6 +262,17 @@ static void leap_log_disc_request(const uint8_t *peer_mac,
     }
 }
 
+static void leap_record_tx_result(int send_ok)
+{
+    if (send_ok == 0) {
+        leap_device_stack_notify_tx_ok(&s_stack, leap_monotonic_us());
+        ++s_stats.tx_ok;
+    } else {
+        leap_device_stack_notify_tx_drop(&s_stack);
+        ++s_stats.tx_drop;
+    }
+}
+
 static void leap_send_error_reply(struct netif *netif, const uint8_t *dst_mac,
                                   const LeapDeviceStackResult *result,
                                   uint16_t service_id, uint16_t message_type,
@@ -281,15 +292,12 @@ static void leap_send_error_reply(struct netif *netif, const uint8_t *dst_mac,
             result->frame.header.sequence,
             result->frame.header.ack_sequence,
             (const uint8_t *)&err, sizeof(err)) != 0) {
+        leap_device_stack_notify_tx_drop(&s_stack);
         ++s_stats.tx_drop;
         return;
     }
 
-    if (leap_eth_send(netif, dst_mac, s_tx_frame, tx_len) == 0) {
-        ++s_stats.tx_ok;
-    } else {
-        ++s_stats.tx_drop;
-    }
+    leap_record_tx_result(leap_eth_send(netif, dst_mac, s_tx_frame, tx_len));
 }
 
 static void leap_send_reply(struct netif *netif, const uint8_t *dst_mac,
@@ -307,15 +315,12 @@ static void leap_send_reply(struct netif *netif, const uint8_t *dst_mac,
             result->frame.header.sequence,
             result->frame.header.ack_sequence,
             payload, payload_length) != 0) {
+        leap_device_stack_notify_tx_drop(&s_stack);
         ++s_stats.tx_drop;
         return;
     }
 
-    if (leap_eth_send(netif, dst_mac, s_tx_frame, tx_len) == 0) {
-        ++s_stats.tx_ok;
-    } else {
-        ++s_stats.tx_drop;
-    }
+    leap_record_tx_result(leap_eth_send(netif, dst_mac, s_tx_frame, tx_len));
 }
 
 static uint32_t leap_locate_toggle_us(uint8_t pattern)
@@ -494,6 +499,13 @@ static void leap_handle_result(struct netif *netif, const uint8_t *src_mac,
                               result->frame.header.message_type,
                               result->error_code);
         ESP_LOGW(TAG, "DIAG error msg=0x%04X status=0x%04X",
+                 result->frame.header.message_type, result->error_code);
+    } else if (status == LEAP_DEVICE_STACK_DIR_ERROR) {
+        leap_send_error_reply(netif, src_mac, result,
+                              (uint16_t)LEAP_SERVICE_DIR,
+                              result->frame.header.message_type,
+                              result->error_code);
+        ESP_LOGW(TAG, "DIR error msg=0x%04X status=0x%04X",
                  result->frame.header.message_type, result->error_code);
     } else if (status == LEAP_DEVICE_STACK_MGMT_ERROR &&
                result->service_id == (uint16_t)LEAP_SERVICE_MGMT &&

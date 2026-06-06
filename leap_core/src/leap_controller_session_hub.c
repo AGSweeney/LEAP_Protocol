@@ -187,7 +187,7 @@ LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer_at_slot(
         return LEAP_CTRL_STACK_INVALID_ARG;
     }
 
-    if (slot < 0 || slot >= LEAP_CTRL_MAX_PEERS)
+    if (slot < 0 || (unsigned)slot >= LEAP_CTRL_MAX_PEERS)
     {
         return LEAP_CTRL_STACK_INVALID_ARG;
     }

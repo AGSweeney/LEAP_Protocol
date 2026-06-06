@@ -159,10 +159,49 @@ TEST(test_dir_select_profile_rejects_unknown_profile)
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_PROFILE_MISMATCH);
 }
 
+TEST(test_dir_read_directory_in_safe_state)
+{
+    LeapDirDeviceContext  dir;
+    LeapDiscDeviceContext disc;
+    LeapMgmtDeviceContext mgmt;
+    LeapDirDeviceResult   result;
+    LeapReadDirectoryRequest req;
+    uint8_t               frame[TEST_DIR_BUF_SIZE];
+    size_t                frame_length = 0u;
+
+    dir_setup(&dir, &disc, &mgmt);
+    leap_mgmt_device_on_profile_selected(&mgmt);
+    mgmt.device_state = LEAP_STATE_SAFE;
+
+    memset(&req, 0, sizeof(req));
+    req.max_bytes = 256u;
+
+    ASSERT_TRUE(
+        leap_test_frame_build(
+            frame,
+            TEST_DIR_BUF_SIZE,
+            &frame_length,
+            0u,
+            (uint16_t)LEAP_SERVICE_DIR,
+            LEAP_DIR_READ_DIRECTORY,
+            0u,
+            1u,
+            (const uint8_t*)&req,
+            sizeof(req)) == 0);
+
+    ASSERT_EQ_INT(
+        leap_dir_device_process_frame(
+            &dir, &disc, &mgmt, k_controller_mac, frame, frame_length, &result),
+        LEAP_DIR_DEVICE_OK);
+    ASSERT_EQ_U16(result.message_type, LEAP_DIR_READ_DIRECTORY_REPLY);
+    ASSERT_TRUE(result.payload_length > sizeof(LeapReadDirectoryReply));
+}
+
 void leap_run_dir_device_tests(void)
 {
     printf("dir device\n");
     RUN_TEST(test_dir_select_profile_enters_configured);
     RUN_TEST(test_dir_read_directory_returns_tlvs);
+    RUN_TEST(test_dir_read_directory_in_safe_state);
     RUN_TEST(test_dir_select_profile_rejects_unknown_profile);
 }

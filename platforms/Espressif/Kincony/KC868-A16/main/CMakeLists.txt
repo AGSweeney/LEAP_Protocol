@@ -1,0 +1,20 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "eth_init.c"
+        "leap_hw.c"
+        "leap_eth.c"
+        "leap_host.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        leap_core
+        i2c_manager
+        pcf8574
+        driver
+        esp_eth
+        esp_netif
+        esp_event
+        esp_timer
+        lwip
+)

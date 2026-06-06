@@ -124,7 +124,7 @@ leap_linux_discover: CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/
 leap_linux_discover: CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.o
 leap_linux_discover: CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.o
 leap_linux_discover: CMakeFiles/leap_linux_discover.dir/build.make
-leap_linux_discover: libleap_core.a
+leap_linux_discover: leap_core/libleap_core.a
 leap_linux_discover: CMakeFiles/leap_linux_discover.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking C executable leap_linux_discover"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/leap_linux_discover.dir/link.txt --verbose=$(VERBOSE)

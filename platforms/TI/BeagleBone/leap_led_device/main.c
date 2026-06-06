@@ -147,15 +147,59 @@ static int send_reply(
             result->frame.header.ack_sequence,
             payload,
             payload_length) != 0) {
+        leap_device_stack_notify_tx_drop(&g_stack);
         bbb_uart_puts("reply build failed\n");
         return -1;
     }
 
     if (bbb_cpsw_raw_send(net, dst_mac, g_tx, tx_len) != 0) {
+        leap_device_stack_notify_tx_drop(&g_stack);
         bbb_uart_puts("tx stall\n");
         return -1;
     }
 
+    leap_device_stack_notify_tx_ok(&g_stack, bbb_monotonic_us());
+    return 0;
+}
+
+static int send_error_reply(
+    BbbCpswRaw*                  net,
+    const uint8_t*               dst_mac,
+    const LeapDeviceStackResult* result,
+    uint16_t                     service_id,
+    uint16_t                     message_type,
+    uint16_t                     status_code)
+{
+    LeapErrorPayload err;
+    size_t           tx_len = 0u;
+
+    memset(&err, 0, sizeof(err));
+    err.status_code = status_code;
+
+    if (leap_frame_write(
+            g_tx,
+            sizeof(g_tx),
+            &tx_len,
+            (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ERROR | LEAP_FLAG_ACK_REQUESTED),
+            service_id,
+            message_type,
+            result->frame.header.session_id,
+            result->frame.header.sequence,
+            result->frame.header.ack_sequence,
+            (const uint8_t*)&err,
+            sizeof(err)) != 0) {
+        leap_device_stack_notify_tx_drop(&g_stack);
+        bbb_uart_puts("error reply build failed\n");
+        return -1;
+    }
+
+    if (bbb_cpsw_raw_send(net, dst_mac, g_tx, tx_len) != 0) {
+        leap_device_stack_notify_tx_drop(&g_stack);
+        bbb_uart_puts("error tx stall\n");
+        return -1;
+    }
+
+    leap_device_stack_notify_tx_ok(&g_stack, bbb_monotonic_us());
     return 0;
 }
 
@@ -398,6 +442,33 @@ int main(void)
                      LEAP_DEVICE_STACK_FLAG_OUTPUTS_APPLIED) != 0u) {
                     apply_outputs(g_stack_result.pd_outputs_applied, 1);
                 }
+            } else if (status == LEAP_DEVICE_STACK_PD_REJECTED) {
+                (void)send_error_reply(
+                    &net,
+                    src_mac,
+                    &g_stack_result,
+                    (uint16_t)LEAP_SERVICE_PD,
+                    g_stack_result.frame.header.message_type,
+                    g_stack_result.error_code);
+                bbb_log_stack_error(status);
+            } else if (status == LEAP_DEVICE_STACK_DIR_ERROR) {
+                (void)send_error_reply(
+                    &net,
+                    src_mac,
+                    &g_stack_result,
+                    (uint16_t)LEAP_SERVICE_DIR,
+                    g_stack_result.frame.header.message_type,
+                    g_stack_result.error_code);
+                bbb_log_stack_error(status);
+            } else if (status == LEAP_DEVICE_STACK_DIAG_ERROR) {
+                (void)send_error_reply(
+                    &net,
+                    src_mac,
+                    &g_stack_result,
+                    (uint16_t)LEAP_SERVICE_DIAG,
+                    g_stack_result.frame.header.message_type,
+                    g_stack_result.error_code);
+                bbb_log_stack_error(status);
             } else {
                 bbb_log_stack_error(status);
             }

@@ -7,6 +7,9 @@
 
 #include "leap/leap_controller_stack.h"
 
+#include "leap/leap_dir_controller_capabilities.h"
+#include "leap/leap_disc_controller.h"
+
 #include "leap/leap_controller_sequence.h"
 #include "leap/leap_diag_controller.h"
 #include "leap/leap_disc_controller.h"
@@ -271,10 +274,32 @@ static LeapControllerStackStatus leap_ctrl_stack_recv_expected_from_peer(
             return status;
         }
 
-        if (view->header.service_id == expect_service &&
-            view->header.message_type == expect_message)
+        if (view->header.service_id == expect_service)
         {
-            return LEAP_CTRL_STACK_OK;
+            if (view->header.message_type == expect_message)
+            {
+                return LEAP_CTRL_STACK_OK;
+            }
+
+            if ((view->header.flags & LEAP_FLAG_ERROR) != 0u)
+            {
+                if (expect_service == (uint16_t)LEAP_SERVICE_DIR)
+                {
+                    return LEAP_CTRL_STACK_DIR_ERROR;
+                }
+                if (expect_service == (uint16_t)LEAP_SERVICE_MGMT)
+                {
+                    return LEAP_CTRL_STACK_MGMT_ERROR;
+                }
+                if (expect_service == (uint16_t)LEAP_SERVICE_DISC)
+                {
+                    return LEAP_CTRL_STACK_DISC_ERROR;
+                }
+                if (expect_service == (uint16_t)LEAP_SERVICE_DIAG)
+                {
+                    return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+                }
+            }
         }
 
         /* Stale PD/MGMT/async traffic from peer — keep waiting. */
@@ -1864,6 +1889,387 @@ LeapControllerStackDiagStatus leap_controller_stack_read_diag_extended(
     result_out->has_counters  = 1;
     result_out->counter_count = counters_hdr.counter_count;
     return LEAP_CTRL_STACK_DIAG_OK;
+}
+
+#define LEAP_CTRL_STACK_PROFILE_OBJECT_ID \
+    LEAP_OBJECT_ID(LEAP_OBJ_NS_ENDPOINT_PROFILE, 0x0001u)
+
+static LeapControllerStackStatus leap_ctrl_stack_fetch_profile_object(
+    LeapControllerStack*            stack,
+    const LeapControllerStackIo*    io,
+    LeapDirControllerCapabilities*  caps_out)
+{
+    uint8_t                   payload[LEAP_CTRL_STACK_PAYLOAD_BUF];
+    size_t                    payload_length;
+    uint8_t                   src_mac[6];
+    uint8_t                   rx[LEAP_CTRL_STACK_RX_BUF];
+    size_t                    rx_length = 0u;
+    LeapFrameView             view;
+    LeapControllerStackStatus status;
+    const uint8_t*            object_bytes;
+    size_t                    object_length;
+
+    payload_length = leap_dir_controller_build_read_object(
+        payload,
+        sizeof(payload),
+        LEAP_CTRL_STACK_PROFILE_OBJECT_ID,
+        0u,
+        0u);
+    if (payload_length == 0u)
+    {
+        return LEAP_CTRL_STACK_DIR_ERROR;
+    }
+
+    status = leap_ctrl_stack_send(
+        stack,
+        io,
+        stack->peer_mac,
+        LEAP_FLAG_ACK_REQUESTED,
+        (uint16_t)LEAP_SERVICE_DIR,
+        LEAP_DIR_READ_OBJECT,
+        0u,
+        payload,
+        payload_length);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    status = leap_ctrl_stack_recv_expected_from_peer(
+        stack,
+        io,
+        stack->config.recv_timeout_ms > 0 ? stack->config.recv_timeout_ms : 2000,
+        (uint16_t)LEAP_SERVICE_DIR,
+        LEAP_DIR_READ_OBJECT_REPLY,
+        src_mac,
+        &view,
+        rx,
+        sizeof(rx),
+        &rx_length);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    if (view.payload == NULL ||
+        view.payload_length < sizeof(LeapReadObjectReply))
+    {
+        return LEAP_CTRL_STACK_DIR_ERROR;
+    }
+
+    object_bytes  = view.payload + sizeof(LeapReadObjectReply);
+    object_length = view.payload_length - sizeof(LeapReadObjectReply);
+    if (leap_dir_controller_parse_profile_object(
+            object_bytes,
+            object_length,
+            caps_out) != LEAP_DIR_CTRL_OK ||
+        caps_out->endpoint_count == 0u)
+    {
+        return LEAP_CTRL_STACK_DIR_ERROR;
+    }
+
+    return LEAP_CTRL_STACK_OK;
+}
+
+static LeapControllerStackStatus leap_ctrl_stack_send_read_directory(
+    LeapControllerStack*          stack,
+    const LeapControllerStackIo*  io)
+{
+    uint8_t                   payload[LEAP_CTRL_STACK_PAYLOAD_BUF];
+    size_t                    payload_length;
+    LeapControllerStackStatus send_status;
+
+    payload_length = leap_dir_controller_build_read_directory(
+        payload,
+        sizeof(payload),
+        0u,
+        480u);
+    if (payload_length == 0u)
+    {
+        return LEAP_CTRL_STACK_DIR_ERROR;
+    }
+
+    send_status = leap_ctrl_stack_send(
+        stack,
+        io,
+        stack->peer_mac,
+        LEAP_FLAG_ACK_REQUESTED,
+        (uint16_t)LEAP_SERVICE_DIR,
+        LEAP_DIR_READ_DIRECTORY,
+        0u,
+        payload,
+        payload_length);
+    return send_status;
+}
+
+LeapControllerStackStatus leap_controller_stack_fetch_read_directory(
+    LeapControllerStack*          stack,
+    const LeapControllerStackIo*  io,
+    const uint8_t*                peer_mac,
+    uint8_t*                      reply_payload,
+    size_t                        reply_capacity,
+    size_t*                       reply_length_out)
+{
+    uint8_t                   src_mac[6];
+    uint8_t                   rx[LEAP_CTRL_STACK_RX_BUF];
+    size_t                    rx_length = 0u;
+    LeapFrameView             view;
+    LeapControllerStackStatus status;
+
+    if (stack == NULL || io == NULL || peer_mac == NULL ||
+        reply_payload == NULL || reply_length_out == NULL)
+    {
+        return LEAP_CTRL_STACK_INVALID_ARG;
+    }
+
+    leap_controller_stack_reset(stack);
+    memcpy(stack->peer_mac, peer_mac, 6);
+    stack->peer_bound = 1;
+
+    status = leap_ctrl_stack_send_read_directory(stack, io);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    status = leap_ctrl_stack_recv_expected_from_peer(
+        stack,
+        io,
+        stack->config.recv_timeout_ms > 0 ? stack->config.recv_timeout_ms : 2000,
+        (uint16_t)LEAP_SERVICE_DIR,
+        LEAP_DIR_READ_DIRECTORY_REPLY,
+        src_mac,
+        &view,
+        rx,
+        sizeof(rx),
+        &rx_length);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    if (view.payload == NULL || view.payload_length == 0u ||
+        view.payload_length > reply_capacity)
+    {
+        return LEAP_CTRL_STACK_DIR_ERROR;
+    }
+
+    memcpy(reply_payload, view.payload, view.payload_length);
+    *reply_length_out = view.payload_length;
+    return LEAP_CTRL_STACK_OK;
+}
+
+LeapControllerStackStatus leap_controller_stack_probe_directory(
+    LeapControllerStack*            stack,
+    const LeapControllerStackIo*    io,
+    const uint8_t*                  peer_mac,
+    LeapDirControllerCapabilities*  caps_out)
+{
+    uint8_t                   hello_payload[64];
+    size_t                    hello_len;
+    uint8_t                   rx[LEAP_CTRL_STACK_RX_BUF];
+    size_t                    rx_len = 0u;
+    LeapFrameView             view;
+    uint8_t                   src_mac[6];
+    LeapHelloReply            hello;
+    uint8_t                   dir_reply[LEAP_CTRL_STACK_RX_BUF];
+    size_t                    dir_reply_len = 0u;
+    uint32_t                  profile_id;
+    int                       recv_ms;
+    LeapControllerStackStatus status;
+
+    if (stack == NULL || io == NULL || peer_mac == NULL || caps_out == NULL)
+    {
+        return LEAP_CTRL_STACK_INVALID_ARG;
+    }
+
+    leap_dir_controller_capabilities_init(caps_out);
+    recv_ms = stack->config.recv_timeout_ms > 0 ? stack->config.recv_timeout_ms : 3000;
+
+    leap_controller_stack_reset(stack);
+    memcpy(stack->peer_mac, peer_mac, 6);
+    stack->peer_bound = 1;
+
+    hello_len = leap_disc_controller_build_hello(
+        hello_payload,
+        sizeof(hello_payload));
+    if (hello_len == 0u)
+    {
+        return LEAP_CTRL_STACK_DISC_ERROR;
+    }
+
+    status = leap_ctrl_stack_send(
+        stack,
+        io,
+        peer_mac,
+        LEAP_FLAG_ACK_REQUESTED,
+        (uint16_t)LEAP_SERVICE_DISC,
+        LEAP_DISC_HELLO,
+        0u,
+        hello_payload,
+        hello_len);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    status = leap_ctrl_stack_recv_expected_from_peer(
+        stack,
+        io,
+        recv_ms,
+        (uint16_t)LEAP_SERVICE_DISC,
+        LEAP_DISC_HELLO_REPLY,
+        src_mac,
+        &view,
+        rx,
+        sizeof(rx),
+        &rx_len);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    if (leap_disc_controller_on_hello_reply(
+            view.payload,
+            view.payload_length,
+            &hello) != LEAP_DISC_CTRL_OK)
+    {
+        return LEAP_CTRL_STACK_DISC_ERROR;
+    }
+
+    caps_out->identity                = hello.identity;
+    caps_out->default_profile_id      = hello.default_profile_id;
+    caps_out->active_profile_id       = hello.active_profile_id;
+    caps_out->locate_capability_flags = hello.locate_capability_flags;
+
+    status = leap_ctrl_stack_send_read_directory(stack, io);
+    if (status == LEAP_CTRL_STACK_OK)
+    {
+        dir_reply_len = 0u;
+        status = leap_ctrl_stack_recv_expected_from_peer(
+            stack,
+            io,
+            recv_ms,
+            (uint16_t)LEAP_SERVICE_DIR,
+            LEAP_DIR_READ_DIRECTORY_REPLY,
+            src_mac,
+            &view,
+            rx,
+            sizeof(rx),
+            &rx_len);
+        if (status == LEAP_CTRL_STACK_OK &&
+            view.payload != NULL &&
+            view.payload_length >= sizeof(LeapReadDirectoryReply))
+        {
+            if (leap_dir_controller_parse_directory_tlvs(
+                    view.payload + sizeof(LeapReadDirectoryReply),
+                    view.payload_length - sizeof(LeapReadDirectoryReply),
+                    caps_out) == LEAP_DIR_CTRL_OK &&
+                caps_out->endpoint_count > 0u)
+            {
+                leap_dir_controller_capabilities_finalize(caps_out);
+                return LEAP_CTRL_STACK_OK;
+            }
+        }
+    }
+
+    profile_id = hello.active_profile_id;
+    if (profile_id == 0u)
+    {
+        profile_id = hello.default_profile_id;
+    }
+
+    if (profile_id != 0u &&
+        leap_ctrl_stack_fetch_profile_object(stack, io, caps_out) ==
+            LEAP_CTRL_STACK_OK &&
+        caps_out->endpoint_count > 0u)
+    {
+        return LEAP_CTRL_STACK_OK;
+    }
+
+    if (hello.current_state == (uint16_t)LEAP_STATE_INIT ||
+        hello.current_state == (uint16_t)LEAP_STATE_CONFIGURED)
+    {
+        if (profile_id != 0u &&
+            leap_controller_stack_fetch_profile_reply(
+                stack,
+                io,
+                peer_mac,
+                profile_id,
+                dir_reply,
+                sizeof(dir_reply),
+                &dir_reply_len) == LEAP_CTRL_STACK_OK &&
+            leap_dir_controller_on_profile_reply_full(
+                dir_reply,
+                dir_reply_len,
+                caps_out) == LEAP_DIR_CTRL_OK &&
+            caps_out->endpoint_count > 0u)
+        {
+            leap_dir_controller_capabilities_finalize(caps_out);
+            return LEAP_CTRL_STACK_OK;
+        }
+    }
+
+    return LEAP_CTRL_STACK_DIR_ERROR;
+}
+
+LeapControllerStackStatus leap_controller_stack_fetch_profile_reply(
+    LeapControllerStack*          stack,
+    const LeapControllerStackIo*  io,
+    const uint8_t*                peer_mac,
+    uint32_t                      profile_id,
+    uint8_t*                      reply_payload,
+    size_t                        reply_capacity,
+    size_t*                       reply_length_out)
+{
+    uint8_t                   src_mac[6];
+    uint8_t                   rx[LEAP_CTRL_STACK_RX_BUF];
+    size_t                    rx_length = 0u;
+    LeapFrameView             view;
+    LeapControllerStackStatus status;
+
+    if (stack == NULL || io == NULL || peer_mac == NULL ||
+        reply_payload == NULL || reply_length_out == NULL || profile_id == 0u)
+    {
+        return LEAP_CTRL_STACK_INVALID_ARG;
+    }
+
+    leap_controller_stack_reset(stack);
+    memcpy(stack->peer_mac, peer_mac, 6);
+    stack->peer_bound = 1;
+    stack->config.default_profile_id = profile_id;
+
+    status = leap_ctrl_stack_send_select_profile(stack, io, NULL);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    status = leap_ctrl_stack_recv_expected_from_peer(
+        stack,
+        io,
+        stack->config.recv_timeout_ms > 0 ? stack->config.recv_timeout_ms : 2000,
+        (uint16_t)LEAP_SERVICE_DIR,
+        LEAP_DIR_PROFILE_REPLY,
+        src_mac,
+        &view,
+        rx,
+        sizeof(rx),
+        &rx_length);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        return status;
+    }
+
+    if (view.payload == NULL || view.payload_length == 0u ||
+        view.payload_length > reply_capacity)
+    {
+        return LEAP_CTRL_STACK_DIR_ERROR;
+    }
+
+    memcpy(reply_payload, view.payload, view.payload_length);
+    *reply_length_out = view.payload_length;
+    return LEAP_CTRL_STACK_OK;
 }
 
 void leap_controller_stack_log_diag(

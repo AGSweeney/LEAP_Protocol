@@ -46,7 +46,7 @@ QColor stateColor(uint16_t state) {
 }
 
 QString platformName(uint32_t productCode) {
-    if (productCode == 0x0618C618u) {
+    if (productCode == 0x0618C618u || productCode == 0x0868A016u) {
         return QStringLiteral("ESP32");
     }
     return QStringLiteral("—");
@@ -55,6 +55,9 @@ QString platformName(uint32_t productCode) {
 QString productName(uint32_t productCode) {
     if (productCode == 0x0618C618u) {
         return QStringLiteral("GL-C-618WL");
+    }
+    if (productCode == 0x0868A016u) {
+        return QStringLiteral("KC868-A16");
     }
     return QStringLiteral("0x%1").arg(productCode, 8, 16, QChar('0'));
 }
@@ -96,7 +99,7 @@ QString stateWithLastSeen(const QString& state, qint64 seenEpochMs) {
 
 QString vendorName(uint16_t vendorId, uint32_t productCode) {
     if (vendorId == 0u) {
-        if (productCode == 0x0618C618u) {
+        if (productCode == 0x0618C618u || productCode == 0x0868A016u) {
             return QStringLiteral("AGS");
         }
         return QStringLiteral("—");

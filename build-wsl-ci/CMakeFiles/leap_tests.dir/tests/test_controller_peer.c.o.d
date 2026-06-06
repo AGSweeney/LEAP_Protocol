@@ -36,17 +36,18 @@ CMakeFiles/leap_tests.dir/tests/test_controller_peer.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
  /mnt/d/LEAP_Protocol/tests/leap_test_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_peer.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_stack.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_dir_controller.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_controller.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_controller.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_pd_common.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_dir_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_disc_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_mgmt_device.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_frame.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_protocol.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_peer.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_stack.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_dir_controller.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_dir_controller_capabilities.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_pd_common.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_dir_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_disc_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_mgmt_device.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_mgmt_controller.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_pd_controller.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_sequence.h \
  /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

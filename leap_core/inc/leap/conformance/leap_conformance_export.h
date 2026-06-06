@@ -23,6 +23,7 @@ typedef struct LeapConformanceExportMeta
     const char* nic_name;
     const char* tool_version;
     unsigned    cyclic_seconds;
+    unsigned    cyclic_period_ms;  /* 0 = freerun */
     const char* device_mac;
     const char* device_platform;
     const char* device_product;

@@ -475,10 +475,38 @@ CMakeFiles/leap_tests.dir/tests/test_util.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_util.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_util.c -o CMakeFiles/leap_tests.dir/tests/test_util.c.s
 
+CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o: CMakeFiles/leap_tests.dir/flags.make
+CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o: /mnt/d/LEAP_Protocol/tests/test_negative_frames.c
+CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_30) "Building C object CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o -MF CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o -c /mnt/d/LEAP_Protocol/tests/test_negative_frames.c
+
+CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/tests/test_negative_frames.c > CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.i
+
+CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_negative_frames.c -o CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.s
+
+CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o: CMakeFiles/leap_tests.dir/flags.make
+CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o: /mnt/d/LEAP_Protocol/tests/test_conformance_engine.c
+CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_31) "Building C object CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o -MF CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o.d -o CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o -c /mnt/d/LEAP_Protocol/tests/test_conformance_engine.c
+
+CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /mnt/d/LEAP_Protocol/tests/test_conformance_engine.c > CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.i
+
+CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /mnt/d/LEAP_Protocol/tests/test_conformance_engine.c -o CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.s
+
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: CMakeFiles/leap_tests.dir/flags.make
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: /mnt/d/LEAP_Protocol/tests/leap_test_frame.c
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o: CMakeFiles/leap_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_30) "Building C object CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_32) "Building C object CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o -MF CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o.d -o CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o -c /mnt/d/LEAP_Protocol/tests/leap_test_frame.c
 
 CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.i: cmake_force
@@ -520,6 +548,8 @@ leap_tests_OBJECTS = \
 "CMakeFiles/leap_tests.dir/tests/test_win_time.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_log.c.o" \
 "CMakeFiles/leap_tests.dir/tests/test_util.c.o" \
+"CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o" \
+"CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o" \
 "CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o"
 
 # External object files for target leap_tests
@@ -554,11 +584,13 @@ leap_tests: CMakeFiles/leap_tests.dir/tests/test_raw_linux_stats.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_win_time.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_log.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/test_util.c.o
+leap_tests: CMakeFiles/leap_tests.dir/tests/test_negative_frames.c.o
+leap_tests: CMakeFiles/leap_tests.dir/tests/test_conformance_engine.c.o
 leap_tests: CMakeFiles/leap_tests.dir/tests/leap_test_frame.c.o
 leap_tests: CMakeFiles/leap_tests.dir/build.make
-leap_tests: libleap_core.a
+leap_tests: leap_core/libleap_core.a
 leap_tests: CMakeFiles/leap_tests.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_31) "Linking C executable leap_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_33) "Linking C executable leap_tests"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/leap_tests.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

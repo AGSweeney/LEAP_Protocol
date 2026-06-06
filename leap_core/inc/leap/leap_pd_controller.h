@@ -67,7 +67,7 @@ typedef struct LeapPdControllerStats
 
 typedef struct LeapPdControllerConfig
 {
-    unsigned         cycle_period_ms;
+    unsigned         cycle_period_ms; /* 0 = no inter-cycle delay (freerun) */
     unsigned         stats_log_interval;
     int              use_exchange;
     uint32_t         profile_id;

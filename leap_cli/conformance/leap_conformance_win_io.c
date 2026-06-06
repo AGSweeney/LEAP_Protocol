@@ -10,8 +10,11 @@
 #include "../win_l2/leap_win_common.h"
 #include "../win_smoke/leap_win_io.h"
 
+#include "leap/conformance/leap_conformance_capabilities.h"
 #include "leap/conformance/leap_conformance_raw_io.h"
 #include "leap/leap_controller_peer.h"
+#include "leap/leap_dir_controller.h"
+#include "leap/leap_dir_controller_capabilities.h"
 #include "leap/leap_controller_stack.h"
 #include "leap/leap_diag_controller.h"
 #include "leap/leap_disc_controller.h"
@@ -128,9 +131,10 @@ void leap_conformance_win_reset_latency_trend(LeapConformanceWinContext* ctx)
     leap_conf_win_reset_latency_trend(ctx);
 }
 
-static int leap_conf_win_wait_disc_reply(
+static int leap_conf_win_wait_service_reply(
     LeapConformanceWinContext* ctx,
     const uint8_t*             peer_mac,
+    uint16_t                   service_id,
     uint16_t                   expect_type,
     uint8_t*                   reply,
     size_t                     reply_cap,
@@ -189,7 +193,7 @@ static int leap_conf_win_wait_disc_reply(
             continue;
         }
 
-        if (view.header.service_id != (uint16_t)LEAP_SERVICE_DISC ||
+        if (view.header.service_id != service_id ||
             view.header.message_type != expect_type)
         {
             continue;
@@ -208,6 +212,26 @@ static int leap_conf_win_wait_disc_reply(
         *reply_len = view.payload_length;
         return 0;
     }
+}
+
+static int leap_conf_win_wait_disc_reply(
+    LeapConformanceWinContext* ctx,
+    const uint8_t*             peer_mac,
+    uint16_t                   expect_type,
+    uint8_t*                   reply,
+    size_t                     reply_cap,
+    size_t*                    reply_len,
+    int                        timeout_ms)
+{
+    return leap_conf_win_wait_service_reply(
+        ctx,
+        peer_mac,
+        (uint16_t)LEAP_SERVICE_DISC,
+        expect_type,
+        reply,
+        reply_cap,
+        reply_len,
+        timeout_ms);
 }
 
 static void leap_conf_win_release_before_disc(
@@ -724,13 +748,20 @@ static int leap_conf_win_cyclic(
         return -1;
     }
 
-    ctx->stack.config.pd.cycle_period_ms     = cyclic_ms > 0u ? cyclic_ms : 100u;
-    ctx->stack.config.pd.use_exchange        = exchange;
-    ctx->stack.config.pd.stats_log_interval  = 5u;
-
     if (leap_conf_win_bootstrap(ctx, outputs, &op) != 0 || !op)
     {
         return -1;
+    }
+
+    {
+        unsigned period = cyclic_ms;
+
+        ctx->stack.config.pd.cycle_period_ms    = period;
+        ctx->stack.config.pd.use_exchange       = exchange;
+        ctx->stack.config.pd.stats_log_interval = 5u;
+        ctx->stack.pd.config.cycle_period_ms    = period;
+        ctx->stack.pd.config.use_exchange         = exchange;
+        ctx->stack.pd.config.stats_log_interval = 5u;
     }
 
     ctx->cancel_flag = 0;
@@ -779,11 +810,14 @@ static int leap_conf_win_cyclic(
 static int leap_conf_win_send_identify_and_wait(
     LeapConformanceWinContext* ctx,
     const uint8_t*             peer_mac,
-    LeapIdentifyReply*         reply_out)
+    LeapIdentifyReply*         reply_out,
+    uint8_t*                   payload_out,
+    size_t                     payload_cap,
+    size_t*                    payload_len_out)
 {
     uint8_t         payload[64];
     size_t          payload_length;
-    uint8_t         reply[128];
+    uint8_t         reply[256];
     size_t          reply_length = 0u;
     LeapIdentifyReply identify_reply;
 
@@ -832,7 +866,144 @@ static int leap_conf_win_send_identify_and_wait(
         *reply_out = identify_reply;
     }
 
+    if (payload_out != NULL && payload_len_out != NULL)
+    {
+        if (reply_length > payload_cap)
+        {
+            return -1;
+        }
+
+        if (reply_length > 0u)
+        {
+            memcpy(payload_out, reply, reply_length);
+        }
+        *payload_len_out = reply_length;
+    }
+
     return 0;
+}
+
+static int leap_conf_win_probe_capabilities(
+    void*                        user_ctx,
+    const uint8_t*               peer_mac,
+    LeapConformanceDeviceCaps*     caps_out)
+{
+    LeapConformanceWinContext*     ctx = (LeapConformanceWinContext*)user_ctx;
+    uint8_t                        identify_buf[256];
+    size_t                         identify_len = 0u;
+    LeapIdentifyReply              identify_reply;
+    LeapDirControllerCapabilities  dir_caps;
+
+    if (ctx == NULL || peer_mac == NULL || caps_out == NULL || !ctx->transport_open)
+    {
+        return -1;
+    }
+
+    leap_conformance_device_caps_init(caps_out);
+    leap_dir_controller_capabilities_init(&dir_caps);
+
+    leap_conf_win_release_before_disc(ctx, peer_mac);
+
+    if (leap_conf_win_send_identify_and_wait(
+            ctx,
+            peer_mac,
+            &identify_reply,
+            identify_buf,
+            sizeof(identify_buf),
+            &identify_len) != 0)
+    {
+        return -1;
+    }
+
+    {
+        LeapControllerStackConfig stack_config;
+
+        leap_controller_stack_release(&ctx->stack, &ctx->raw_io.stack_io);
+        memset(&ctx->stack, 0, sizeof(ctx->stack));
+        memset(&stack_config, 0, sizeof(stack_config));
+        memcpy(stack_config.mgmt.controller_mac, ctx->transport.local_mac, 6);
+        stack_config.recv_timeout_ms = 3000;
+        leap_controller_stack_init(&ctx->stack, &stack_config);
+
+        (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+
+        {
+            LeapControllerStackStatus probe_status;
+            uint32_t                  profile_id;
+
+            probe_status = leap_controller_stack_probe_directory(
+                &ctx->stack,
+                &ctx->raw_io.stack_io,
+                peer_mac,
+                &dir_caps);
+
+            profile_id = identify_reply.active_profile_id;
+            if (profile_id == 0u)
+            {
+                profile_id = identify_reply.default_profile_id;
+            }
+
+            if (probe_status != LEAP_CTRL_STACK_OK ||
+                dir_caps.endpoint_count == 0u ||
+                !dir_caps.has_digital_outputs ||
+                dir_caps.output_bit_count == 0u)
+            {
+                char ep_list[96];
+                size_t ep_pos = 0u;
+                ep_list[0] = '\0';
+                for (size_t k = 0u;
+                     k < dir_caps.endpoint_count && ep_pos < sizeof(ep_list) - 8u;
+                     k++)
+                {
+                    if (k > 0u)
+                    {
+                        ep_pos += (size_t)snprintf(ep_list + ep_pos,
+                                                   sizeof(ep_list) - ep_pos,
+                                                   ",");
+                    }
+                    ep_pos += (size_t)snprintf(ep_list + ep_pos,
+                                               sizeof(ep_list) - ep_pos,
+                                               "0x%04X",
+                                               (unsigned)dir_caps.endpoints[k].endpoint_id);
+                }
+                (void)snprintf(
+                    caps_out->probe_detail,
+                    sizeof(caps_out->probe_detail),
+                    "LEAP-DIR failed (state=0x%04X profile=0x%08X status=%d "
+                    "count=%u has_out=%d bit=%u eps=%s); "
+                    "device must reply to READ_DIRECTORY or READ_OBJECT with "
+                    "endpoint descriptors",
+                    identify_reply.current_state,
+                    profile_id,
+                    (int)probe_status,
+                    (unsigned)dir_caps.endpoint_count,
+                    dir_caps.has_digital_outputs ? 1 : 0,
+                    (unsigned)dir_caps.output_bit_count,
+                    ep_list[0] ? ep_list : "none");
+                (void)leap_controller_stack_release(
+                    &ctx->stack, &ctx->raw_io.stack_io);
+                leap_controller_stack_reset(&ctx->stack);
+                return -1;
+            }
+        }
+
+        if (dir_caps.locate_capability_flags == 0u)
+        {
+            dir_caps.locate_capability_flags =
+                identify_reply.locate_capability_flags;
+        }
+
+        (void)leap_controller_stack_release(&ctx->stack, &ctx->raw_io.stack_io);
+        leap_controller_stack_reset(&ctx->stack);
+        leap_conformance_device_caps_from_dir(&dir_caps, caps_out);
+
+        if (!caps_out->valid || caps_out->pd_mask_count == 0u)
+        {
+            return -1;
+        }
+
+        return 0;
+    }
 }
 
 int leap_conformance_win_query_identify(
@@ -845,7 +1016,8 @@ int leap_conformance_win_query_identify(
         return -1;
     }
 
-    return leap_conf_win_send_identify_and_wait(ctx, peer_mac, reply_out);
+    return leap_conf_win_send_identify_and_wait(
+        ctx, peer_mac, reply_out, NULL, 0u, NULL);
 }
 
 static int leap_conf_win_identify(
@@ -864,7 +1036,8 @@ static int leap_conf_win_identify(
     *ok_out = 0;
     leap_conf_win_release_before_disc(ctx, peer_mac);
 
-    if (leap_conf_win_send_identify_and_wait(ctx, peer_mac, &identify_reply) == 0)
+    if (leap_conf_win_send_identify_and_wait(
+            ctx, peer_mac, &identify_reply, NULL, 0u, NULL) == 0)
     {
         *ok_out = 1;
         return 0;
@@ -1322,6 +1495,7 @@ LeapConformanceWinContext* leap_conformance_win_create(void)
     ctx->io.close_transport  = leap_conf_win_close;
     ctx->io.discover_peers   = leap_conf_win_discover;
     ctx->io.find_peer_mac    = leap_conf_win_find_peer;
+    ctx->io.probe_capabilities = leap_conf_win_probe_capabilities;
     ctx->io.bootstrap        = leap_conf_win_bootstrap;
     ctx->io.pd_write         = leap_conf_win_pd_write;
     ctx->io.read_diag        = leap_conf_win_read_diag;

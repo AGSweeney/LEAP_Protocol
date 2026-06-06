@@ -140,7 +140,7 @@ leap_linux_device: CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap
 leap_linux_device: CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_io.c.o
 leap_linux_device: CMakeFiles/leap_linux_device.dir/examples/linux_loopback/leap_linux_stats.c.o
 leap_linux_device: CMakeFiles/leap_linux_device.dir/build.make
-leap_linux_device: libleap_core.a
+leap_linux_device: leap_core/libleap_core.a
 leap_linux_device: CMakeFiles/leap_linux_device.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/LEAP_Protocol/build-wsl-ci/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking C executable leap_linux_device"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/leap_linux_device.dir/link.txt --verbose=$(VERBOSE)

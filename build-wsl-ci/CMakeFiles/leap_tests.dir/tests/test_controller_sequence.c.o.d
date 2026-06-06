@@ -35,6 +35,6 @@ CMakeFiles/leap_tests.dir/tests/test_controller_sequence.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_controller_sequence.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_controller_sequence.h \
  /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

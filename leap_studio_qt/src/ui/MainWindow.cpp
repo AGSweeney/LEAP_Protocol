@@ -44,6 +44,7 @@ extern "C" {
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTimer>
+#include <QSpinBox>
 #include <QVBoxLayout>
 
 #include <cstring>
@@ -232,7 +233,9 @@ void MainWindow::buildConnectionTab(QWidget* page) {
     adapterCombo_->setObjectName(QStringLiteral("AdapterCombo"));
     adapterCombo_->setMinimumWidth(480);
     leap::studio::theme::ThemeManager::styleComboBoxPopup(adapterCombo_);
-    peerMacEdit_ = new QLineEdit(QStringLiteral("94:51:dc:21:f0:2f"), formGroup);
+    peerMacEdit_ = new QLineEdit(formGroup);
+    peerMacEdit_->setPlaceholderText(
+        QStringLiteral("Set from Discovery tab after scan (column MAC)"));
     form->addRow(QStringLiteral("Npcap adapter"), adapterCombo_);
     form->addRow(QStringLiteral("Expected peer MAC"), peerMacEdit_);
     layout->addWidget(formGroup);
@@ -320,8 +323,9 @@ void MainWindow::buildConformanceTab(QWidget* page) {
     auto* stepsGroup = new QGroupBox(QStringLiteral("Step filter"), page);
     auto* stepsLayout = new QHBoxLayout(stepsGroup);
     for (const QString& step :
-         {QStringLiteral("discover"), QStringLiteral("bootstrap_pd"),
-          QStringLiteral("diag"), QStringLiteral("cyclic_write"),
+         {QStringLiteral("discover"), QStringLiteral("probe_caps"),
+          QStringLiteral("bootstrap_pd"), QStringLiteral("diag"),
+          QStringLiteral("cyclic_write"),
           QStringLiteral("cyclic_exch"), QStringLiteral("pd_masks"),
           QStringLiteral("identify"), QStringLiteral("locate")}) {
         auto* cb = new QCheckBox(step, stepsGroup);
@@ -331,6 +335,24 @@ void MainWindow::buildConformanceTab(QWidget* page) {
     }
     stepsLayout->addStretch();
     layout->addWidget(stepsGroup);
+
+    // Cyclic PD period control (exposed so user can change the target interval
+    // used for the "cyclic_write" and "cyclic_exch" steps, instead of the
+    // previous hard-coded 100 ms).
+    auto* cyclicRow = new QHBoxLayout();
+    auto* cyclicLabel = new QLabel(QStringLiteral("PD cycle period (ms):"), page);
+    cyclePeriodSpin_ = new QSpinBox(page);
+    cyclePeriodSpin_->setRange(0, 2000);
+    cyclePeriodSpin_->setSingleStep(10);
+    cyclePeriodSpin_->setSpecialValueText(QStringLiteral("freerun"));
+    cyclePeriodSpin_->setValue(100);
+    cyclePeriodSpin_->setSuffix(QStringLiteral(" ms"));
+    cyclePeriodSpin_->setToolTip(
+        QStringLiteral("Target PD cycle period. 0 = freerun (no delay between cycles)."));
+    cyclicRow->addWidget(cyclicLabel);
+    cyclicRow->addWidget(cyclePeriodSpin_);
+    cyclicRow->addStretch();
+    layout->addLayout(cyclicRow);
 
     resultsTable_ = new QTableWidget(0, 4, page);
     resultsTable_->setHorizontalHeaderLabels(
@@ -514,12 +536,13 @@ void MainWindow::runAutoBenchDemo(unsigned cyclicSeconds) {
         [this, cyclicSeconds]() {
             setStatusText(QStringLiteral("Auto-bench: running conformance — watch Diagnostics"));
             adapter_->runScenario(
-                QStringLiteral("glc618wl_bench_v1"),
+                selectedScenarioId(),
                 {},
                 selectedAdapterPath(),
                 selectedAdapterLabel(),
                 peerMacEdit_->text(),
-                cyclicSeconds);
+                cyclicSeconds,
+                100u);
         });
 }
 
@@ -531,9 +554,10 @@ void MainWindow::onRunAll() {
         diagnosticsLatencyChart_->clearTrend();
     }
     resetDiagnosticsTrafficRates();
-    adapter_->runScenario(QStringLiteral("glc618wl_bench_v1"), {},
+    unsigned cycPer = cyclePeriodSpin_ ? cyclePeriodSpin_->value() : 100u;
+    adapter_->runScenario(selectedScenarioId(), {},
                           selectedAdapterPath(), selectedAdapterLabel(),
-                          peerMacEdit_->text(), 2u);
+                          peerMacEdit_->text(), 2u, cycPer);
 }
 
 void MainWindow::onRunSelected() {
@@ -546,9 +570,10 @@ void MainWindow::onRunSelected() {
     showTab(2);
     runProgress_->setValue(0);
     resultsTable_->setRowCount(0);
-    adapter_->runScenario(QStringLiteral("glc618wl_bench_v1"), steps,
+    unsigned cycPer = cyclePeriodSpin_ ? cyclePeriodSpin_->value() : 100u;
+    adapter_->runScenario(selectedScenarioId(), steps,
                           selectedAdapterPath(), selectedAdapterLabel(),
-                          peerMacEdit_->text(), 2u);
+                          peerMacEdit_->text(), 2u, cycPer);
 }
 
 void MainWindow::onStop() { adapter_->cancelRun(); }
@@ -701,6 +726,14 @@ void MainWindow::onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers) {
 
     lastDiscoveryPeers_ = peers;
     populateDiscoveryTable(peers);
+
+    if (peers.size() == 1) {
+        const DiscoveryPeerRow& peer = peers.first();
+        if (peerMacEdit_ != nullptr) {
+            peerMacEdit_->setText(peer.mac);
+        }
+    }
+
     setStatusText(QStringLiteral("Discovery: %1 peer(s)").arg(peers.size()));
 }
 
@@ -797,6 +830,10 @@ QString MainWindow::selectedAdapterLabel() const {
     const QString text = adapterCombo_->currentText();
     const int sep = text.indexOf(QStringLiteral(" — "));
     return sep > 0 ? text.left(sep) : text;
+}
+
+QString MainWindow::selectedScenarioId() const {
+    return QString();
 }
 
 void MainWindow::onListAdapters() {

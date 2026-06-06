@@ -33,6 +33,7 @@ static DiscoveryPeerRow rowFromIdentify(const uint8_t mac[6],
                                         const LeapIdentifyReply& reply) {
     DiscoveryPeerRow row;
     row.mac = formatPeerMac(mac);
+    row.productCode = reply.identity.product_code;
     row.platform =
         leap::studio::discovery::platformName(reply.identity.product_code);
     row.product = leap::studio::discovery::productName(reply.identity.product_code);
@@ -166,11 +167,12 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
                                      const QString& adapterPath,
                                      const QString& adapterLabel,
                                      const QString& peerMac,
-                                     unsigned cyclicSeconds) {
+                                     unsigned cyclicSeconds,
+                                     unsigned cyclicPeriodMs) {
     QMetaObject::invokeMethod(
         worker_,
         [this, scenarioId, stepFilter, adapterPath, adapterLabel, peerMac,
-         cyclicSeconds]() {
+         cyclicSeconds, cyclicPeriodMs]() {
             LeapConformanceRunConfig config{};
             LeapConformanceRunResult result{};
             std::vector<QByteArray> configStorage;
@@ -188,6 +190,7 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
                 QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
             lastNicName_ = adapterLabel;
             lastCyclicSeconds_ = cyclicSeconds;
+            lastCyclicPeriodMs_ = cyclicPeriodMs;
 
             if (!peerMac.isEmpty() &&
                 leap_controller_peer_parse_mac(storeUtf8(peerMac), mac)) {
@@ -205,6 +208,7 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
             config.scenario_id = storeUtf8(scenarioId);
             config.adapter = path.isEmpty() ? nullptr : storeUtf8(path);
             config.cyclic_seconds = cyclicSeconds;
+            config.cyclic_period_ms = cyclicPeriodMs;
             config.step_filter = filterPtrs.empty() ? nullptr : filterPtrs.data();
             config.step_filter_count = filterPtrs.size();
             config.progress_fn = studio_progress;
@@ -286,6 +290,7 @@ void ConformanceAdapter::exportReport(const QString& path,
             meta.nic_name       = nicUtf.isEmpty() ? nullptr : nicUtf.constData();
             meta.tool_version   = toolUtf.constData();
             meta.cyclic_seconds = lastCyclicSeconds_;
+            meta.cyclic_period_ms = lastCyclicPeriodMs_;
             if (hasDevice) {
                 meta.device_mac      = deviceMacUtf.constData();
                 meta.device_platform = devicePlatformUtf.isEmpty()

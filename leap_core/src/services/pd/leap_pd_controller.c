@@ -430,6 +430,11 @@ static uint32_t leap_pd_ctrl_max_frame_age_us(
         return ctx->config.max_frame_age_us;
     }
 
+    if (ctx->config.cycle_period_ms == 0u)
+    {
+        return LEAP_PD_CTRL_DEFAULT_PERIOD_MS * 2000u;
+    }
+
     return ctx->config.cycle_period_ms * 2000u;
 }
 
@@ -668,11 +673,6 @@ void leap_pd_controller_init(
     if (config != NULL)
     {
         ctx->config = *config;
-    }
-
-    if (ctx->config.cycle_period_ms == 0u)
-    {
-        ctx->config.cycle_period_ms = LEAP_PD_CTRL_DEFAULT_PERIOD_MS;
     }
 
     if (ctx->config.stats_log_interval == 0u)

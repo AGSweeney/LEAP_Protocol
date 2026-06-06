@@ -37,6 +37,7 @@ CMakeFiles/leap_tests.dir/tests/test_frame_roundtrip.c.o: \
  /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
  /mnt/d/LEAP_Protocol/tests/test_util.h \
  /mnt/d/LEAP_Protocol/tests/leap_test_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_frame.h \
- /mnt/d/LEAP_Protocol/inc/leap/leap_protocol.h /usr/include/string.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_frame.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_protocol.h \
+ /usr/include/string.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h

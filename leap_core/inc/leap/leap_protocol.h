@@ -983,7 +983,7 @@ LEAP_STATIC_ASSERT(sizeof(LeapProfileDigital16x16) == 8, "LeapProfileDigital16x1
 /* -------------------------------------------------------------------------- */
 
 #define LEAP_TLV_PADDED_LENGTH(length_u16) \
-    ((uint16_t)((((uint16_t)(length_u16)) + 3u) & (uint16_t)~3u))
+    ((uint16_t)((((uint16_t)(length_u16)) + 3u) & 0xFFFCu))
 
 #define LEAP_TLV_TOTAL_LENGTH(length_u16) \
     ((uint16_t)(sizeof(LeapTlvHeader) + LEAP_TLV_PADDED_LENGTH(length_u16)))

@@ -33,4 +33,6 @@ CMakeFiles/leap_tests.dir/tests/test_main.c.o: \
  /usr/include/x86_64-linux-gnu/bits/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
- /usr/include/x86_64-linux-gnu/bits/stdint-least.h
+ /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+ /mnt/d/LEAP_Protocol/leap_core/inc/leap/leap_build_info.h \
+ /mnt/d/LEAP_Protocol/build-wsl-ci/generated/leap_build_info_gen.h

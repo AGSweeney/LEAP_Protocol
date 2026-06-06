@@ -8,6 +8,7 @@
 #include "test_harness.h"
 #include "leap_test_frame.h"
 
+#include "leap/leap_device_stack.h"
 #include "leap/leap_diag_controller.h"
 #include "leap/leap_diag_device.h"
 #include "leap/leap_mgmt_device.h"
@@ -212,10 +213,56 @@ TEST(test_diag_rejects_invalid_session_in_op)
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_INVALID_STATE);
 }
 
+TEST(test_diag_tx_and_timing_counters)
+{
+    LeapDiagDeviceContext diag;
+
+    leap_diag_device_init(&diag, NULL);
+
+    leap_diag_device_on_frame_transmitted(&diag, 150u);
+    ASSERT_TRUE(diag.tx_frames_accepted == 1u);
+    ASSERT_TRUE(diag.last_reply_latency_us == 150u);
+    ASSERT_TRUE(diag.max_reply_latency_us == 150u);
+
+    leap_diag_device_on_frame_transmitted(&diag, 500u);
+    ASSERT_TRUE(diag.tx_frames_accepted == 2u);
+    ASSERT_TRUE(diag.max_reply_latency_us == 500u);
+
+    leap_diag_device_on_pd_cycle_time(&diag, 1200u);
+    leap_diag_device_on_pd_cycle_time(&diag, 900u);
+    ASSERT_TRUE(diag.min_cycle_time_us == 900u);
+    ASSERT_TRUE(diag.max_cycle_time_us == 1200u);
+    ASSERT_TRUE(diag.last_cycle_time_us == 900u);
+
+    leap_diag_device_on_frame_tx_dropped(&diag);
+    ASSERT_TRUE(diag.tx_frames_dropped == 1u);
+}
+
+TEST(test_device_stack_notify_tx_updates_diag)
+{
+    LeapDeviceStack stack;
+
+    leap_device_stack_init_full(&stack, NULL);
+    stack.last_frame_rx_us      = 1000u;
+    stack.last_frame_service_id = (uint16_t)LEAP_SERVICE_PD;
+
+    leap_device_stack_notify_tx_ok(&stack, 2500u);
+    ASSERT_TRUE(stack.diag.tx_frames_accepted == 1u);
+    ASSERT_TRUE(stack.diag.last_reply_latency_us == 1500u);
+    ASSERT_TRUE(stack.diag.last_cycle_time_us == 1500u);
+    ASSERT_TRUE(stack.diag.min_cycle_time_us == 1500u);
+    ASSERT_TRUE(stack.diag.max_cycle_time_us == 1500u);
+
+    leap_device_stack_notify_tx_drop(&stack);
+    ASSERT_TRUE(stack.diag.tx_frames_dropped == 1u);
+}
+
 void leap_run_diag_device_tests(void)
 {
     printf("diag device\n");
     RUN_TEST(test_diag_read_counters_in_init);
     RUN_TEST(test_diag_read_events_after_trace_mark);
     RUN_TEST(test_diag_rejects_invalid_session_in_op);
+    RUN_TEST(test_diag_tx_and_timing_counters);
+    RUN_TEST(test_device_stack_notify_tx_updates_diag);
 }

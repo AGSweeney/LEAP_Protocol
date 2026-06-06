@@ -61,7 +61,7 @@ static void leap_conf_print_usage(const char* prog)
         "\n"
         "  --list-adapters          List Npcap adapters\n"
         "  --list-scenarios         List built-in scenarios\n"
-        "  --scenario ID            Scenario (default glc618wl_bench_v1)\n"
+        "  --scenario ID            Optional legacy plan id (default: device DIR)\n"
         "  --steps a,b,c            Run subset of scenario step ids\n"
         "  --peer-mac MAC           Expected peer MAC\n"
         "  --cyclic-seconds N       Cyclic PD duration (default 2)\n"
@@ -88,7 +88,7 @@ static void leap_conf_parse_args(
     }
 
     memset(options, 0, sizeof(*options));
-    options->scenario          = "glc618wl_bench_v1";
+    options->scenario          = NULL;
     options->cyclic_seconds    = 2u;
     options->bootstrap_retries = 3u;
     options->retry_delay_ms    = 1000u;
@@ -313,6 +313,7 @@ int main(int argc, char** argv)
         memcpy(run_config.peer_mac, peer_mac, 6);
     }
     run_config.cyclic_seconds      = options.cyclic_seconds;
+    run_config.cyclic_period_ms    = 100u;
     run_config.bootstrap_retries   = options.bootstrap_retries;
     run_config.retry_delay_ms      = options.retry_delay_ms;
     run_config.capture_pcap_path   = options.capture_pcap;

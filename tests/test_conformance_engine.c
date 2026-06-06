@@ -8,7 +8,9 @@
 #include "test_harness.h"
 
 #include "leap/conformance/leap_conformance.h"
+#include "leap/conformance/leap_conformance_capabilities.h"
 #include "leap/conformance/leap_conformance_scenario.h"
+#include "leap/leap_dir_controller_capabilities.h"
 
 #include <string.h>
 
@@ -75,6 +77,50 @@ static int mock_find_peer(void* user_ctx, const uint8_t* expected_mac, int* foun
 
     *found_out = ctx->peer_found;
     return 0;
+}
+
+static int mock_probe_capabilities(
+    void*                    user_ctx,
+    const uint8_t*           peer_mac,
+    LeapConformanceDeviceCaps* caps_out)
+{
+    LeapDirControllerCapabilities dir_caps;
+    LeapEndpointDescriptor*       out_ep;
+    LeapEndpointDescriptor*       in_ep;
+
+    (void)user_ctx;
+    (void)peer_mac;
+
+    if (caps_out == NULL)
+    {
+        return -1;
+    }
+
+    leap_dir_controller_capabilities_init(&dir_caps);
+    dir_caps.identity.product_code   = 0x0868A016u;
+    dir_caps.default_profile_id      = LEAP_PROFILE_DIGITAL_IO_16X16;
+    dir_caps.active_profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
+    dir_caps.locate_capability_flags = LEAP_LOCATE_FLAG_LED;
+    dir_caps.profile.profile_id      = LEAP_PROFILE_DIGITAL_IO_16X16;
+    dir_caps.profile.endpoint_count  = 2u;
+    dir_caps.has_profile_descriptor  = 1;
+
+    out_ep = &dir_caps.endpoints[0];
+    out_ep->endpoint_id = LEAP_ENDPOINT_DIGITAL_OUTPUTS;
+    out_ep->direction   = (uint8_t)LEAP_ENDPOINT_DIR_CONTROLLER_TO_DEVICE;
+    out_ep->byte_length = 2u;
+    out_ep->profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+
+    in_ep = &dir_caps.endpoints[1];
+    in_ep->endpoint_id = LEAP_ENDPOINT_DIGITAL_INPUTS;
+    in_ep->direction   = (uint8_t)LEAP_ENDPOINT_DIR_DEVICE_TO_CONTROLLER;
+    in_ep->byte_length = 2u;
+    in_ep->profile_id  = LEAP_PROFILE_DIGITAL_IO_16X16;
+
+    dir_caps.endpoint_count = 2u;
+    leap_dir_controller_capabilities_finalize(&dir_caps);
+    leap_conformance_device_caps_from_dir(&dir_caps, caps_out);
+    return caps_out->valid ? 0 : -1;
 }
 
 static int mock_bootstrap(void* user_ctx, uint16_t outputs, int* op_out)
@@ -223,6 +269,7 @@ static LeapConformanceIo g_mock_io = {
     mock_close,
     mock_discover,
     mock_find_peer,
+    mock_probe_capabilities,
     mock_bootstrap,
     mock_pd_write,
     mock_read_diag,
@@ -238,10 +285,105 @@ TEST(test_conformance_scenario_lookup)
 {
     const LeapConformanceScenario* scenario;
 
-    scenario = leap_conformance_scenario_by_id("glc618wl_bench_v1");
+    scenario = leap_conformance_scenario_by_id("device_conformance");
     ASSERT_TRUE(scenario != NULL);
-    ASSERT_TRUE(scenario->step_count >= 8u);
-    ASSERT_TRUE(strcmp(scenario->id, "glc618wl_bench_v1") == 0);
+    ASSERT_TRUE(scenario->step_count >= 9u);
+    ASSERT_TRUE(strcmp(scenario->id, "device_conformance") == 0);
+
+    scenario = leap_conformance_scenario_at(0u);
+    ASSERT_TRUE(scenario != NULL);
+
+    ASSERT_TRUE(leap_conformance_scenario_count() >= 1u);
+}
+
+TEST(test_conformance_parse_profile_object)
+{
+    LeapDirControllerCapabilities dir_caps;
+    uint8_t                       object_buf[128];
+    LeapProfileDescriptor*        desc;
+    LeapEndpointDescriptor*       out_ep;
+    LeapEndpointDescriptor*       in_ep;
+    size_t                        object_len;
+
+    memset(object_buf, 0, sizeof(object_buf));
+    desc = (LeapProfileDescriptor*)object_buf;
+    desc->profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
+    desc->endpoint_count   = 2u;
+    desc->profile_revision = 1u;
+
+    out_ep = (LeapEndpointDescriptor*)(object_buf + sizeof(LeapProfileDescriptor));
+    out_ep->endpoint_id = LEAP_ENDPOINT_DIGITAL_OUTPUTS;
+    out_ep->direction   = (uint8_t)LEAP_ENDPOINT_DIR_CONTROLLER_TO_DEVICE;
+    out_ep->byte_length = 2u;
+
+    in_ep = out_ep + 1;
+    in_ep->endpoint_id = LEAP_ENDPOINT_DIGITAL_INPUTS;
+    in_ep->direction   = (uint8_t)LEAP_ENDPOINT_DIR_DEVICE_TO_CONTROLLER;
+    in_ep->byte_length = 2u;
+
+    object_len = sizeof(LeapProfileDescriptor) + (2u * sizeof(LeapEndpointDescriptor));
+
+    leap_dir_controller_capabilities_init(&dir_caps);
+    ASSERT_EQ_INT(
+        leap_dir_controller_parse_profile_object(
+            object_buf, object_len, &dir_caps),
+        LEAP_DIR_CTRL_OK);
+    ASSERT_TRUE(dir_caps.valid);
+    ASSERT_TRUE(dir_caps.endpoint_count == 2u);
+    ASSERT_TRUE(dir_caps.has_digital_outputs);
+    ASSERT_TRUE(dir_caps.has_digital_inputs);
+    ASSERT_EQ_U16(dir_caps.output_bit_count, 16u);
+}
+
+TEST(test_conformance_caps_fallback_from_zeroed_endpoints)
+{
+    LeapDirControllerCapabilities dir_caps;
+
+    leap_dir_controller_capabilities_init(&dir_caps);
+    dir_caps.profile.profile_id     = LEAP_PROFILE_DIGITAL_IO_16X16;
+    dir_caps.active_profile_id      = LEAP_PROFILE_DIGITAL_IO_16X16;
+    dir_caps.has_profile_descriptor = 1;
+    dir_caps.endpoint_count         = 2u;
+    /* leave endpoints[0..1] as zero (id=0, direction=0, byte_length=0) */
+
+    leap_dir_controller_capabilities_finalize(&dir_caps);
+
+    ASSERT_TRUE(dir_caps.valid);
+    ASSERT_TRUE(dir_caps.has_digital_outputs);
+    ASSERT_TRUE(dir_caps.has_digital_inputs);
+    ASSERT_EQ_U16(dir_caps.output_bit_count, 16u);
+    ASSERT_EQ_U16(dir_caps.input_bit_count, 16u);
+    /* pd_map should have been populated via profile fallback too */
+    ASSERT_TRUE(dir_caps.pd_map.valid);
+}
+
+TEST(test_conformance_caps_generate_masks)
+{
+    LeapDirControllerCapabilities dir_caps;
+    LeapConformanceDeviceCaps     caps;
+
+    leap_dir_controller_capabilities_init(&dir_caps);
+    dir_caps.active_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+    dir_caps.profile.profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+    dir_caps.endpoints[0].endpoint_id = LEAP_ENDPOINT_DIGITAL_OUTPUTS;
+    dir_caps.endpoints[0].direction =
+        (uint8_t)LEAP_ENDPOINT_DIR_CONTROLLER_TO_DEVICE;
+    dir_caps.endpoints[0].byte_length = 2u;
+    dir_caps.endpoint_count = 1u;
+    leap_dir_controller_capabilities_finalize(&dir_caps);
+
+    leap_conformance_device_caps_from_dir(&dir_caps, &caps);
+    ASSERT_TRUE(caps.valid);
+    ASSERT_TRUE(caps.pd_mask_count == 16u);
+    ASSERT_TRUE(caps.pd_masks[0].mask == 0x0001u);
+    ASSERT_TRUE(strcmp(caps.pd_masks[0].label, "output ch 1") == 0);
+
+    leap_dir_controller_capabilities_init(&dir_caps);
+    dir_caps.active_profile_id = LEAP_PROFILE_DIGITAL_IO_16X16;
+    leap_dir_controller_capabilities_finalize(&dir_caps);
+    leap_conformance_device_caps_from_dir(&dir_caps, &caps);
+    ASSERT_TRUE(caps.dir.output_bit_count == 0u);
+    ASSERT_TRUE(caps.pd_mask_count == 0u);
 }
 
 TEST(test_conformance_mock_run_pass)
@@ -266,13 +408,14 @@ TEST(test_conformance_mock_run_pass)
     g_mock_io.user_ctx = &mock;
 
     memset(&config, 0, sizeof(config));
-    config.scenario_id   = "glc618wl_bench_v1";
+    config.scenario_id   = NULL;
     config.adapter       = "\\Device\\NPF_mock";
     config.peer_mac_text = "94:51:dc:21:f0:2f";
     config.has_peer_mac  = 1;
     memcpy(config.peer_mac, peer_mac, 6);
-    config.cyclic_seconds = 1u;
-    config.io            = &g_mock_io;
+    config.cyclic_seconds     = 1u;
+    config.cyclic_period_ms   = 100u;
+    config.io                 = &g_mock_io;
 
     memset(&result, 0, sizeof(result));
     status = leap_conformance_run(&config, &result);
@@ -295,7 +438,7 @@ TEST(test_conformance_step_filter)
     g_mock_io.user_ctx  = &mock;
 
     memset(&config, 0, sizeof(config));
-    config.scenario_id       = "glc618wl_bench_v1";
+    config.scenario_id       = NULL;
     config.adapter           = "\\Device\\NPF_mock";
     config.peer_mac_text     = "94:51:dc:21:f0:2f";
     config.has_peer_mac      = 1;
@@ -312,6 +455,7 @@ void leap_run_conformance_engine_tests(void)
 {
     printf("conformance_engine:\n");
     RUN_TEST(test_conformance_scenario_lookup);
+    RUN_TEST(test_conformance_caps_generate_masks);
     RUN_TEST(test_conformance_mock_run_pass);
     RUN_TEST(test_conformance_step_filter);
 }
