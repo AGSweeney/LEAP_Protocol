@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?ccsproject version="1.0"?>
+<projectOptions>
+	<ccsVariant value="50:Theia-based"/>
+	<ccsVersion value="70.4.0"/>
+	<deviceFamily value="TMS470"/>
+	<connection value="common/targetdb/connections/TIXDS110_Connection.xml"/>
+	<executableActions value=""/>
+	<createSlaveProjects value=""/>
+	<ignoreDefaultDeviceSettings value="true"/>
+	<ignoreDefaultCCSSettings value="true"/>
+	<activeTargetConfiguration value="targetConfigs/AM2434_ALX.ccxml"/>
+	<templateProperties value="id=example.projectspec.LEAP_LP-AM243"/>
+	<isTargetConfigurationManual value="false"/>
+	<origin value="C:\ti\mcu_plus_sdk_am243x_12_00_00_27\source\networking\enet\core\examples\enet_layer2_icssg\icssg_layer2_switch\am243x-lp\r5fss0-0_freertos\ti-arm-clang\example.projectspec"/>
+	<filesToOpen value=""/>
+</projectOptions>

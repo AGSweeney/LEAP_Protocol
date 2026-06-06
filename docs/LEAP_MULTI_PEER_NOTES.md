@@ -19,6 +19,7 @@ Status as of May 2026.
 | Foreign-owner skip | `leap_controller_session_hub` | `bootstrap_table` skips peers with another `active_owner_mac` |
 | Linux recv demux | `leap_linux_pd.c` | `wait_exchange_reply` ignores frames from other peer MACs |
 | I/O dirty flag | `LeapPdDeviceIoBinding.outputs_dirty` | Skip redundant output shadow writes |
+| Device perf checklist | [`LEAP_DEVICE_PERFORMANCE.md`](LEAP_DEVICE_PERFORMANCE.md) | Cross-platform M0–M3 latency porting status |
 | PD telemetry | `leap_pd_controller` stats | Latency, jitter, lost frames, reply rejects |
 | Security logging | `leap_log.h` | Timestamped `leap_log_printf`; optional `LEAP_LOG_SECURITY` compile flag |
 | Stack PD entry points | `leap_controller_stack` | `run_cyclic_pd`, `pd_single_write` |

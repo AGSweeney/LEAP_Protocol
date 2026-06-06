@@ -1,1 +1,0 @@
-/usr/bin/cc CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/discover_main.c.o CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_common.c.o CMakeFiles/leap_linux_discover.dir/examples/linux_loopback/leap_linux_controller_io.c.o -o leap_linux_discover  libleap_core.a 

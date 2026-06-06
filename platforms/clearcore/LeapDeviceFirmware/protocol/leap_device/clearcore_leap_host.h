@@ -26,7 +26,8 @@
 
 #include <stdint.h>
 
-
+#include "leap/leap_pd_device.h"
+#include "leap/leap_protocol.h"
 
 struct netif;
 
@@ -34,7 +35,11 @@ struct netif;
 
 #define CLEARCORE_LEAP_HOST_MAX_FRAME 1600u
 
-#define CLEARCORE_LEAP_HOST_RX_DEPTH  4u
+#define CLEARCORE_LEAP_HOST_RX_DEPTH  32u
+
+/* PD EXCHANGE fast-path TX (header + LEAP_PD_DEVICE_MAX_REPLY). */
+#define CLEARCORE_LEAP_PD_TX_BUF_MAX \
+    (LEAP_HEADER_LENGTH_V1 + LEAP_PD_DEVICE_MAX_REPLY + 8u)
 
 
 
@@ -68,7 +73,7 @@ int  clearcore_leap_host_init(struct netif *netif);
 
 void clearcore_leap_host_cyclic(void);
 
-
+int  clearcore_leap_host_rx_pending(void);
 
 int clearcore_leap_host_queue_frame(
 

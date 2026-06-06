@@ -319,6 +319,7 @@ int main(int argc, char** argv)
     run_config.capture_pcap_path   = options.capture_pcap;
     run_config.step_filter         = options.step_filters;
     run_config.step_filter_count   = options.step_filter_count;
+    run_config.inter_step_delay_ms = 500u;
     run_config.progress_fn         = leap_conf_progress_stdout;
     run_config.io                  = leap_conformance_win_io(win_ctx);
 

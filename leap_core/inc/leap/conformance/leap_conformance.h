@@ -84,6 +84,7 @@ typedef struct LeapConformanceRunConfig
     unsigned                  retry_delay_ms;
     const char*               capture_pcap_path;
     int                       keep_session_open;
+    unsigned                  inter_step_delay_ms; /* 0 = no pause between steps */
     LeapConformanceProgressFn progress_fn;
     void*                     progress_ctx;
     const LeapConformanceIo*  io;

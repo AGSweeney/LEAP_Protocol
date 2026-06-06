@@ -31,6 +31,26 @@ uint64_t leap_win_monotonic_us(void);
  */
 void leap_win_sleep_us(uint64_t sleep_us);
 
+/*
+ * Raise the current thread to THREAD_PRIORITY_TIME_CRITICAL and pin it to one
+ * CPU for cyclic PD / WinPcap recv loops. Restores previous settings in
+ * leap_win_thread_priority_end.
+ *
+ * Affinity defaults to the highest-index CPU in the process mask. Override with
+ * LEAP_WIN_CYCLIC_CPU=<n> (0-based core index).
+ */
+typedef struct LeapWinThreadPriorityScope
+{
+    int      active;
+    int      previous_priority;
+    int      affinity_active;
+    uint64_t affinity_mask;
+    uint64_t previous_affinity_mask;
+} LeapWinThreadPriorityScope;
+
+void leap_win_thread_priority_begin_critical(LeapWinThreadPriorityScope* scope);
+void leap_win_thread_priority_end(LeapWinThreadPriorityScope* scope);
+
 #endif /* _WIN32 */
 
 #ifdef __cplusplus

@@ -13,6 +13,7 @@
 #include "leap/leap_frame.h"
 #include "leap/leap_log.h"
 #include "leap/leap_protocol.h"
+#include "leap/leap_win_time.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,7 +111,10 @@ LeapPdControllerStatus leap_win_controller_run_cyclic_pd_with_link_watch(
     LeapRawWinpcapSocket*     transport,
     volatile int*             stop_flag)
 {
-    LeapPdControllerStatus status;
+    LeapPdControllerStatus       status = LEAP_PD_CTRL_OK;
+#if defined(_WIN32)
+    LeapWinThreadPriorityScope priority_scope;
+#endif
 
     if (stack == NULL || pd_io == NULL || transport == NULL || stop_flag == NULL)
     {
@@ -136,6 +140,16 @@ LeapPdControllerStatus leap_win_controller_run_cyclic_pd_with_link_watch(
             stack->pd.config.use_exchange != 0 ? ", exchange" : "");
     }
 
+#if defined(_WIN32)
+    leap_win_thread_priority_begin_critical(&priority_scope);
+    if (priority_scope.affinity_active != 0)
+    {
+        leap_log_printf(
+            "cyclic PD: thread affinity mask=0x%llx\n",
+            (unsigned long long)priority_scope.affinity_mask);
+    }
+#endif
+
     while (*stop_flag == 0)
     {
         (void)leap_win_link_stop_on_down(transport, stop_flag);
@@ -157,12 +171,19 @@ LeapPdControllerStatus leap_win_controller_run_cyclic_pd_with_link_watch(
         }
         if (status != LEAP_PD_CTRL_OK)
         {
+#if defined(_WIN32)
+            leap_win_thread_priority_end(&priority_scope);
+#endif
             return status;
         }
     }
 
     leap_log_printf("cyclic PD stopped\n");
     leap_pd_controller_log_stats(&stack->pd, stack->peer_mac);
+
+#if defined(_WIN32)
+    leap_win_thread_priority_end(&priority_scope);
+#endif
     return LEAP_PD_CTRL_OK;
 }
 
@@ -173,9 +194,12 @@ LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
     volatile int*             stop_flag,
     int                       sleep_for_period)
 {
-    LeapPdControllerStatus status;
-    unsigned               i;
-    int                    ran_any;
+    LeapPdControllerStatus       status;
+    unsigned                     i;
+    int                          ran_any;
+#if defined(_WIN32)
+    LeapWinThreadPriorityScope priority_scope;
+#endif
 
     if (hub == NULL || pd_io == NULL || transport == NULL || stop_flag == NULL)
     {
@@ -190,6 +214,10 @@ LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
     leap_log_printf(
         "hub round-robin PD%s - Ctrl+C or link-down to stop\n",
         sleep_for_period != 0 ? " (paced per peer)" : "");
+
+#if defined(_WIN32)
+    leap_win_thread_priority_begin_critical(&priority_scope);
+#endif
 
     while (*stop_flag == 0)
     {
@@ -225,10 +253,16 @@ LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
                 sleep_for_period);
             if (status == LEAP_PD_CTRL_STOPPED)
             {
+#if defined(_WIN32)
+                leap_win_thread_priority_end(&priority_scope);
+#endif
                 return LEAP_PD_CTRL_OK;
             }
             if (status != LEAP_PD_CTRL_OK)
             {
+#if defined(_WIN32)
+                leap_win_thread_priority_end(&priority_scope);
+#endif
                 return status;
             }
 
@@ -237,10 +271,16 @@ LeapPdControllerStatus leap_win_hub_run_round_robin_with_link_watch(
 
         if (ran_any == 0)
         {
+#if defined(_WIN32)
+            leap_win_thread_priority_end(&priority_scope);
+#endif
             return LEAP_PD_CTRL_INVALID_ARG;
         }
     }
 
+#if defined(_WIN32)
+    leap_win_thread_priority_end(&priority_scope);
+#endif
     return LEAP_PD_CTRL_OK;
 }
 
@@ -251,7 +291,10 @@ LeapPdControllerStatus leap_win_hub_run_parallel_with_link_watch(
     volatile int*             stop_flag,
     int                       sleep_for_period)
 {
-    LeapPdControllerStatus status;
+    LeapPdControllerStatus       status;
+#if defined(_WIN32)
+    LeapWinThreadPriorityScope priority_scope;
+#endif
 
     if (hub == NULL || pd_io == NULL || transport == NULL || stop_flag == NULL)
     {
@@ -266,6 +309,10 @@ LeapPdControllerStatus leap_win_hub_run_parallel_with_link_watch(
     leap_log_printf(
         "hub parallel PD%s - Ctrl+C or link-down to stop\n",
         sleep_for_period != 0 ? " (paced per lap)" : "");
+
+#if defined(_WIN32)
+    leap_win_thread_priority_begin_critical(&priority_scope);
+#endif
 
     while (*stop_flag == 0)
     {
@@ -282,14 +329,23 @@ LeapPdControllerStatus leap_win_hub_run_parallel_with_link_watch(
             sleep_for_period);
         if (status == LEAP_PD_CTRL_STOPPED)
         {
+#if defined(_WIN32)
+            leap_win_thread_priority_end(&priority_scope);
+#endif
             return LEAP_PD_CTRL_OK;
         }
         if (status != LEAP_PD_CTRL_OK)
         {
+#if defined(_WIN32)
+            leap_win_thread_priority_end(&priority_scope);
+#endif
             return status;
         }
     }
 
+#if defined(_WIN32)
+    leap_win_thread_priority_end(&priority_scope);
+#endif
     return LEAP_PD_CTRL_OK;
 }
 

@@ -86,7 +86,8 @@ Device MAC: `94:51:dc:21:f0:2f`
 
 ### Discovery and controller
 
-Build Windows tools from repo root (`cmake -B build-win -DLEAP_BUILD_WIN_L2=ON`).
+Build Windows tools from repo root (`.\build.ps1` or CMake → **`build-win/`**, gitignored).
+See [docs/BUILD.md](../../docs/BUILD.md).
 
 ```powershell
 # Discovery (expect peer 94:51:dc:21:f0:2f)

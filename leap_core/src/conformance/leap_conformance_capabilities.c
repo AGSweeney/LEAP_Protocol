@@ -141,13 +141,13 @@ uint16_t leap_conformance_default_cyclic_outputs(
     if (caps == NULL || !caps->dir.has_digital_outputs ||
         caps->dir.output_bit_count == 0u)
     {
-        return 0x0007u;
+        return 0x003Fu;
     }
 
     bits = caps->dir.output_bit_count;
-    if (bits > 3u)
+    if (bits > (uint16_t)LEAP_CONF_MAX_PD_MASKS)
     {
-        bits = 3u;
+        bits = (uint16_t)LEAP_CONF_MAX_PD_MASKS;
     }
 
     mask = (uint16_t)((1u << bits) - 1u);

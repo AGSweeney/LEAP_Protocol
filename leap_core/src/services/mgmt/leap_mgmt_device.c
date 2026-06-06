@@ -114,6 +114,14 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_reject_not_owner(
     {
         leap_mgmt_abort_owner_control(ctx);
     }
+    else if (ctx->device_state == LEAP_STATE_SAFE && ctx->owner_active != 0u)
+    {
+        /*
+         * Partial bootstrap leaves owner bound in SAFE; stale RELEASE or
+         * foreign session_id must not block the next OPEN from the owner MAC.
+         */
+        leap_mgmt_clear_owner(ctx);
+    }
 
     leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
     return LEAP_MGMT_DEVICE_HANDLE_ERROR;
@@ -161,7 +169,14 @@ static void leap_mgmt_arm_owner_lease(LeapMgmtDeviceContext* ctx, uint64_t now_u
 
 static int leap_mgmt_owner_lease_expired(const LeapMgmtDeviceContext* ctx, uint64_t now_us)
 {
-    return (ctx->owner_active != 0u && now_us >= ctx->lease_deadline_us);
+    /*
+     * Match watchdog: only expire an active owner session while in OP.
+     * After OPEN the device may hold an owner in SAFE until SET_STATE;
+     * expiring there breaks harness bootstrap when the PC is slow.
+     */
+    return (ctx->owner_active != 0u &&
+            ctx->device_state == LEAP_STATE_OP &&
+            now_us >= ctx->lease_deadline_us);
 }
 
 static int leap_mgmt_process_watchdog_expired(const LeapMgmtDeviceContext* ctx, uint64_t now_us)
@@ -278,6 +293,16 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
                     }
                     leap_mgmt_clear_owner(ctx);
                     reboot_recovery_accepted = 1;
+                }
+                else if (ctx->device_state == LEAP_STATE_SAFE)
+                {
+                    /*
+                     * Mask-walk re-bootstrap: OPEN may succeed on the device
+                     * while the controller times out before SET_STATE OP, leaving
+                     * a fresh lease in SAFE. Retries must replace the stale
+                     * owner even without STEAL_EXPIRED (HELLO cache may lag).
+                     */
+                    leap_mgmt_clear_owner(ctx);
                 }
                 else if (!leap_mgmt_owner_lease_expired(ctx, request->now_us))
                 {
@@ -412,6 +437,7 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_heartbeat(
     }
 
     leap_mgmt_device_refresh_owner_lease(ctx, request->now_us);
+    leap_mgmt_device_refresh_process_watchdog(ctx, request->now_us);
     return LEAP_MGMT_DEVICE_HANDLE_NO_REPLY;
 }
 
@@ -487,15 +513,32 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_owner_release(
     const LeapMgmtDeviceRequest* request,
     LeapMgmtDeviceReply*         reply)
 {
-    (void)request;
     (void)reply;
+
+    if (request->source_mac == NULL)
+    {
+        return leap_mgmt_reject_not_owner(ctx, reply);
+    }
+
+    if (ctx->owner_active != 0u &&
+        leap_mac_equal(request->source_mac, ctx->owner_mac) &&
+        request->session_id != ctx->owner_session_id)
+    {
+        /*
+         * Controller re-bootstrap can send RELEASE with a stale session_id
+         * after a partial OPEN; drop the owner so the next OPEN is not BUSY.
+         */
+        leap_mgmt_clear_owner(ctx);
+        ctx->device_state = LEAP_STATE_SAFE;
+        return LEAP_MGMT_DEVICE_HANDLE_NO_REPLY;
+    }
 
     if (ctx->owner_active == 0u || request->session_id != ctx->owner_session_id)
     {
         return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
-    if (request->source_mac == NULL || !leap_mac_equal(request->source_mac, ctx->owner_mac))
+    if (!leap_mac_equal(request->source_mac, ctx->owner_mac))
     {
         return leap_mgmt_reject_not_owner(ctx, reply);
     }
@@ -669,6 +712,20 @@ LeapMgmtDeviceHandleStatus leap_mgmt_device_handle(
     {
         leap_mgmt_fill_error(reply, LEAP_STATUS_FAULTED);
         return LEAP_MGMT_DEVICE_HANDLE_ERROR;
+    }
+
+    if (request->message_type == LEAP_MGMT_OWNER_RELEASE &&
+        ctx->owner_active == 0u)
+    {
+        /*
+         * Harness sends OWNER_RELEASE before every re-bootstrap. Treat as
+         * idempotent when no owner is bound (already SAFE / released).
+         */
+        if (ctx->device_state == LEAP_STATE_OP)
+        {
+            ctx->device_state = LEAP_STATE_SAFE;
+        }
+        return LEAP_MGMT_DEVICE_HANDLE_NO_REPLY;
     }
 
     if (request->message_type != LEAP_MGMT_OPEN_SESSION &&

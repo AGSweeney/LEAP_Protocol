@@ -34,9 +34,14 @@ After import, Solution Explorer should show **ClearCore**, **LwIP**, and **LeapD
 2. LwIP  
 3. LeapDeviceFirmware  
 
+`leap_protocol/` is a junction to the LEAP repo root. Microchip Studio include paths and sources use `leap_protocol/leap_core/inc` and `leap_protocol/leap_core/src`. After changing `LeapDeviceFirmware.cppproj`, rebuild **LeapDeviceFirmware** once in Studio so `Release/Makefile` is regenerated (or run `build_leap_device.ps1`, which patches stale Makefiles automatically).
+
 ## Test with PC controller
 
 On the same LAN segment (Linux or Windows):
+
+Host LEAP tools are built at the repo root into local **`build/`** or **`build-win/`**
+(gitignored). See [docs/BUILD.md](../../docs/BUILD.md).
 
 ```bash
 # Linux

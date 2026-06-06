@@ -157,7 +157,8 @@ static uint32_t neg_stack_bootstrap_op(
     ASSERT_EQ_INT(
         leap_device_stack_process_frame(stack, k_mac_a, 0u, frame, frame_length, &result),
         LEAP_DEVICE_STACK_OK);
-    ASSERT_EQ_U16(*outputs_io, 0x0001u);
+    ASSERT_EQ_U16(result.pd_outputs_applied, 0x0001u);
+    *outputs_io = 0x0001u;
 
     return session_id;
 }

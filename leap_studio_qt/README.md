@@ -11,6 +11,15 @@ Qt 6 Windows app for LEAP commissioning and conformance testing (Npcap).
 
 ## Build
 
+Preferred (repo root):
+
+```powershell
+.\build.ps1
+```
+
+Or manual CMake into local **`build-win/`** (gitignored). Full options:
+[docs/BUILD.md](../docs/BUILD.md).
+
 ```powershell
 cmake -B build-win -DLEAP_BUILD_WIN_L2=ON -DLEAP_BUILD_STUDIO_QT=ON `
   -DCMAKE_PREFIX_PATH="C:\Qt\6.8.3\msvc2022_64"

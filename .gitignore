@@ -8,10 +8,8 @@ Thumbs.db
 *.swp
 *.swo
 
-# Build outputs
-build/
-build-win/
-build-wsl/
+# Build outputs (local only — see docs/BUILD.md)
+build*/
 out/
 dist/*
 !dist/LEAP_Conformance_Studio_*_x64_Setup.exe

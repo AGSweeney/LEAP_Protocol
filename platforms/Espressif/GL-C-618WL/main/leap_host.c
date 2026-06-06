@@ -167,6 +167,10 @@ static void leap_log_device_config(void)
              (unsigned)LEAP_LOCATE_FLAG_LED,
              STATUS_LED_PIN);
     ESP_LOGI(TAG,
+             "  PD I/O: %u WS2812 output bits, %u digital inputs",
+             (unsigned)LEAP_DO_COUNT,
+             (unsigned)LEAP_DI_COUNT);
+    ESP_LOGI(TAG,
              "  strip CH0 GPIO%d CH1 GPIO%d x%u LEDs  PD max=0x%02X",
              LED_DATA_PIN_0, LED_DATA_PIN_1,
              (unsigned)DEFAULT_NUM_LEDS,
@@ -600,6 +604,11 @@ int leap_host_init(struct netif *netif, uint16_t num_leds)
     stack_config.mgmt.default_watchdog_us = 5000000u;
     stack_config.mgmt.max_lease_us        = 10000000u;
     stack_config.mgmt.max_watchdog_us     = 10000000u;
+    (void)leap_dir_device_config_set_digital_io(
+        &stack_config.dir,
+        LEAP_PROFILE_ID,
+        (uint16_t)LEAP_DO_COUNT,
+        (uint16_t)LEAP_DI_COUNT);
 
     leap_device_stack_init_full(&s_stack, &stack_config);
 

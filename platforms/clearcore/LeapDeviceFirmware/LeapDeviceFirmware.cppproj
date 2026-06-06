@@ -87,7 +87,7 @@
       <Value>%24(MSBuildProjectDirectory)\..\LwIP\LwIP\port\include</Value>
       <Value>%24(MSBuildProjectDirectory)</Value>
       <Value>%24(MSBuildProjectDirectory)\protocol</Value>
-      <Value>%24(MSBuildProjectDirectory)\leap_protocol\inc</Value>
+      <Value>%24(MSBuildProjectDirectory)\leap_protocol\leap_core\inc</Value>
     </ListValues>
   </armgcc.compiler.directories.IncludePaths>
   <armgcc.compiler.optimization.level>Optimize most (-O3)</armgcc.compiler.optimization.level>
@@ -111,7 +111,7 @@
       <Value>%24(MSBuildProjectDirectory)\..\LwIP\LwIP\port\include</Value>
       <Value>%24(MSBuildProjectDirectory)</Value>
       <Value>%24(MSBuildProjectDirectory)\protocol</Value>
-      <Value>%24(MSBuildProjectDirectory)\leap_protocol\inc</Value>
+      <Value>%24(MSBuildProjectDirectory)\leap_protocol\leap_core\inc</Value>
     </ListValues>
   </armgcccpp.compiler.directories.IncludePaths>
   <armgcccpp.compiler.optimization.level>Optimize most (-O3)</armgcccpp.compiler.optimization.level>
@@ -176,7 +176,7 @@
       <Value>%24(MSBuildProjectDirectory)\..\LwIP\LwIP\port\include</Value>
       <Value>%24(MSBuildProjectDirectory)</Value>
       <Value>%24(MSBuildProjectDirectory)\protocol</Value>
-      <Value>%24(MSBuildProjectDirectory)\leap_protocol\inc</Value>
+      <Value>%24(MSBuildProjectDirectory)\leap_protocol\leap_core\inc</Value>
     </ListValues>
   </armgcc.compiler.directories.IncludePaths>
   <armgcc.compiler.optimization.level>Optimize most (-O3)</armgcc.compiler.optimization.level>
@@ -201,7 +201,7 @@
       <Value>%24(MSBuildProjectDirectory)\..\LwIP\LwIP\port\include</Value>
       <Value>%24(MSBuildProjectDirectory)</Value>
       <Value>%24(MSBuildProjectDirectory)\protocol</Value>
-      <Value>%24(MSBuildProjectDirectory)\leap_protocol\inc</Value>
+      <Value>%24(MSBuildProjectDirectory)\leap_protocol\leap_core\inc</Value>
     </ListValues>
   </armgcccpp.compiler.directories.IncludePaths>
   <armgcccpp.compiler.optimization.level>Optimize most (-O3)</armgcccpp.compiler.optimization.level>
@@ -273,37 +273,37 @@
     <Compile Include="protocol\leap_device\clearcore_leap_eth.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\crc\leap_crc.c">
+    <Compile Include="leap_protocol\leap_core\src\crc\leap_crc.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\frame\leap_frame.c">
+    <Compile Include="leap_protocol\leap_core\src\frame\leap_frame.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\services\disc\leap_disc_device.c">
+    <Compile Include="leap_protocol\leap_core\src\services\disc\leap_disc_device.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\services\dir\leap_dir_device.c">
+    <Compile Include="leap_protocol\leap_core\src\services\dir\leap_dir_device.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\services\mgmt\leap_mgmt_device.c">
+    <Compile Include="leap_protocol\leap_core\src\services\mgmt\leap_mgmt_device.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\services\mgmt\leap_mgmt_process.c">
+    <Compile Include="leap_protocol\leap_core\src\services\mgmt\leap_mgmt_process.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\services\pd\leap_pd_device.c">
+    <Compile Include="leap_protocol\leap_core\src\services\pd\leap_pd_device.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\services\pd\leap_pd_common.c">
+    <Compile Include="leap_protocol\leap_core\src\services\pd\leap_pd_common.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\services\diag\leap_diag_device.c">
+    <Compile Include="leap_protocol\leap_core\src\services\diag\leap_diag_device.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\leap_device_stack.c">
+    <Compile Include="leap_protocol\leap_core\src\leap_device_stack.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="leap_protocol\src\leap_log.c">
+    <Compile Include="leap_protocol\leap_core\src\leap_log.c">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>

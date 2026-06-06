@@ -9,6 +9,7 @@
 
 #include "leap/leap_dir_controller_capabilities.h"
 #include "leap/leap_disc_controller.h"
+#include "leap/leap_log.h"
 
 #include "leap/leap_controller_sequence.h"
 #include "leap/leap_diag_controller.h"
@@ -778,6 +779,29 @@ static LeapControllerStackStatus leap_ctrl_stack_on_hello_reply(
     return leap_ctrl_stack_send_select_profile(stack, io, event);
 }
 
+static const char* leap_ctrl_stack_phase_label(LeapControllerStackPhase phase)
+{
+    switch (phase)
+    {
+    case LEAP_CTRL_STACK_IDLE:
+        return "IDLE";
+    case LEAP_CTRL_STACK_DISCOVERING:
+        return "DISCOVERING";
+    case LEAP_CTRL_STACK_SELECT_PROFILE:
+        return "SELECT_PROFILE";
+    case LEAP_CTRL_STACK_OPEN_SESSION:
+        return "OPEN_SESSION";
+    case LEAP_CTRL_STACK_SET_STATE:
+        return "SET_STATE";
+    case LEAP_CTRL_STACK_OP:
+        return "OP";
+    case LEAP_CTRL_STACK_FAULT:
+        return "FAULT";
+    default:
+        return "?";
+    }
+}
+
 static LeapControllerStackStatus leap_ctrl_stack_run_until_op(
     LeapControllerStack*          stack,
     const LeapControllerStackIo*  io,
@@ -786,14 +810,40 @@ static LeapControllerStackStatus leap_ctrl_stack_run_until_op(
     LeapControllerStackEvent  event;
     LeapControllerStackStatus status;
     unsigned                  guard = 0u;
+    uint64_t                  start_us = leap_ctrl_stack_now_us(io);
+    LeapControllerStackPhase  last_logged_phase = LEAP_CTRL_STACK_FAULT;
 
     while (stack->phase != LEAP_CTRL_STACK_OP &&
            stack->phase != LEAP_CTRL_STACK_FAULT)
     {
+        LeapControllerStackPhase phase_before = stack->phase;
+
         status = leap_controller_stack_step(stack, io, &event);
         if (status != LEAP_CTRL_STACK_OK)
         {
             return status;
+        }
+
+        if (stack->phase != phase_before &&
+            stack->phase != last_logged_phase)
+        {
+            unsigned elapsed_ms = 0u;
+
+            if (start_us != 0u)
+            {
+                uint64_t now_us = leap_ctrl_stack_now_us(io);
+
+                if (now_us >= start_us)
+                {
+                    elapsed_ms = (unsigned)((now_us - start_us) / 1000u);
+                }
+            }
+
+            leap_log_printf(
+                "Bootstrap: phase %s (+ %u ms)\n",
+                leap_ctrl_stack_phase_label(stack->phase),
+                elapsed_ms);
+            last_logged_phase = stack->phase;
         }
 
         guard++;
@@ -808,6 +858,18 @@ static LeapControllerStackStatus leap_ctrl_stack_run_until_op(
     if (stack->phase == LEAP_CTRL_STACK_FAULT)
     {
         return LEAP_CTRL_STACK_ABORTED;
+    }
+
+    if (start_us != 0u)
+    {
+        uint64_t now_us = leap_ctrl_stack_now_us(io);
+
+        if (now_us >= start_us)
+        {
+            leap_log_printf(
+                "Bootstrap: OP reached in %u ms\n",
+                (unsigned)((now_us - start_us) / 1000u));
+        }
     }
 
     if (peer_mac_out != NULL && stack->peer_bound != 0)
@@ -1665,56 +1727,95 @@ static LeapControllerStackDiagStatus leap_ctrl_stack_diag_exchange(
         timeout_ms = LEAP_CTRL_STACK_DEFAULT_RECV_MS;
     }
 
-    for (attempt = 0u; attempt < 8u; attempt++)
     {
-        status = leap_ctrl_stack_recv(
-            io,
-            timeout_ms,
-            src_mac,
-            &view,
-            rx_buf,
-            sizeof(rx_buf),
-            &rx_length);
-        if (status == LEAP_CTRL_STACK_RECV_TIMEOUT)
+        uint64_t deadline_us = 0u;
+        int      slice_ms    = timeout_ms;
+
+        if (io->monotonic_us != NULL)
         {
-            return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
-        }
-        if (status != LEAP_CTRL_STACK_OK)
-        {
-            return leap_ctrl_stack_diag_map_status(status);
+            deadline_us =
+                io->monotonic_us(io->user_ctx) +
+                ((uint64_t)timeout_ms * 1000u);
         }
 
-        if (memcmp(src_mac, stack->peer_mac, 6) != 0)
+        for (attempt = 0u;; attempt++)
         {
-            continue;
-        }
+            if (deadline_us != 0u && io->monotonic_us != NULL)
+            {
+                uint64_t now_us = io->monotonic_us(io->user_ctx);
 
-        if (view.header.service_id != (uint16_t)LEAP_SERVICE_DIAG)
-        {
-            continue;
-        }
+                if (now_us >= deadline_us)
+                {
+                    return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
+                }
 
-        if (view.header.message_type != expected_reply_type)
-        {
-            continue;
-        }
+                slice_ms = (int)((deadline_us - now_us) / 1000u);
+                if (slice_ms <= 0)
+                {
+                    slice_ms = 1;
+                }
+                if (slice_ms > 100)
+                {
+                    slice_ms = 100;
+                }
+            }
+            else if (attempt >= 8u)
+            {
+                return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
+            }
 
-        if ((view.header.flags & LEAP_FLAG_ERROR) != 0u)
-        {
-            return LEAP_CTRL_STACK_DIAG_UNEXPECTED_REPLY;
-        }
+            status = leap_ctrl_stack_recv(
+                io,
+                slice_ms,
+                src_mac,
+                &view,
+                rx_buf,
+                sizeof(rx_buf),
+                &rx_length);
+            if (status == LEAP_CTRL_STACK_RECV_TIMEOUT)
+            {
+                if (deadline_us != 0u && io->monotonic_us != NULL)
+                {
+                    continue;
+                }
 
-        if (view.payload_length > reply_capacity)
-        {
-            return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
-        }
+                return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
+            }
+            if (status != LEAP_CTRL_STACK_OK)
+            {
+                return leap_ctrl_stack_diag_map_status(status);
+            }
 
-        memcpy(reply_payload, view.payload, view.payload_length);
-        *reply_length_out = view.payload_length;
-        return LEAP_CTRL_STACK_DIAG_OK;
+            if (memcmp(src_mac, stack->peer_mac, 6) != 0)
+            {
+                continue;
+            }
+
+            if (view.header.service_id != (uint16_t)LEAP_SERVICE_DIAG)
+            {
+                continue;
+            }
+
+            if ((view.header.flags & LEAP_FLAG_ERROR) != 0u)
+            {
+                return LEAP_CTRL_STACK_DIAG_UNEXPECTED_REPLY;
+            }
+
+            if (view.header.message_type != expected_reply_type)
+            {
+                continue;
+            }
+
+            if (view.payload_length > reply_capacity)
+            {
+                return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+            }
+
+            memcpy(reply_payload, view.payload, view.payload_length);
+            *reply_length_out = view.payload_length;
+            return LEAP_CTRL_STACK_DIAG_OK;
+        }
     }
-
-    return LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT;
 }
 
 LeapControllerStackDiagStatus leap_controller_stack_read_diag(

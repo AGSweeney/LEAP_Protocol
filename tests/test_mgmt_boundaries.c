@@ -60,6 +60,29 @@ static void boundary_open(
         ((const LeapOpenSessionReply*)reply.payload)->assigned_session_id;
 }
 
+static void boundary_set_op(
+    LeapMgmtDeviceContext* ctx,
+    uint32_t               session_id)
+{
+    LeapSetStateRequest   set_req;
+    LeapMgmtDeviceRequest request;
+    LeapMgmtDeviceReply   reply;
+
+    memset(&set_req, 0, sizeof(set_req));
+    set_req.requested_state = LEAP_STATE_OP;
+
+    memset(&request, 0, sizeof(request));
+    request.source_mac     = k_mac;
+    request.session_id     = session_id;
+    request.message_type   = LEAP_MGMT_SET_STATE;
+    request.payload        = (const uint8_t*)&set_req;
+    request.payload_length = sizeof(set_req);
+
+    ASSERT_EQ_INT(
+        leap_mgmt_device_handle(ctx, &request, &reply),
+        LEAP_MGMT_DEVICE_HANDLE_OK);
+}
+
 TEST(test_mgmt_lease_clamped_to_max)
 {
     LeapMgmtDeviceContext ctx;
@@ -87,6 +110,19 @@ TEST(test_mgmt_tick_same_time_is_no_op)
     ASSERT_TRUE(ctx.owner_active != 0u);
 }
 
+TEST(test_mgmt_tick_lease_safe_owner_survives_deadline)
+{
+    LeapMgmtDeviceContext ctx;
+    uint32_t              session_id;
+
+    boundary_setup(&ctx);
+    boundary_open(&ctx, 100000u, &session_id);
+
+    leap_mgmt_device_tick(&ctx, 100000u);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+    ASSERT_TRUE(ctx.owner_active != 0u);
+}
+
 TEST(test_mgmt_tick_exact_lease_deadline_expires)
 {
     LeapMgmtDeviceContext ctx;
@@ -94,6 +130,7 @@ TEST(test_mgmt_tick_exact_lease_deadline_expires)
 
     boundary_setup(&ctx);
     boundary_open(&ctx, 100000u, &session_id);
+    boundary_set_op(&ctx, session_id);
 
     leap_mgmt_device_tick(&ctx, 100000u);
     ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
@@ -135,6 +172,7 @@ void leap_run_mgmt_boundary_tests(void)
     printf("mgmt boundaries\n");
     RUN_TEST(test_mgmt_lease_clamped_to_max);
     RUN_TEST(test_mgmt_tick_same_time_is_no_op);
+    RUN_TEST(test_mgmt_tick_lease_safe_owner_survives_deadline);
     RUN_TEST(test_mgmt_tick_exact_lease_deadline_expires);
     RUN_TEST(test_mgmt_bad_frame_does_not_change_state);
 }

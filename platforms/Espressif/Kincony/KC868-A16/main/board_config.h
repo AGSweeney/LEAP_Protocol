@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "leap/leap_protocol.h"
+
 /*
  * Kincony KC868-A16 - Hardware Pin Definitions
  * =============================================
@@ -58,6 +60,7 @@
  */
 #define LEAP_DO_COUNT       16u
 #define LEAP_DI_COUNT       16u
+#define LEAP_PROFILE_ID     LEAP_PROFILE_DIGITAL_IO_16X16
 
 #define LEAP_DO_Y01_BIT     0u
 #define LEAP_DO_Y16_BIT     15u

@@ -120,6 +120,11 @@ LeapDeviceStackStatus leap_device_stack_tick(
     uint64_t         now_us,
     uint32_t*        flags_out);
 
+void leap_device_stack_note_frame_rx(
+    LeapDeviceStack* stack,
+    uint64_t         now_us,
+    uint16_t         service_id);
+
 void leap_device_stack_notify_tx_ok(
     LeapDeviceStack* stack,
     uint64_t         now_us);

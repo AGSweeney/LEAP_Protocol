@@ -10,6 +10,7 @@
 
 #include "leap/leap_device_stack.h"
 #include "leap/leap_diag_controller.h"
+#include "leap/leap_device_host_perf.h"
 #include "leap/leap_diag_device.h"
 #include "leap/leap_mgmt_device.h"
 #include "leap/leap_protocol.h"
@@ -217,17 +218,24 @@ TEST(test_diag_tx_and_timing_counters)
 {
     LeapDiagDeviceContext diag;
 
+    uint32_t i;
+
     leap_diag_device_init(&diag, NULL);
 
+    for (i = 0u; i < LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL - 1u; i++)
+    {
+        leap_diag_device_on_frame_transmitted(&diag, 0u);
+    }
     leap_diag_device_on_frame_transmitted(&diag, 150u);
-    ASSERT_TRUE(diag.tx_frames_accepted == 1u);
+    ASSERT_TRUE(diag.tx_frames_accepted == LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL);
     ASSERT_TRUE(diag.last_reply_latency_us == 150u);
     ASSERT_TRUE(diag.max_reply_latency_us == 150u);
 
     leap_diag_device_on_frame_transmitted(&diag, 500u);
-    ASSERT_TRUE(diag.tx_frames_accepted == 2u);
+    ASSERT_TRUE(diag.tx_frames_accepted == LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL + 1u);
     ASSERT_TRUE(diag.max_reply_latency_us == 500u);
 
+    diag.tx_frames_accepted = 0u;
     leap_diag_device_on_pd_cycle_time(&diag, 1200u);
     leap_diag_device_on_pd_cycle_time(&diag, 900u);
     ASSERT_TRUE(diag.min_cycle_time_us == 900u);
@@ -242,12 +250,19 @@ TEST(test_device_stack_notify_tx_updates_diag)
 {
     LeapDeviceStack stack;
 
+    uint32_t i;
+
     leap_device_stack_init_full(&stack, NULL);
     stack.last_frame_rx_us      = 1000u;
     stack.last_frame_service_id = (uint16_t)LEAP_SERVICE_PD;
 
+    for (i = 0u; i < LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL - 1u; i++)
+    {
+        leap_device_stack_notify_tx_ok(&stack, 2000u + i);
+    }
     leap_device_stack_notify_tx_ok(&stack, 2500u);
-    ASSERT_TRUE(stack.diag.tx_frames_accepted == 1u);
+    ASSERT_TRUE(stack.diag.tx_frames_accepted ==
+                LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL);
     ASSERT_TRUE(stack.diag.last_reply_latency_us == 1500u);
     ASSERT_TRUE(stack.diag.last_cycle_time_us == 1500u);
     ASSERT_TRUE(stack.diag.min_cycle_time_us == 1500u);

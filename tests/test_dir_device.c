@@ -39,6 +39,43 @@ static void dir_setup(
     leap_dir_device_sync_disc(dir, disc);
 }
 
+TEST(test_dir_config_set_digital_io_outputs_only)
+{
+    LeapDirDeviceConfig config;
+
+    memset(&config, 0, sizeof(config));
+    ASSERT_EQ_INT(
+        leap_dir_device_config_set_digital_io(
+            &config,
+            LEAP_PROFILE_DIGITAL_IO_8X8,
+            8u,
+            0u),
+        0);
+    ASSERT_TRUE(config.profile_count == 1u);
+    ASSERT_EQ_U32(config.default_profile_id, LEAP_PROFILE_DIGITAL_IO_8X8);
+    ASSERT_TRUE(config.profiles[0].endpoint_count == 1u);
+    ASSERT_EQ_U16(config.profiles[0].endpoints[0].endpoint_id,
+                  LEAP_ENDPOINT_DIGITAL_OUTPUTS);
+    ASSERT_EQ_U16(config.profiles[0].endpoints[0].byte_length, 1u);
+}
+
+TEST(test_dir_config_set_digital_io_16x16)
+{
+    LeapDirDeviceConfig config;
+
+    memset(&config, 0, sizeof(config));
+    ASSERT_EQ_INT(
+        leap_dir_device_config_set_digital_io(
+            &config,
+            LEAP_PROFILE_DIGITAL_IO_16X16,
+            16u,
+            16u),
+        0);
+    ASSERT_TRUE(config.profiles[0].endpoint_count == 2u);
+    ASSERT_EQ_U16(config.profiles[0].endpoints[0].byte_length, 2u);
+    ASSERT_EQ_U16(config.profiles[0].endpoints[1].byte_length, 2u);
+}
+
 TEST(test_dir_select_profile_enters_configured)
 {
     LeapDirDeviceContext  dir;
@@ -200,6 +237,8 @@ TEST(test_dir_read_directory_in_safe_state)
 void leap_run_dir_device_tests(void)
 {
     printf("dir device\n");
+    RUN_TEST(test_dir_config_set_digital_io_outputs_only);
+    RUN_TEST(test_dir_config_set_digital_io_16x16);
     RUN_TEST(test_dir_select_profile_enters_configured);
     RUN_TEST(test_dir_read_directory_returns_tlvs);
     RUN_TEST(test_dir_read_directory_in_safe_state);

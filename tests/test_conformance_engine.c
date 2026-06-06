@@ -293,7 +293,12 @@ TEST(test_conformance_scenario_lookup)
     scenario = leap_conformance_scenario_at(0u);
     ASSERT_TRUE(scenario != NULL);
 
-    ASSERT_TRUE(leap_conformance_scenario_count() >= 1u);
+    scenario = leap_conformance_scenario_by_id("io_exchange_bench");
+    ASSERT_TRUE(scenario != NULL);
+    ASSERT_TRUE(scenario->step_count >= 1u);
+    ASSERT_TRUE(strcmp(scenario->id, "io_exchange_bench") == 0);
+
+    ASSERT_TRUE(leap_conformance_scenario_count() >= 2u);
 }
 
 TEST(test_conformance_parse_profile_object)
@@ -374,6 +379,8 @@ TEST(test_conformance_caps_generate_masks)
 
     leap_conformance_device_caps_from_dir(&dir_caps, &caps);
     ASSERT_TRUE(caps.valid);
+    ASSERT_TRUE(caps.dir.pd_map.endpoint_payload_size ==
+                 sizeof(LeapProfileDigital16x16));
     ASSERT_TRUE(caps.pd_mask_count == 16u);
     ASSERT_TRUE(caps.pd_masks[0].mask == 0x0001u);
     ASSERT_TRUE(strcmp(caps.pd_masks[0].label, "output ch 1") == 0);

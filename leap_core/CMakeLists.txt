@@ -28,6 +28,7 @@ add_library(leap_core STATIC
   src/conformance/leap_conformance_engine.c
   src/conformance/leap_conformance_capabilities.c
   src/conformance/leap_conformance_scenario_digital_io.c
+  src/conformance/leap_conformance_scenario_io_bench.c
   src/conformance/leap_conformance_scenarios.c
   src/services/dir/leap_dir_controller_capabilities.c
   src/conformance/leap_conformance_export.c

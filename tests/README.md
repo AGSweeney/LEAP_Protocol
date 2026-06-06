@@ -2,7 +2,7 @@
 
 Protocol conformance and regression tests.
 
-Run all suites:
+Build and run (local **`build/`** tree — gitignored; see [docs/BUILD.md](../docs/BUILD.md)):
 
 ```bash
 cmake -S . -B build
@@ -10,6 +10,8 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 # or: ./build/leap_tests
 ```
+
+Windows: `.\build.ps1 -Test` → `build-win\Release\leap_tests.exe`.
 
 **116 tests** on Windows; **115 on Linux** (Linux skips the two Windows monotonic-clock tests; Windows skips the live `lo` link-query test). Last verified May 2026.
 

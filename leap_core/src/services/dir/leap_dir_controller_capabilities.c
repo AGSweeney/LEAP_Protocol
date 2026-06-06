@@ -186,6 +186,27 @@ static void leap_dir_caps_apply_endpoints(LeapDirControllerCapabilities* caps)
         }
     }
 
+    /*
+     * Standard digital I/O profiles carry LeapProfileDigital* structs on the
+     * wire (e.g. 8 bytes for 16x16), not the raw output bit width in bytes.
+     */
+    if (map.valid != 0)
+    {
+        size_t nominal_pd = leap_pd_endpoint_payload_size(
+            map.profile_id,
+            map.write_endpoint_id);
+        if (nominal_pd == 0u)
+        {
+            nominal_pd = leap_pd_endpoint_payload_size(
+                map.profile_id,
+                map.read_endpoint_id);
+        }
+        if (nominal_pd > map.endpoint_payload_size)
+        {
+            map.endpoint_payload_size = nominal_pd;
+        }
+    }
+
     caps->pd_map = map;
 }
 

@@ -8,6 +8,7 @@
 #include "leap/conformance/leap_conformance_raw_io.h"
 
 #include "leap/leap_frame.h"
+#include "leap/leap_log.h"
 #include "leap/leap_protocol.h"
 
 #include <string.h>
@@ -60,7 +61,8 @@ static int leap_conf_raw_recv_leap(
     uint8_t*              frame_buf,
     size_t                frame_capacity,
     size_t*               frame_length,
-    int                   timeout_ms)
+    int                   timeout_ms,
+    uint64_t*             recv_mono_us_out)
 {
     if (sock == NULL || frame_length == NULL)
     {
@@ -74,7 +76,7 @@ static int leap_conf_raw_recv_leap(
         frame_capacity,
         frame_length,
         timeout_ms,
-        NULL);
+        recv_mono_us_out);
 }
 
 static int leap_conf_raw_stack_send(
@@ -134,7 +136,8 @@ static int leap_conf_raw_stack_recv(
             frame_buf,
             sizeof(frame_buf),
             &frame_length,
-            timeout_ms) != 0)
+            timeout_ms,
+            NULL) != 0)
     {
         return -1;
     }
@@ -246,6 +249,7 @@ static int leap_conf_raw_pd_wait_exchange(
     uint8_t               frame_buf[LEAP_CONF_RAW_RX_BUF];
     size_t                frame_length = 0u;
     LeapFrameView         view;
+    uint64_t              recv_us = 0u;
 
     if (io == NULL || io->transport == NULL || peer_mac == NULL ||
         reply_length == NULL)
@@ -260,15 +264,22 @@ static int leap_conf_raw_pd_wait_exchange(
 
     for (;;)
     {
+        recv_us = 0u;
         if (leap_conf_raw_recv_leap(
                 io->transport,
                 src_mac,
                 frame_buf,
                 sizeof(frame_buf),
                 &frame_length,
-                timeout_ms) != 0)
+                timeout_ms,
+                &recv_us) != 0)
         {
             return -1;
+        }
+
+        if (recv_us == 0u)
+        {
+            recv_us = leap_conf_raw_mono(user_ctx);
         }
 
         if (memcmp(src_mac, peer_mac, 6) != 0)
@@ -288,7 +299,28 @@ static int leap_conf_raw_pd_wait_exchange(
 
         if ((view.header.flags & LEAP_FLAG_ERROR) != 0u)
         {
+            if (view.header.message_type == LEAP_PD_EXCHANGE_ENDPOINTS ||
+                view.header.message_type == LEAP_PD_EXCHANGE_REPLY)
+            {
+                uint16_t status_code = 0u;
+
+                if (view.payload_length >= sizeof(LeapErrorPayload))
+                {
+                    status_code =
+                        ((const LeapErrorPayload*)view.payload)->status_code;
+                }
+
+                leap_log_printf(
+                    "PD EXCHANGE error reply status=0x%04X from peer\n",
+                    (unsigned)status_code);
+            }
+
             return -1;
+        }
+
+        if (view.header.message_type != LEAP_PD_EXCHANGE_REPLY)
+        {
+            continue;
         }
 
         if (view.payload_length > reply_capacity)
@@ -301,6 +333,16 @@ static int leap_conf_raw_pd_wait_exchange(
             view.payload != NULL)
         {
             memcpy(reply_payload, view.payload, view.payload_length);
+        }
+
+        if (reply_recv_us_out != NULL)
+        {
+            /*
+             * Use the same monotonic clock as cycle_start_us (QPC). Mapped
+             * Npcap HOST timestamps can trail send time and yield zero RTT.
+             */
+            *reply_recv_us_out = leap_conf_raw_mono(user_ctx);
+            (void)recv_us;
         }
 
         return 0;

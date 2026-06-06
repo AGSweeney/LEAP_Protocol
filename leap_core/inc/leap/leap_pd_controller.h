@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 #define LEAP_PD_LATENCY_HISTORY_MAX 1000u
+#define LEAP_PD_NETWORK_RTT_HIST_BUCKETS 7u
 
 typedef struct LeapPdLatencyHistory
 {
@@ -49,6 +50,7 @@ typedef struct LeapPdControllerStats
     uint64_t max_network_rtt_us;
     uint64_t total_network_rtt_us;
     uint64_t network_rtt_samples;
+    uint64_t network_rtt_hist[LEAP_PD_NETWORK_RTT_HIST_BUCKETS];
     uint64_t last_queue_wait_us;
     uint64_t max_queue_wait_us;
     uint64_t total_queue_wait_us;
@@ -121,6 +123,7 @@ typedef struct LeapPdControllerContext
     LeapPdControllerConfig config;
     LeapPdControllerStats  stats;
     LeapPdLatencyHistory   latency_history;
+    LeapPdLatencyHistory   network_rtt_history;
     uint32_t               pd_sequence;
     uint32_t               cycle_index;
     uint64_t               last_cycle_start_us;
@@ -240,6 +243,10 @@ void leap_pd_latency_history_export(
     uint32_t                    out_cap,
     uint32_t*                   out_count,
     uint32_t*                   out_base_exchange);
+
+uint32_t leap_pd_stats_network_rtt_percentile_us(
+    const LeapPdControllerStats* stats,
+    unsigned                     percentile);
 
 #ifdef __cplusplus
 }

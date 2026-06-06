@@ -690,6 +690,36 @@ TEST(test_controller_stack_read_diag_op)
     ASSERT_EQ_U16(mock.last_message, LEAP_DIAG_READ_TIMING);
 }
 
+TEST(test_controller_stack_read_diag_reports_device_error)
+{
+    LeapControllerStack           stack;
+    LeapControllerStackIo         io;
+    CtrlStackMockIo               mock;
+    LeapControllerStackDiagResult result;
+
+    leap_controller_stack_init(&stack, NULL);
+    ctrl_stack_put_op_state(&stack);
+
+    memset(&mock, 0, sizeof(mock));
+    memset(&io, 0, sizeof(io));
+    io.user_ctx   = &mock;
+    io.send_frame = ctrl_stack_mock_send;
+    io.recv_frame = ctrl_stack_mock_recv;
+
+    ctrl_stack_mock_add_error_reply(
+        &mock,
+        (uint16_t)LEAP_SERVICE_DIAG,
+        LEAP_DIAG_READ_COUNTERS,
+        42u,
+        1u,
+        LEAP_STATUS_INVALID_STATE);
+
+    ASSERT_EQ_INT(
+        leap_controller_stack_read_diag(&stack, &io, &result),
+        LEAP_CTRL_STACK_DIAG_UNEXPECTED_REPLY);
+    ASSERT_EQ_INT(mock.send_count, 1u);
+}
+
 void leap_run_controller_stack_tests(void)
 {
     printf("controller stack\n");
@@ -704,4 +734,5 @@ void leap_run_controller_stack_tests(void)
     RUN_TEST(test_controller_stack_send_acks_peer_sequence);
     RUN_TEST(test_controller_stack_release_without_session_resets);
     RUN_TEST(test_controller_stack_read_diag_op);
+    RUN_TEST(test_controller_stack_read_diag_reports_device_error);
 }

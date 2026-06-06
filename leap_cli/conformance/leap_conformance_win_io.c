@@ -21,6 +21,7 @@
 #include "leap/leap_frame.h"
 #include "leap/leap_log.h"
 #include "leap/leap_mgmt_controller.h"
+#include "leap/leap_pd_common.h"
 #include "leap/leap_pd_controller.h"
 #include "leap/leap_protocol.h"
 
@@ -32,9 +33,16 @@
 #include <windows.h>
 #endif
 
-#define LEAP_CONF_LEASE_DEMO_US       2000000u
-#define LEAP_CONF_LEASE_DEMO_IDLE_S   3u
-#define LEAP_CONF_DIAG_POLL_INTERVAL_US 2000000u
+#define LEAP_CONF_LEASE_DEMO_US            2000000u
+#define LEAP_CONF_LEASE_DEMO_IDLE_S        3u
+#define LEAP_CONF_DIAG_POLL_INTERVAL_US    2000000u
+#define LEAP_CONF_DISCOVER_BROADCAST_MS    1000
+#define LEAP_CONF_BOOTSTRAP_RECV_MS        1000
+#define LEAP_CONF_BOOTSTRAP_RECV_MS_KNOWN  500
+#define LEAP_CONF_VERIFY_IDENTIFY_RETRIES  3u
+#define LEAP_CONF_VERIFY_PD_PROBE_RETRIES  3u
+#define LEAP_CONF_BOOTSTRAP_LEASE_US       5000000u
+#define LEAP_CONF_BOOTSTRAP_WATCHDOG_US    5000000u
 
 struct LeapConformanceWinContext
 {
@@ -62,8 +70,642 @@ struct LeapConformanceWinContext
 #endif
     LeapPdLatencyHistory           session_latency;
     uint32_t                       latency_last_merged_total;
+    LeapPdLatencyHistory           session_network_rtt;
+    uint32_t                       network_rtt_last_merged_total;
+    uint32_t*                      soak_rtt_samples;
+    uint32_t                       soak_rtt_count;
+    uint32_t                       soak_rtt_capacity;
     LeapPdControllerStats          session_pd;
+    LeapConformanceDeviceCaps      session_caps;
+    int                            session_caps_valid;
+    int                            soak_in_progress;
+    int                            exchange_session_ready;
+    uint64_t                       last_exchange_prepare_us;
 };
+
+static uint16_t leap_conf_win_bootstrap_outputs(const LeapConformanceWinContext* ctx)
+{
+    if (ctx != NULL && ctx->session_caps_valid)
+    {
+        return ctx->session_caps.bootstrap_outputs;
+    }
+
+    return 0x0001u;
+}
+
+static uint16_t leap_conf_win_soak_outputs(
+    const LeapConformanceWinContext* ctx,
+    uint16_t                           requested)
+{
+    (void)ctx;
+
+    /*
+     * requested!=0: fixed mask for conformance cyclic / mask-walk steps.
+     * requested==0: rotating one-hot (controller use_fixed_outputs=0).
+     */
+    return requested;
+}
+
+static void leap_conf_win_normalize_pd_profile(LeapPdProfileMap* map)
+{
+    size_t nominal_pd;
+
+    if (map == NULL || map->valid == 0)
+    {
+        return;
+    }
+
+    nominal_pd = leap_pd_endpoint_payload_size(
+        map->profile_id,
+        map->write_endpoint_id);
+    if (nominal_pd == 0u)
+    {
+        nominal_pd = leap_pd_endpoint_payload_size(
+            map->profile_id,
+            map->read_endpoint_id);
+    }
+    if (nominal_pd > map->endpoint_payload_size)
+    {
+        map->endpoint_payload_size = nominal_pd;
+    }
+}
+
+static void leap_conf_win_apply_session_profile(LeapConformanceWinContext* ctx)
+{
+    LeapPdProfileMap map;
+    uint32_t         profile_id = 0u;
+
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    if (ctx->session_caps_valid)
+    {
+        if (ctx->session_caps.dir.pd_map.profile_id != 0u)
+        {
+            profile_id = ctx->session_caps.dir.pd_map.profile_id;
+        }
+        else if (ctx->session_caps.dir.active_profile_id != 0u)
+        {
+            profile_id = ctx->session_caps.dir.active_profile_id;
+        }
+    }
+
+    if (profile_id != 0u &&
+        leap_pd_profile_map_from_profile_id(profile_id, &map) == LEAP_PD_COMMON_OK)
+    {
+        ctx->stack.config.pd.profile = map;
+        ctx->stack.pd.config.profile = map;
+        return;
+    }
+
+    if (!ctx->session_caps_valid ||
+        ctx->session_caps.dir.pd_map.valid == 0)
+    {
+        return;
+    }
+
+    map = ctx->session_caps.dir.pd_map;
+    leap_conf_win_normalize_pd_profile(&map);
+    ctx->stack.config.pd.profile = map;
+    ctx->stack.pd.config.profile = map;
+}
+
+static void leap_conf_win_apply_pd_outputs(
+    LeapConformanceWinContext* ctx,
+    uint16_t                     outputs)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    if (outputs == 0u)
+    {
+        /*
+         * use_fixed_outputs=1 with fixed_digital_outputs=0 forces every
+         * EXCHANGE to apply outputs=0 on the device. Fall back to the
+         * controller's rotating output pattern instead.
+         */
+        ctx->stack.config.pd.use_fixed_outputs     = 0;
+        ctx->stack.config.pd.fixed_digital_outputs = 0u;
+        ctx->stack.pd.config.use_fixed_outputs     = 0;
+        ctx->stack.pd.config.fixed_digital_outputs = 0u;
+        return;
+    }
+
+    ctx->stack.config.pd.use_fixed_outputs     = 1;
+    ctx->stack.config.pd.fixed_digital_outputs = outputs;
+    ctx->stack.pd.config.use_fixed_outputs     = 1;
+    ctx->stack.pd.config.fixed_digital_outputs = outputs;
+}
+
+static int leap_conf_win_bootstrap(
+    LeapConformanceWinContext* ctx,
+    uint16_t                   outputs,
+    int*                       op_out);
+
+static int leap_conf_win_send_identify_and_wait(
+    LeapConformanceWinContext* ctx,
+    const uint8_t*             peer_mac,
+    LeapIdentifyReply*         reply_out,
+    uint8_t*                   payload_out,
+    size_t                     payload_capacity,
+    size_t*                    payload_len_out);
+
+static void leap_conf_win_discard_controller_stack(LeapConformanceWinContext* ctx)
+{
+    if (ctx == NULL || !ctx->transport_open)
+    {
+        return;
+    }
+
+    if (ctx->stack.peer_bound != 0 &&
+        leap_mgmt_controller_session_id(&ctx->stack.mgmt) != 0u)
+    {
+        (void)leap_controller_stack_release(&ctx->stack, &ctx->raw_io.stack_io);
+        (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+    }
+
+    memset(&ctx->stack, 0, sizeof(ctx->stack));
+    ctx->exchange_session_ready       = 0;
+    ctx->last_exchange_prepare_us     = 0u;
+}
+
+static uint32_t leap_conf_win_fallback_profile_id(
+    const LeapConformanceWinContext* ctx)
+{
+    if (ctx == NULL || !ctx->session_caps_valid)
+    {
+        return 0u;
+    }
+
+    if (ctx->session_caps.dir.pd_map.profile_id != 0u)
+    {
+        return ctx->session_caps.dir.pd_map.profile_id;
+    }
+
+    if (ctx->session_caps.dir.active_profile_id != 0u)
+    {
+        return ctx->session_caps.dir.active_profile_id;
+    }
+
+    return 0u;
+}
+
+static int leap_conf_win_hello_from_peer_entry(
+    const LeapControllerPeerEntry* entry,
+    LeapHelloReply*                hello_out)
+{
+    if (entry == NULL || hello_out == NULL)
+    {
+        return -1;
+    }
+
+    memset(hello_out, 0, sizeof(*hello_out));
+    hello_out->active_profile_id  = entry->active_profile_id;
+    hello_out->default_profile_id = entry->default_profile_id;
+    hello_out->current_state      = entry->device_state;
+    memcpy(hello_out->active_owner_mac, entry->active_owner_mac, 6);
+    return 0;
+}
+
+static int leap_conf_win_hello_for_peer(
+    LeapConformanceWinContext* ctx,
+    const uint8_t*             peer_mac,
+    LeapHelloReply*            hello_out)
+{
+    const LeapControllerPeerEntry* entry;
+    int                            index;
+    uint32_t                       profile_id;
+
+    if (ctx == NULL || peer_mac == NULL || hello_out == NULL)
+    {
+        return -1;
+    }
+
+    index = leap_controller_peer_table_find(&ctx->table, peer_mac);
+    entry = (index >= 0)
+                ? leap_controller_peer_table_get(&ctx->table, (unsigned)index)
+                : NULL;
+    if (entry != NULL)
+    {
+        return leap_conf_win_hello_from_peer_entry(entry, hello_out);
+    }
+
+    if (leap_controller_peer_table_probe_peer(
+            &ctx->table,
+            &ctx->raw_io.stack_io,
+            peer_mac,
+            LEAP_CTRL_PEER_PROBE_TIMEOUT_MS) != LEAP_CTRL_PEER_OK)
+    {
+        return -1;
+    }
+
+    index = leap_controller_peer_table_find(&ctx->table, peer_mac);
+    entry = (index >= 0)
+                ? leap_controller_peer_table_get(&ctx->table, (unsigned)index)
+                : NULL;
+    if (entry != NULL)
+    {
+        return leap_conf_win_hello_from_peer_entry(entry, hello_out);
+    }
+
+    profile_id = leap_conf_win_fallback_profile_id(ctx);
+    memset(hello_out, 0, sizeof(*hello_out));
+    hello_out->current_state = (uint16_t)LEAP_STATE_CONFIGURED;
+    if (profile_id != 0u)
+    {
+        hello_out->active_profile_id  = profile_id;
+        hello_out->default_profile_id = profile_id;
+    }
+
+    return 0;
+}
+
+static void leap_conf_win_mark_exchange_prepared(LeapConformanceWinContext* ctx)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    ctx->last_exchange_prepare_us = leap_raw_winpcap_monotonic_us();
+    ctx->exchange_session_ready   = 1;
+}
+
+static int leap_conf_win_probe_owner_session(
+    LeapConformanceWinContext* ctx,
+    uint16_t                     outputs)
+{
+    volatile int           stop_flag = 0;
+    LeapPdControllerStatus status;
+    uint64_t               replies_before;
+    uint64_t               timeouts_before;
+    int                    saved_use_exchange;
+    unsigned               saved_period_ms;
+    int                    saved_use_fixed;
+    uint16_t               saved_fixed_outputs;
+    unsigned               attempt;
+    int                    ok = -1;
+
+    if (ctx == NULL || leap_conformance_win_session_is_op(ctx) == 0)
+    {
+        return -1;
+    }
+
+    saved_use_exchange    = ctx->stack.pd.config.use_exchange;
+    saved_period_ms       = ctx->stack.pd.config.cycle_period_ms;
+    saved_use_fixed       = ctx->stack.pd.config.use_fixed_outputs;
+    saved_fixed_outputs   = ctx->stack.pd.config.fixed_digital_outputs;
+
+    ctx->stack.config.pd.use_exchange     = 1;
+    ctx->stack.pd.config.use_exchange     = 1;
+    ctx->stack.config.pd.cycle_period_ms  = 0u;
+    ctx->stack.pd.config.cycle_period_ms  = 0u;
+
+    leap_conf_win_apply_session_profile(ctx);
+    leap_conf_win_apply_pd_outputs(ctx, outputs);
+
+    for (attempt = 0u; attempt < LEAP_CONF_VERIFY_PD_PROBE_RETRIES; ++attempt)
+    {
+        replies_before  = ctx->stack.pd.stats.exchange_replies;
+        timeouts_before = ctx->stack.pd.stats.recv_timeouts;
+        (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+
+        status = leap_pd_controller_run_one_cycle(
+            &ctx->stack.pd,
+            &ctx->stack.mgmt,
+            &ctx->raw_io.pd_io,
+            ctx->stack.peer_mac,
+            &stop_flag,
+            0);
+        if (status == LEAP_PD_CTRL_OK &&
+            ctx->stack.pd.stats.exchange_replies > replies_before &&
+            ctx->stack.pd.stats.recv_timeouts == timeouts_before)
+        {
+            ok = 0;
+            break;
+        }
+    }
+
+    if (ok != 0)
+    {
+        ctx->stack.config.pd.use_exchange          = saved_use_exchange;
+        ctx->stack.pd.config.use_exchange          = saved_use_exchange;
+        ctx->stack.config.pd.cycle_period_ms       = saved_period_ms;
+        ctx->stack.pd.config.cycle_period_ms       = saved_period_ms;
+        ctx->stack.config.pd.use_fixed_outputs     = saved_use_fixed;
+        ctx->stack.pd.config.use_fixed_outputs     = saved_use_fixed;
+        ctx->stack.config.pd.fixed_digital_outputs = saved_fixed_outputs;
+        ctx->stack.pd.config.fixed_digital_outputs = saved_fixed_outputs;
+
+        leap_log_printf(
+            "I/O session: owner PD EXCHANGE probe failed "
+            "(outputs=0x%04X session_id=%u "
+            "local_mac=%02x:%02x:%02x:%02x:%02x:%02x)\n",
+            (unsigned)outputs,
+            (unsigned)leap_mgmt_controller_session_id(&ctx->stack.mgmt),
+            ctx->transport.local_mac[0],
+            ctx->transport.local_mac[1],
+            ctx->transport.local_mac[2],
+            ctx->transport.local_mac[3],
+            ctx->transport.local_mac[4],
+            ctx->transport.local_mac[5]);
+        return -1;
+    }
+
+    /*
+     * Leave the soak output mask configured — a successful EXCHANGE has
+     * already driven GPIO on the device (ClearCore leaves safe on apply).
+     */
+    ctx->stack.config.pd.use_exchange    = saved_use_exchange;
+    ctx->stack.pd.config.use_exchange    = saved_use_exchange;
+    ctx->stack.config.pd.cycle_period_ms = saved_period_ms;
+    ctx->stack.pd.config.cycle_period_ms = saved_period_ms;
+    leap_log_printf(
+        "I/O session: PD EXCHANGE probe ok outputs=0x%04X (session_id=%u)\n",
+        (unsigned)outputs,
+        (unsigned)leap_mgmt_controller_session_id(&ctx->stack.mgmt));
+    return 0;
+}
+
+static int leap_conf_win_verify_device_session(LeapConformanceWinContext* ctx)
+{
+    LeapIdentifyReply    identify_reply;
+    static const uint8_t zero_mac[6] = { 0u, 0u, 0u, 0u, 0u, 0u };
+    unsigned             attempt;
+
+    if (ctx == NULL || !ctx->has_peer_mac ||
+        leap_conformance_win_session_is_op(ctx) == 0)
+    {
+        return -1;
+    }
+
+    /*
+     * IDENTIFY confirms device OP state and owner MAC. A single owner PD
+     * EXCHANGE confirms the controller session_id is accepted on the same
+     * path as soak (DIAG alone can pass without owner PD rights).
+     */
+    for (attempt = 0u; attempt < LEAP_CONF_VERIFY_IDENTIFY_RETRIES; ++attempt)
+    {
+        (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+
+        if (leap_conf_win_send_identify_and_wait(
+                ctx,
+                ctx->peer_mac,
+                &identify_reply,
+                NULL,
+                0u,
+                NULL) != 0)
+        {
+            continue;
+        }
+
+        if (identify_reply.current_state != (uint16_t)LEAP_STATE_OP)
+        {
+            continue;
+        }
+
+        if (memcmp(identify_reply.active_owner_mac, zero_mac, 6) == 0 ||
+            memcmp(
+                identify_reply.active_owner_mac,
+                ctx->transport.local_mac,
+                6) != 0)
+        {
+            continue;
+        }
+
+        return leap_conf_win_probe_owner_session(
+            ctx,
+            leap_conf_win_soak_outputs(ctx, 0u));
+    }
+
+    return -1;
+}
+
+static int leap_conf_win_ensure_exchange_session(
+    LeapConformanceWinContext* ctx,
+    int                        force_bootstrap)
+{
+    uint16_t session_outputs = leap_conf_win_soak_outputs(ctx, 0u);
+    int      op              = 0;
+
+    if (ctx == NULL)
+    {
+        return -1;
+    }
+
+    if (session_outputs == 0u)
+    {
+        session_outputs = leap_conf_win_bootstrap_outputs(ctx);
+    }
+
+    (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+
+    if (force_bootstrap == 0 &&
+        leap_conformance_win_session_is_op(ctx) != 0 &&
+        leap_conf_win_verify_device_session(ctx) == 0)
+    {
+        leap_log_printf(
+            "I/O session: verified owner session (session_id=%u)\n",
+            (unsigned)leap_mgmt_controller_session_id(&ctx->stack.mgmt));
+        leap_conf_win_mark_exchange_prepared(ctx);
+        return 0;
+    }
+
+    leap_log_printf(
+        "I/O session: re-bootstrapping owner session for EXCHANGE "
+        "(outputs=0x%04X)\n",
+        (unsigned)session_outputs);
+    leap_conf_win_discard_controller_stack(ctx);
+
+    if (ctx->has_peer_mac)
+    {
+        (void)leap_controller_peer_table_probe_peer(
+            &ctx->table,
+            &ctx->raw_io.stack_io,
+            ctx->peer_mac,
+            LEAP_CTRL_PEER_PROBE_TIMEOUT_MS);
+    }
+
+    if (leap_conf_win_bootstrap(ctx, session_outputs, &op) != 0 || !op)
+    {
+        leap_log_printf(
+            "I/O session: EXCHANGE re-bootstrap failed (bootstrap to OP)\n");
+        return -1;
+    }
+
+    leap_conf_win_apply_session_profile(ctx);
+    leap_conf_win_apply_pd_outputs(ctx, session_outputs);
+    if (leap_conf_win_probe_owner_session(ctx, session_outputs) != 0)
+    {
+        leap_log_printf(
+            "I/O session: EXCHANGE re-bootstrap failed (owner PD EXCHANGE probe)\n");
+        return -1;
+    }
+
+    ctx->cached_diag_valid = 0;
+    ctx->force_diag_poll   = 1;
+    leap_conf_win_mark_exchange_prepared(ctx);
+    leap_log_printf(
+        "I/O session: live OP on device (session_id=%u outputs=0x%04X)\n",
+        (unsigned)leap_mgmt_controller_session_id(&ctx->stack.mgmt),
+        (unsigned)session_outputs);
+    return 0;
+}
+
+static int leap_conf_win_configure_soak_outputs(
+    LeapConformanceWinContext* ctx,
+    uint16_t                     outputs)
+{
+    const LeapPdProfileMap* profile;
+
+    if (ctx == NULL)
+    {
+        return -1;
+    }
+
+    leap_conf_win_apply_session_profile(ctx);
+    leap_conf_win_apply_pd_outputs(ctx, outputs);
+    profile = &ctx->stack.pd.config.profile;
+    if (outputs == 0u)
+    {
+        leap_log_printf(
+            "PD outputs configured: rotating one-hot pattern "
+            "(physical I/O exercise, EXCHANGE soak, profile=0x%08X "
+            "write=0x%04X read=0x%04X payload=%u)\n",
+            (unsigned)profile->profile_id,
+            (unsigned)profile->write_endpoint_id,
+            (unsigned)profile->read_endpoint_id,
+            (unsigned)profile->endpoint_payload_size);
+    }
+    else
+    {
+        leap_log_printf(
+            "PD outputs configured: 0x%04X (EXCHANGE soak, profile=0x%08X "
+            "write=0x%04X read=0x%04X payload=%u)\n",
+            (unsigned)outputs,
+            (unsigned)profile->profile_id,
+            (unsigned)profile->write_endpoint_id,
+            (unsigned)profile->read_endpoint_id,
+            (unsigned)profile->endpoint_payload_size);
+    }
+    return 0;
+}
+
+static void leap_conf_win_free_soak_rtt_capture(LeapConformanceWinContext* ctx)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    free(ctx->soak_rtt_samples);
+    ctx->soak_rtt_samples   = NULL;
+    ctx->soak_rtt_count     = 0u;
+    ctx->soak_rtt_capacity  = 0u;
+}
+
+static int leap_conf_win_append_soak_rtt_sample(
+    LeapConformanceWinContext* ctx,
+    uint32_t                   sample)
+{
+    uint32_t* grown;
+    uint32_t  new_capacity;
+
+    if (ctx == NULL)
+    {
+        return -1;
+    }
+
+    if (ctx->soak_rtt_capacity == 0u)
+    {
+        ctx->soak_rtt_capacity = 8192u;
+        ctx->soak_rtt_samples =
+            (uint32_t*)malloc((size_t)ctx->soak_rtt_capacity * sizeof(uint32_t));
+        if (ctx->soak_rtt_samples == NULL)
+        {
+            ctx->soak_rtt_capacity = 0u;
+            return -1;
+        }
+    }
+
+    if (ctx->soak_rtt_count >= ctx->soak_rtt_capacity)
+    {
+        new_capacity = ctx->soak_rtt_capacity * 2u;
+        grown = (uint32_t*)realloc(
+            ctx->soak_rtt_samples,
+            (size_t)new_capacity * sizeof(uint32_t));
+        if (grown == NULL)
+        {
+            return -1;
+        }
+
+        ctx->soak_rtt_samples  = grown;
+        ctx->soak_rtt_capacity = new_capacity;
+    }
+
+    ctx->soak_rtt_samples[ctx->soak_rtt_count++] = sample;
+    return 0;
+}
+
+static void leap_conf_win_export_downsampled_trend(
+    const uint32_t*              raw,
+    uint32_t                     raw_count,
+    LeapConformanceLatencyTrend* out)
+{
+    uint32_t cap;
+    uint32_t bucket;
+
+    if (out == NULL)
+    {
+        return;
+    }
+
+    out->base_exchange = 0u;
+    out->count         = 0u;
+    if (raw == NULL || raw_count == 0u)
+    {
+        return;
+    }
+
+    cap = LEAP_PD_LATENCY_HISTORY_MAX;
+    if (raw_count <= cap)
+    {
+        memcpy(out->samples, raw, (size_t)raw_count * sizeof(uint32_t));
+        out->count = raw_count;
+        return;
+    }
+
+    out->count = cap;
+    for (bucket = 0u; bucket < cap; bucket++)
+    {
+        uint64_t start;
+        uint64_t end;
+        uint64_t index;
+        uint32_t bucket_max = 0u;
+
+        start = ((uint64_t)bucket * (uint64_t)raw_count) / (uint64_t)cap;
+        end =
+            ((uint64_t)(bucket + 1u) * (uint64_t)raw_count) / (uint64_t)cap;
+        if (end <= start)
+        {
+            end = start + 1u;
+        }
+
+        for (index = start; index < end && index < raw_count; index++)
+        {
+            if (raw[index] > bucket_max)
+            {
+                bucket_max = raw[index];
+            }
+        }
+
+        out->samples[bucket] = bucket_max;
+    }
+}
 
 static void leap_conf_win_reset_latency_trend(LeapConformanceWinContext* ctx)
 {
@@ -74,7 +716,10 @@ static void leap_conf_win_reset_latency_trend(LeapConformanceWinContext* ctx)
 
     memset(&ctx->session_latency, 0, sizeof(ctx->session_latency));
     ctx->latency_last_merged_total = 0u;
+    memset(&ctx->session_network_rtt, 0, sizeof(ctx->session_network_rtt));
+    ctx->network_rtt_last_merged_total = 0u;
     memset(&ctx->session_pd, 0, sizeof(ctx->session_pd));
+    leap_conf_win_free_soak_rtt_capture(ctx);
 }
 
 static void leap_conf_win_sync_session_pd(LeapConformanceWinContext* ctx)
@@ -123,6 +768,43 @@ static void leap_conf_win_sync_session_latency(LeapConformanceWinContext* ctx)
 
         leap_pd_latency_history_push(&ctx->session_latency, sample);
         ctx->latency_last_merged_total++;
+    }
+}
+
+static void leap_conf_win_sync_session_network_rtt(LeapConformanceWinContext* ctx)
+{
+    const LeapPdLatencyHistory* pd_history;
+    uint32_t                    pd_total;
+    uint32_t                    sample;
+
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    pd_history = &ctx->stack.pd.network_rtt_history;
+    pd_total   = pd_history->total_samples;
+    if (pd_total < ctx->network_rtt_last_merged_total)
+    {
+        ctx->network_rtt_last_merged_total = 0u;
+    }
+
+    while (ctx->network_rtt_last_merged_total < pd_total)
+    {
+        if (leap_pd_latency_history_sample_at(
+                pd_history,
+                ctx->network_rtt_last_merged_total,
+                &sample) != 0)
+        {
+            break;
+        }
+
+        leap_pd_latency_history_push(&ctx->session_network_rtt, sample);
+        if (ctx->soak_in_progress != 0)
+        {
+            (void)leap_conf_win_append_soak_rtt_sample(ctx, sample);
+        }
+        ctx->network_rtt_last_merged_total++;
     }
 }
 
@@ -277,7 +959,9 @@ static void leap_conf_win_release_before_disc(
         memset(&stack_config, 0, sizeof(stack_config));
         memcpy(stack_config.mgmt.controller_mac, ctx->transport.local_mac, 6);
         memcpy(stack_config.target_peer_mac, peer_mac, 6);
-        stack_config.recv_timeout_ms = 2000;
+        stack_config.bootstrap_lease_us    = LEAP_CONF_BOOTSTRAP_LEASE_US;
+        stack_config.bootstrap_watchdog_us = LEAP_CONF_BOOTSTRAP_WATCHDOG_US;
+        stack_config.recv_timeout_ms       = 2000;
         leap_controller_stack_init(&ctx->stack, &stack_config);
 
         if (leap_controller_stack_bootstrap_peer(
@@ -302,8 +986,7 @@ static int leap_conf_win_bootstrap_once(
     uint16_t                   outputs,
     int*                       op_out)
 {
-    LeapControllerStackConfig stack_config;
-    uint8_t                   peer_mac[6];
+    uint8_t peer_mac[6];
 
     if (ctx == NULL || op_out == NULL)
     {
@@ -322,8 +1005,7 @@ static int leap_conf_win_bootstrap_once(
         ctx->stack.config.single_peer_auto_select = 1;
     }
 
-    ctx->stack.config.pd.use_fixed_outputs     = 1;
-    ctx->stack.config.pd.fixed_digital_outputs = outputs;
+    leap_conf_win_apply_pd_outputs(ctx, outputs);
 
     if (leap_controller_stack_bootstrap(
             &ctx->stack,
@@ -340,6 +1022,52 @@ static int leap_conf_win_bootstrap_once(
     }
 
     *op_out = (leap_controller_stack_get_phase(&ctx->stack) == LEAP_CTRL_STACK_OP);
+    return 0;
+}
+
+int leap_conformance_win_session_is_op(const LeapConformanceWinContext* ctx)
+{
+    if (ctx == NULL || !ctx->transport_open || !ctx->has_peer_mac)
+    {
+        return 0;
+    }
+
+    if (ctx->stack.peer_bound == 0)
+    {
+        return 0;
+    }
+
+    if (memcmp(ctx->stack.peer_mac, ctx->peer_mac, 6) != 0)
+    {
+        return 0;
+    }
+
+    return (leap_controller_stack_get_phase(&ctx->stack) == LEAP_CTRL_STACK_OP &&
+            leap_mgmt_controller_get_state(&ctx->stack.mgmt) == LEAP_MGMT_CTRL_OP) ?
+               1 :
+               0;
+}
+
+int leap_conformance_win_ensure_op(LeapConformanceWinContext* ctx, uint16_t outputs)
+{
+    int op = 0;
+
+    if (ctx == NULL)
+    {
+        return -1;
+    }
+
+    if (leap_conformance_win_session_is_op(ctx) != 0)
+    {
+        (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+        return 0;
+    }
+
+    if (leap_conf_win_bootstrap(ctx, outputs, &op) != 0 || !op)
+    {
+        return -1;
+    }
+
     return 0;
 }
 
@@ -363,14 +1091,23 @@ static int leap_conf_win_bootstrap(
 
         memset(&stack_config, 0, sizeof(stack_config));
         memcpy(stack_config.mgmt.controller_mac, ctx->transport.local_mac, 6);
-        stack_config.bootstrap_lease_us     = 5000000u;
+        stack_config.bootstrap_lease_us     = LEAP_CONF_BOOTSTRAP_LEASE_US;
+        stack_config.bootstrap_watchdog_us  = LEAP_CONF_BOOTSTRAP_WATCHDOG_US;
+        stack_config.recv_timeout_ms        = ctx->has_peer_mac ?
+                                                LEAP_CONF_BOOTSTRAP_RECV_MS_KNOWN :
+                                                LEAP_CONF_BOOTSTRAP_RECV_MS;
         stack_config.pd.cycle_period_ms     = 100u;
         stack_config.pd.heartbeat_every_n_cycles = 10u;
-        stack_config.pd.use_fixed_outputs     = 1;
-        stack_config.pd.fixed_digital_outputs = outputs;
+        if (outputs != 0u)
+        {
+            stack_config.pd.use_fixed_outputs     = 1;
+            stack_config.pd.fixed_digital_outputs = outputs;
+        }
         if (ctx->has_peer_mac)
         {
             memcpy(stack_config.target_peer_mac, ctx->peer_mac, 6);
+            stack_config.default_profile_id =
+                leap_conf_win_fallback_profile_id(ctx);
         }
         else
         {
@@ -422,6 +1159,10 @@ static int leap_conf_win_open(
         leap_raw_winpcap_close(&ctx->transport);
         ctx->transport_open = 0;
         ctx->open_adapter_path[0] = '\0';
+        ctx->session_caps_valid = 0;
+        memset(&ctx->session_caps, 0, sizeof(ctx->session_caps));
+        ctx->exchange_session_ready       = 0;
+        ctx->last_exchange_prepare_us     = 0u;
         leap_conf_win_reset_latency_trend(ctx);
     }
 
@@ -482,6 +1223,10 @@ static void leap_conf_win_close(void* user_ctx)
         leap_raw_winpcap_close(&ctx->transport);
         ctx->transport_open = 0;
         ctx->open_adapter_path[0] = '\0';
+        ctx->session_caps_valid = 0;
+        memset(&ctx->session_caps, 0, sizeof(ctx->session_caps));
+        ctx->exchange_session_ready       = 0;
+        ctx->last_exchange_prepare_us     = 0u;
         leap_conf_win_reset_latency_trend(ctx);
     }
 }
@@ -503,8 +1248,32 @@ static int leap_conf_win_discover(void* user_ctx, int scan_ms, unsigned* peer_co
     }
 
     leap_controller_peer_table_init(&ctx->table);
+
+    /*
+     * scan_ms > 0: explicit Discovery-tab / CLI broadcast scan — always use
+     * discover_ex even when a peer MAC is configured for I/O bench.
+     * scan_ms == 0: internal prepare — probe the known peer when possible.
+     */
+    if (scan_ms <= 0 && ctx->has_peer_mac)
+    {
+        status = leap_controller_peer_table_probe_peer(
+            &ctx->table,
+            &ctx->raw_io.stack_io,
+            ctx->peer_mac,
+            LEAP_CTRL_PEER_PROBE_TIMEOUT_MS);
+        if (status != LEAP_CTRL_PEER_OK)
+        {
+            return -1;
+        }
+
+        *peer_count_out = ctx->table.count;
+        return (ctx->table.count > 0u) ? 0 : -1;
+    }
+
     memset(&disc_config, 0, sizeof(disc_config));
-    disc_config.scan_duration_ms = scan_ms > 0 ? scan_ms : 3000;
+    disc_config.scan_duration_ms = scan_ms > 0 ?
+                                       scan_ms :
+                                       LEAP_CONF_DISCOVER_BROADCAST_MS;
     disc_config.min_peers        = 0u;
 
     status = leap_controller_peer_table_discover_ex(
@@ -563,12 +1332,33 @@ static int leap_conf_win_pd_write(
     return -1;
 }
 
+static const char* leap_conf_win_diag_status_text(
+    LeapControllerStackDiagStatus status)
+{
+    switch (status)
+    {
+    case LEAP_CTRL_STACK_DIAG_NOT_OP:
+        return "controller not OP";
+    case LEAP_CTRL_STACK_DIAG_SEND_FAILED:
+        return "send failed";
+    case LEAP_CTRL_STACK_DIAG_RECV_TIMEOUT:
+        return "recv timeout (stale RX or device error)";
+    case LEAP_CTRL_STACK_DIAG_UNEXPECTED_REPLY:
+        return "device error reply";
+    case LEAP_CTRL_STACK_DIAG_PARSE_ERROR:
+        return "reply parse error";
+    default:
+        return "unknown error";
+    }
+}
+
 static int leap_conf_win_read_diag(void* user_ctx, int* ok_out)
 {
     LeapConformanceWinContext*    ctx = (LeapConformanceWinContext*)user_ctx;
     LeapControllerStackDiagResult result;
     LeapControllerStackDiagStatus status;
     int                           op = 0;
+    int                           saved_recv_timeout_ms = 0;
 
     if (ctx == NULL || ok_out == NULL)
     {
@@ -576,15 +1366,48 @@ static int leap_conf_win_read_diag(void* user_ctx, int* ok_out)
     }
 
     *ok_out = 0;
-    if (leap_conf_win_bootstrap(ctx, 0x0001u, &op) != 0 || !op)
+    (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+
+    if (leap_conformance_win_session_is_op(ctx) == 0)
     {
-        return -1;
+        if (leap_conf_win_bootstrap(ctx, 0x0001u, &op) != 0 || !op)
+        {
+            return -1;
+        }
+    }
+    else if (ctx->has_peer_mac &&
+             leap_conf_win_verify_device_session(ctx) != 0)
+    {
+        leap_log_printf(
+            "DIAG readback: owner session mismatch, re-bootstrapping\n");
+        if (leap_conf_win_bootstrap(ctx, 0x0001u, &op) != 0 || !op)
+        {
+            return -1;
+        }
+    }
+
+    (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+
+    saved_recv_timeout_ms = ctx->stack.config.recv_timeout_ms;
+    if (ctx->stack.config.recv_timeout_ms < 2000)
+    {
+        ctx->stack.config.recv_timeout_ms = 2000;
     }
 
     status = leap_controller_stack_read_diag(
         &ctx->stack,
         &ctx->raw_io.stack_io,
         &result);
+
+    ctx->stack.config.recv_timeout_ms = saved_recv_timeout_ms;
+    if (status != LEAP_CTRL_STACK_DIAG_OK)
+    {
+        leap_log_printf(
+            "DIAG readback failed: %s (session_id=%u)\n",
+            leap_conf_win_diag_status_text(status),
+            (unsigned)leap_mgmt_controller_session_id(&ctx->stack.mgmt));
+    }
+
     *ok_out = (status == LEAP_CTRL_STACK_DIAG_OK);
     return (*ok_out) ? 0 : -1;
 }
@@ -653,7 +1476,7 @@ static DWORD WINAPI leap_conf_metrics_poll_thread(LPVOID param)
                 args->ctx->progress_fn(args->ctx->progress_ctx, &progress);
             }
         }
-        Sleep(500);
+        Sleep(100);
     }
 
     free(args);
@@ -753,18 +1576,29 @@ static int leap_conf_win_cyclic(
         return -1;
     }
 
+    leap_conf_win_reset_latency_trend(ctx);
+    memset(&ctx->stack.pd.latency_history, 0, sizeof(ctx->stack.pd.latency_history));
+    memset(&ctx->stack.pd.network_rtt_history, 0,
+           sizeof(ctx->stack.pd.network_rtt_history));
+    leap_pd_controller_reset_stats(&ctx->stack.pd);
+
     {
         unsigned period = cyclic_ms;
 
         ctx->stack.config.pd.cycle_period_ms    = period;
         ctx->stack.config.pd.use_exchange       = exchange;
-        ctx->stack.config.pd.stats_log_interval = 5u;
+        ctx->stack.config.pd.stats_log_interval = 0u;
         ctx->stack.pd.config.cycle_period_ms    = period;
         ctx->stack.pd.config.use_exchange         = exchange;
-        ctx->stack.pd.config.stats_log_interval = 5u;
+        ctx->stack.pd.config.stats_log_interval = 0u;
     }
 
-    ctx->cancel_flag = 0;
+    leap_conf_win_apply_session_profile(ctx);
+    leap_conf_win_apply_pd_outputs(
+        ctx, leap_conf_win_soak_outputs(ctx, outputs));
+
+    ctx->cancel_flag      = 0;
+    ctx->soak_in_progress = 1;
     leap_win_install_ctrl_handler(&ctx->cancel_flag);
     leap_conf_win_start_metrics_poll(ctx);
 
@@ -796,6 +1630,7 @@ static int leap_conf_win_cyclic(
 #endif
 
     leap_conf_win_stop_metrics_poll(ctx);
+    ctx->soak_in_progress = 0;
 
     if (stats_out != NULL)
     {
@@ -922,7 +1757,9 @@ static int leap_conf_win_probe_capabilities(
         memset(&ctx->stack, 0, sizeof(ctx->stack));
         memset(&stack_config, 0, sizeof(stack_config));
         memcpy(stack_config.mgmt.controller_mac, ctx->transport.local_mac, 6);
-        stack_config.recv_timeout_ms = 3000;
+        stack_config.bootstrap_lease_us    = LEAP_CONF_BOOTSTRAP_LEASE_US;
+        stack_config.bootstrap_watchdog_us = LEAP_CONF_BOOTSTRAP_WATCHDOG_US;
+        stack_config.recv_timeout_ms       = 3000;
         leap_controller_stack_init(&ctx->stack, &stack_config);
 
         (void)leap_raw_winpcap_drain_rx(&ctx->transport);
@@ -1239,6 +2076,11 @@ static void leap_conf_win_poll_device_diag(LeapConformanceWinContext* ctx)
         return;
     }
 
+    if (ctx->soak_in_progress != 0)
+    {
+        return;
+    }
+
     if (leap_controller_stack_get_phase(&ctx->stack) != LEAP_CTRL_STACK_OP)
     {
         return;
@@ -1386,12 +2228,29 @@ static int leap_conf_win_snapshot(void* user_ctx, LeapConformanceMetrics* out)
         out->pd = ctx->stack.pd.stats;
     }
     leap_conf_win_sync_session_latency(ctx);
+    leap_conf_win_sync_session_network_rtt(ctx);
     leap_pd_latency_history_export(
         &ctx->session_latency,
         out->reply_latency_trend.samples,
         LEAP_PD_LATENCY_HISTORY_MAX,
         &out->reply_latency_trend.count,
         &out->reply_latency_trend.base_exchange);
+    if (ctx->soak_rtt_count > 0u)
+    {
+        leap_conf_win_export_downsampled_trend(
+            ctx->soak_rtt_samples,
+            ctx->soak_rtt_count,
+            &out->network_rtt_trend);
+    }
+    else
+    {
+        leap_pd_latency_history_export(
+            &ctx->session_network_rtt,
+            out->network_rtt_trend.samples,
+            LEAP_PD_LATENCY_HISTORY_MAX,
+            &out->network_rtt_trend.count,
+            &out->network_rtt_trend.base_exchange);
+    }
     out->frame_seq   = ctx->stack.frame_seq;
     out->stack_phase = (uint32_t)leap_controller_stack_get_phase(&ctx->stack);
 
@@ -1432,32 +2291,89 @@ int leap_conformance_win_transport_is_open(LeapConformanceWinContext* ctx)
     return ctx->transport_open;
 }
 
-int leap_conformance_win_prepare_diagnostics(LeapConformanceWinContext* ctx)
+int leap_conformance_win_prepare_io_session(LeapConformanceWinContext* ctx)
 {
     unsigned peer_count = 0u;
-    int      op         = 0;
+    uint16_t bootstrap_outputs;
+    uint16_t soak_outputs;
 
-    if (ctx == NULL || !ctx->transport_open)
+    if (ctx == NULL || !ctx->transport_open || !ctx->has_peer_mac)
     {
         return -1;
     }
 
-    if (leap_controller_stack_get_phase(&ctx->stack) == LEAP_CTRL_STACK_OP &&
-        leap_mgmt_controller_get_state(&ctx->stack.mgmt) == LEAP_MGMT_CTRL_OP)
+    if (leap_conformance_win_session_is_op(ctx) != 0)
     {
-        return 0;
+        soak_outputs = leap_conf_win_soak_outputs(ctx, 0u);
+        if (leap_conf_win_ensure_exchange_session(ctx, 0) != 0)
+        {
+            return -1;
+        }
+        return leap_conf_win_configure_soak_outputs(ctx, soak_outputs);
     }
 
     if (ctx->table.count == 0u)
     {
-        if (leap_conf_win_discover(ctx, 2000, &peer_count) != 0 ||
+        if (leap_conf_win_discover(ctx, 0, &peer_count) != 0 ||
             peer_count == 0u)
         {
             return -1;
         }
     }
 
-    if (leap_conf_win_bootstrap(ctx, 0x0001u, &op) != 0 || !op)
+    if (!ctx->session_caps_valid)
+    {
+        LeapConformanceDeviceCaps caps;
+
+        memset(&caps, 0, sizeof(caps));
+        if (leap_conf_win_probe_capabilities(ctx, ctx->peer_mac, &caps) == 0 &&
+            caps.valid)
+        {
+            ctx->session_caps       = caps;
+            ctx->session_caps_valid = 1;
+        }
+    }
+
+    bootstrap_outputs = leap_conf_win_bootstrap_outputs(ctx);
+    soak_outputs      = leap_conf_win_soak_outputs(ctx, 0u);
+
+    if (leap_conf_win_ensure_exchange_session(ctx, 0) != 0)
+    {
+        return -1;
+    }
+
+    return leap_conf_win_configure_soak_outputs(ctx, soak_outputs);
+}
+
+int leap_conformance_win_io_session_prepared(const LeapConformanceWinContext* ctx)
+{
+    return (ctx != NULL && ctx->exchange_session_ready != 0) ? 1 : 0;
+}
+
+int leap_conformance_win_prepare_diagnostics(LeapConformanceWinContext* ctx)
+{
+    unsigned peer_count = 0u;
+
+    if (ctx == NULL || !ctx->transport_open)
+    {
+        return -1;
+    }
+
+    if (leap_conformance_win_session_is_op(ctx) != 0)
+    {
+        return 0;
+    }
+
+    if (ctx->table.count == 0u)
+    {
+        if (leap_conf_win_discover(ctx, 0, &peer_count) != 0 ||
+            peer_count == 0u)
+        {
+            return -1;
+        }
+    }
+
+    if (leap_conformance_win_ensure_op(ctx, 0x0001u) != 0)
     {
         return -1;
     }
@@ -1517,6 +2433,7 @@ void leap_conformance_win_destroy(LeapConformanceWinContext* ctx)
     }
 
     leap_conf_win_close(ctx);
+    leap_conf_win_free_soak_rtt_capture(ctx);
     free(ctx);
 }
 

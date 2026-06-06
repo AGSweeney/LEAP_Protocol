@@ -7,6 +7,8 @@
 
 #include "leap/leap_win_time.h"
 
+#include <stdlib.h>
+
 #if defined(_WIN32)
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -112,6 +114,102 @@ static int leap_win_sleep_us_timer(uint64_t sleep_us)
 
     (void)WaitForSingleObject(g_hires_timer, INFINITE);
     return 1;
+}
+
+static DWORD_PTR leap_win_pick_cyclic_affinity_mask(void)
+{
+    char        env_buf[16];
+    DWORD_PTR   process_mask = 0;
+    DWORD_PTR   system_mask  = 0;
+    unsigned    cpu;
+    DWORD       env_len;
+
+    env_len = GetEnvironmentVariableA(
+        "LEAP_WIN_CYCLIC_CPU",
+        env_buf,
+        (DWORD)sizeof(env_buf));
+    if (env_len > 0u && env_len < (DWORD)sizeof(env_buf))
+    {
+        cpu = (unsigned)atoi(env_buf);
+        if (cpu < (unsigned)(sizeof(DWORD_PTR) * 8u))
+        {
+            return ((DWORD_PTR)1) << cpu;
+        }
+    }
+
+    if (GetProcessAffinityMask(GetCurrentProcess(), &process_mask, &system_mask) == 0 ||
+        process_mask == 0)
+    {
+        return (DWORD_PTR)1;
+    }
+
+    for (cpu = (unsigned)(sizeof(DWORD_PTR) * 8u); cpu-- > 0u; )
+    {
+        DWORD_PTR bit = ((DWORD_PTR)1) << cpu;
+
+        if ((process_mask & bit) != 0)
+        {
+            return bit;
+        }
+    }
+
+    return process_mask & (~process_mask + 1);
+}
+
+void leap_win_thread_priority_begin_critical(LeapWinThreadPriorityScope* scope)
+{
+    DWORD_PTR affinity_mask;
+
+    if (scope == NULL)
+    {
+        return;
+    }
+
+    scope->active                   = 0;
+    scope->affinity_active          = 0;
+    scope->affinity_mask            = 0u;
+    scope->previous_affinity_mask   = 0u;
+    scope->previous_priority          = GetThreadPriority(GetCurrentThread());
+    if (SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL) != 0)
+    {
+        scope->active = 1;
+    }
+
+    affinity_mask = leap_win_pick_cyclic_affinity_mask();
+    if (affinity_mask != 0)
+    {
+        DWORD_PTR previous_mask =
+            SetThreadAffinityMask(GetCurrentThread(), affinity_mask);
+
+        if (previous_mask != 0)
+        {
+            scope->affinity_active        = 1;
+            scope->affinity_mask            = (uint64_t)affinity_mask;
+            scope->previous_affinity_mask   = (uint64_t)previous_mask;
+        }
+    }
+}
+
+void leap_win_thread_priority_end(LeapWinThreadPriorityScope* scope)
+{
+    if (scope == NULL)
+    {
+        return;
+    }
+
+    if (scope->affinity_active != 0)
+    {
+        (void)SetThreadAffinityMask(
+            GetCurrentThread(),
+            (DWORD_PTR)scope->previous_affinity_mask);
+        scope->affinity_active = 0;
+    }
+
+    if (scope->active != 0)
+    {
+        (void)SetThreadPriority(GetCurrentThread(), scope->previous_priority);
+        scope->active = 0;
+    }
 }
 
 void leap_win_sleep_us(uint64_t sleep_us)

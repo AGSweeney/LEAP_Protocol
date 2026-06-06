@@ -61,6 +61,8 @@ typedef struct LeapPdDeviceContext
     int                sequence_active;
 } LeapPdDeviceContext;
 
+typedef void (*LeapPdDeviceApplyOutputsFn)(uint16_t outputs, void* user_ctx);
+
 typedef struct LeapPdDeviceIoBinding
 {
     uint16_t* digital_outputs;
@@ -70,6 +72,12 @@ typedef struct LeapPdDeviceIoBinding
      * Optional: set to 1 when digital_outputs changes (skip redundant I/O work).
      */
     int*      outputs_dirty;
+    /*
+     * Optional: drive physical outputs when APPLY_OUTPUTS is accepted.
+     * When set, the platform must update digital_outputs/digital_inputs shadows.
+     */
+    LeapPdDeviceApplyOutputsFn apply_outputs;
+    void*                      apply_outputs_ctx;
 } LeapPdDeviceIoBinding;
 
 typedef struct LeapPdDeviceResult
@@ -98,8 +106,20 @@ void leap_pd_device_sync_profile_from_dir(
 void leap_pd_device_reset_sequence(LeapPdDeviceContext* pd, uint32_t session_id);
 
 /*
- * Handle a validated LEAP-PD frame. Accepted owner traffic in OP refreshes
- * lease and process watchdog per spec section 10.2.
+ * Handle a pre-validated LEAP-PD frame (header + payload from leap_frame_parse).
+ * Accepted owner traffic in OP refreshes lease and process watchdog per §10.2.
+ */
+LeapPdDeviceStatus leap_pd_device_process_parsed_frame(
+    LeapMgmtDeviceContext*       mgmt,
+    LeapPdDeviceContext*         pd_ctx,
+    const LeapPdDeviceIoBinding* io_binding,
+    const uint8_t*               source_mac,
+    uint64_t                     now_us,
+    const LeapFrameView*         frame,
+    LeapPdDeviceResult*          result);
+
+/*
+ * Parse and handle a LEAP-PD frame. Wrapper around leap_pd_device_process_parsed_frame.
  *
  * pd_ctx may be NULL to skip sequence enforcement and use default profile map.
  */

@@ -245,6 +245,11 @@ int main(int argc, char** argv)
     stack_config.mgmt.default_watchdog_us = 500000u;
     stack_config.mgmt.max_lease_us        = 10000000u;
     stack_config.mgmt.max_watchdog_us     = 1000000u;
+    (void)leap_dir_device_config_set_digital_io(
+        &stack_config.dir,
+        LEAP_PROFILE_DIGITAL_IO_16X16,
+        16u,
+        16u);
 
     leap_device_stack_init_full(&stack, &stack_config);
 

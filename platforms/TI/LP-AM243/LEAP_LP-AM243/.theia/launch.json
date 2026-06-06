@@ -1,0 +1,16 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "LEAP_LP-AM243",
+      "type": "ccs-debug",
+      "request": "launch",
+      "projectInfo": {
+        "name": "LEAP_LP-AM243",
+        "resourceId": "/LEAP_LP-AM243"
+      }
+    }
+  ]
+}

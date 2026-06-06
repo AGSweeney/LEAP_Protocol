@@ -53,6 +53,7 @@ typedef struct LeapConformanceMetrics
     int                              has_cycle_timing;
     int                              has_device_diag;
     LeapConformanceLatencyTrend      reply_latency_trend;
+    LeapConformanceLatencyTrend      network_rtt_trend;
 } LeapConformanceMetrics;
 
 #ifdef __cplusplus

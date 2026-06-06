@@ -198,8 +198,8 @@ int main(void) {
 
 
 
-        Delay_ms(1);
-
+        /* M1a: no millisecond sleep on idle — poll continuously for sub-ms RTT.
+         * See docs/LEAP_DEVICE_PERFORMANCE.md (LEAP_DEVICE_PERF_M1_NO_MAIN_LOOP_SLEEP). */
     }
 
 }

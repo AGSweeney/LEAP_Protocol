@@ -2,6 +2,8 @@
 
 Raw Ethernet LEAP over Linux `AF_PACKET` (development EtherType `0x88B6`).
 
+Build into local **`build/`** (gitignored): [docs/BUILD.md](../../docs/BUILD.md).
+
 Applications use the **reference stacks** — not ad-hoc MGMT/PD logic:
 
 | Binary | Stack | Role |

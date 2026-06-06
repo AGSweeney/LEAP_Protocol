@@ -18,6 +18,8 @@ struct pbuf;
 extern "C" {
 #endif
 
+int clearcore_leap_eth_init(void);
+
 int clearcore_leap_eth_send(
     struct netif *    netif,
     const uint8_t *   dst_mac,

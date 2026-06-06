@@ -56,12 +56,20 @@ int leap_conformance_win_transport_is_open(LeapConformanceWinContext* ctx);
  */
 int leap_conformance_win_prepare_diagnostics(LeapConformanceWinContext* ctx);
 
+int leap_conformance_win_prepare_io_session(LeapConformanceWinContext* ctx);
+
+int leap_conformance_win_io_session_prepared(const LeapConformanceWinContext* ctx);
+
 void leap_conformance_win_set_progress(
     LeapConformanceWinContext*    ctx,
     LeapConformanceProgressFn     progress_fn,
     void*                         progress_ctx);
 
 void leap_conformance_win_reset_latency_trend(LeapConformanceWinContext* ctx);
+
+int leap_conformance_win_session_is_op(const LeapConformanceWinContext* ctx);
+
+int leap_conformance_win_ensure_op(LeapConformanceWinContext* ctx, uint16_t outputs);
 
 #ifdef __cplusplus
 }

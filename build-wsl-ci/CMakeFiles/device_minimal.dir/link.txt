@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/device_minimal.dir/examples/device_minimal/main.c.o -o device_minimal  leap_core/libleap_core.a 

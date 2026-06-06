@@ -195,7 +195,12 @@ static uint16_t leap_conf_step_outputs(
         return run_state->device_caps.bootstrap_outputs;
     }
 
-    return def != NULL ? def->pd_outputs : 0u;
+    if (def != NULL && def->pd_outputs != 0u)
+    {
+        return def->pd_outputs;
+    }
+
+    return use_cyclic_outputs ? (uint16_t)0x003Fu : (uint16_t)0x0001u;
 }
 
 static LeapConformanceStatus leap_conf_run_one(
@@ -258,7 +263,7 @@ static LeapConformanceStatus leap_conf_run_one(
     {
         unsigned peer_count = 0u;
 
-        sub = io->discover_peers(io->user_ctx, 3000, &peer_count);
+        sub = io->discover_peers(io->user_ctx, 1000, &peer_count);
         row = leap_conf_add_step(result);
         ok  = (sub == 0 && peer_count >= 1u);
         (void)snprintf(detail, sizeof(detail), "peers=%u", peer_count);
@@ -363,6 +368,11 @@ static LeapConformanceStatus leap_conf_run_one(
             (uint32_t)(leap_conf_now_ms() - step_start),
             config->peer_mac_text != NULL ? config->peer_mac_text : "");
 
+        if (outputs == 0u)
+        {
+            outputs = (uint16_t)0x0001u;
+        }
+
         sub = io->pd_write(io->user_ctx, outputs, &ok);
         row = leap_conf_add_step(result);
         (void)snprintf(detail, sizeof(detail), "outputs=0x%04X", outputs);
@@ -379,13 +389,24 @@ static LeapConformanceStatus leap_conf_run_one(
     case LEAP_CONF_KIND_DIAG_READ:
         sub = io->read_diag(io->user_ctx, &ok);
         row = leap_conf_add_step(result);
+        if (sub != 0 || !ok)
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "LEAP-DIAG counters/timing read failed (see activity log)");
+        }
+        else
+        {
+            detail[0] = '\0';
+        }
         leap_conf_fill_step(
             row,
             def,
             "DIAG readback",
             (sub == 0 && ok) ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
             (uint32_t)(leap_conf_now_ms() - step_start),
-            "");
+            detail);
         break;
 
     case LEAP_CONF_KIND_LEASE_DEMO:
@@ -525,6 +546,184 @@ static LeapConformanceStatus leap_conf_run_one(
                 LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
             (uint32_t)(leap_conf_now_ms() - step_start),
             exchange_detail);
+        break;
+    }
+
+    case LEAP_CONF_KIND_IO_EXCHANGE_BENCH:
+    {
+        LeapPdControllerStats stats;
+        unsigned              seconds = def->cyclic_seconds;
+        /*
+         * outputs=0: rotating one-hot on the controller (IO-0..IO-5 in turn).
+         * Fixed cyclic_outputs (e.g. 0x003F) holds every line high — no exercise.
+         */
+        uint16_t              outputs = 0u;
+        const char*           exchange_detail = "PD EXCHANGE soak";
+        uint64_t              avg_rtt_us      = 0u;
+        double                exchanges_per_s = 0.0;
+        int                   soak_pass;
+        int                   timeout_pass;
+        int                   rtt_pass;
+        int                   reply_pass;
+
+        if (run_state != NULL && run_state->device_caps_valid)
+        {
+            exchange_detail = run_state->device_caps.cyclic_exchange_detail;
+            if (run_state->device_caps.skip_cyclic_exchange)
+            {
+                row = leap_conf_add_step(result);
+                leap_conf_fill_step(
+                    row,
+                    def,
+                    "I/O EXCHANGE bench",
+                    LEAP_CONF_STEP_SKIP,
+                    (uint32_t)(leap_conf_now_ms() - step_start),
+                    exchange_detail);
+                break;
+            }
+        }
+
+        if (config->cyclic_seconds > 0u)
+        {
+            seconds = config->cyclic_seconds;
+        }
+
+        memset(&stats, 0, sizeof(stats));
+        sub = io->cyclic_pd(
+            io->user_ctx,
+            outputs,
+            1,
+            seconds,
+            config->cyclic_period_ms,
+            &stats,
+            &ok);
+
+        if (seconds > 0u)
+        {
+            exchanges_per_s =
+                (double)stats.exchange_replies / (double)seconds;
+        }
+
+        if (stats.network_rtt_samples > 0u)
+        {
+            avg_rtt_us =
+                stats.total_network_rtt_us / stats.network_rtt_samples;
+        }
+
+        soak_pass =
+            (sub == 0 && ok && stats.pd_sent_fail == 0u) ? 1 : 0;
+        timeout_pass = (stats.recv_timeouts == 0u) ? 1 : 0;
+        rtt_pass     = leap_conf_io_bench_wire_rtt_pass(
+            &stats,
+            config->cyclic_period_ms);
+        reply_pass =
+            (stats.exchange_replies > 0u &&
+             stats.exchange_replies == stats.cycles_completed) ?
+                1 :
+                0;
+
+        row = leap_conf_add_step(result);
+        if (config->cyclic_period_ms == 0u)
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "freerun %us cycles=%llu exch/s=%.1f",
+                seconds,
+                (unsigned long long)stats.cycles_completed,
+                exchanges_per_s);
+        }
+        else
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "period=%ums %us cycles=%llu exch/s=%.1f",
+                config->cyclic_period_ms,
+                seconds,
+                (unsigned long long)stats.cycles_completed,
+                exchanges_per_s);
+        }
+        leap_conf_fill_step(
+            row,
+            def,
+            "I/O EXCHANGE soak",
+            soak_pass ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
+            (uint32_t)(leap_conf_now_ms() - step_start),
+            detail);
+
+        row = leap_conf_add_step(result);
+        (void)snprintf(
+            detail,
+            sizeof(detail),
+            "recv_timeouts=%llu",
+            (unsigned long long)stats.recv_timeouts);
+        leap_conf_fill_step(
+            row,
+            def,
+            "Zero exchange timeouts",
+            timeout_pass ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
+            (uint32_t)(leap_conf_now_ms() - step_start),
+            stats.recv_timeouts == 0u ? "recv_timeouts=0 expected" : detail);
+
+        row = leap_conf_add_step(result);
+        if (stats.network_rtt_samples == 0u)
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "no wire RTT samples (transport recv timestamp missing)");
+        }
+        else if (config->cyclic_period_ms == 0u)
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "last/avg/p99/max=%llu/%llu/%u/%llu us "
+                "(p99 limit %u us, max ceiling %u us)",
+                (unsigned long long)stats.last_network_rtt_us,
+                (unsigned long long)avg_rtt_us,
+                (unsigned)leap_pd_stats_network_rtt_percentile_us(&stats, 99u),
+                (unsigned long long)stats.max_network_rtt_us,
+                (unsigned)leap_conf_io_bench_p99_rtt_us(0u),
+                (unsigned)leap_conf_io_bench_max_rtt_us(0u));
+        }
+        else
+        {
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "last/avg/max=%llu/%llu/%llu us (limit %u us)",
+                (unsigned long long)stats.last_network_rtt_us,
+                (unsigned long long)avg_rtt_us,
+                (unsigned long long)stats.max_network_rtt_us,
+                (unsigned)leap_conf_io_bench_max_rtt_us(
+                    config->cyclic_period_ms));
+        }
+        leap_conf_fill_step(
+            row,
+            def,
+            "Wire RTT",
+            rtt_pass ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
+            (uint32_t)(leap_conf_now_ms() - step_start),
+            detail);
+
+        row = leap_conf_add_step(result);
+        (void)snprintf(
+            detail,
+            sizeof(detail),
+            "exchange_replies=%llu cycles=%llu lost=%llu rejects=%llu",
+            (unsigned long long)stats.exchange_replies,
+            (unsigned long long)stats.cycles_completed,
+            (unsigned long long)stats.lost_frames,
+            (unsigned long long)stats.reply_rejects);
+        leap_conf_fill_step(
+            row,
+            def,
+            "Exchange reliability",
+            reply_pass ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
+            (uint32_t)(leap_conf_now_ms() - step_start),
+            detail);
         break;
     }
 
@@ -748,11 +947,14 @@ LeapConformanceStatus leap_conformance_run_steps(
             {
                 break;
             }
+            if (config->inter_step_delay_ms > 0u)
+            {
 #if defined(_WIN32)
-            Sleep(500);
+                Sleep(config->inter_step_delay_ms);
 #else
-            usleep(500000);
+                usleep((useconds_t)config->inter_step_delay_ms * 1000u);
 #endif
+            }
         }
     }
 

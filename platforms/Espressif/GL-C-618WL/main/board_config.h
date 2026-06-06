@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "leap/leap_protocol.h"
+
 /*
  * Gledopto GL-C-618WL (Elite 4D-EXMU) - Hardware Pin Definitions
  * ===============================================================
@@ -77,3 +79,7 @@
 #define LEAP_DO_CH1_GREEN_BIT   5u
 #define LEAP_DO_CH1_BLUE_BIT    6u
 #define LEAP_DO_CH1_WHITE_BIT   7u
+
+#define LEAP_DO_COUNT           8u
+#define LEAP_DI_COUNT           0u
+#define LEAP_PROFILE_ID         LEAP_PROFILE_DIGITAL_IO_8X8

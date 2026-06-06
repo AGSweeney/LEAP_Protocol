@@ -19,6 +19,8 @@ No Npcap SDK is required to build — the transport loads `wpcap.dll` and `Packe
 
 ## Build
 
+Local output: **`build-win/`** (gitignored). See [docs/BUILD.md](../../docs/BUILD.md).
+
 ```powershell
 cmake -S . -B build-win -DLEAP_BUILD_WIN_SMOKE=ON
 cmake --build build-win --config Release --target leap_win_smoke

@@ -10,9 +10,11 @@
 #include <string.h>
 
 extern const LeapConformanceScenario leap_conformance_scenario_digital_io_bench_v1;
+extern const LeapConformanceScenario leap_conformance_scenario_io_exchange_bench_v1;
 
 static const LeapConformanceScenario* k_builtin_scenarios[] = {
     &leap_conformance_scenario_digital_io_bench_v1,
+    &leap_conformance_scenario_io_exchange_bench_v1,
 };
 
 const LeapConformanceScenario* leap_conformance_scenario_by_id(const char* id)

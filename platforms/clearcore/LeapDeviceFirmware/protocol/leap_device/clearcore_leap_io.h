@@ -12,6 +12,11 @@
 
 #include <stdint.h>
 
+#define CLEARCORE_LEAP_DO_COUNT     6u
+#define CLEARCORE_LEAP_DI_COUNT     6u
+/* LEAP_PROFILE_DIGITAL_IO_8X8 — keep literal; this header must not include leap_core */
+#define CLEARCORE_LEAP_PROFILE_ID     0x00010001u
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,6 +28,11 @@ typedef struct ClearcoreLeapIoShadow
     uint16_t safe_outputs;
     uint16_t io_status;
     int      safe_active;
+    int      outputs_dirty;
+    /* Bit N set: ConnectorIO N is in OUTPUT_DIGITAL (not sampled as input). */
+    uint8_t  pin_output_mask;
+    /* Bit N set: GPIO N is currently driven high. */
+    uint8_t  pin_state_mask;
 } ClearcoreLeapIoShadow;
 
 void clearcore_leap_io_init(ClearcoreLeapIoShadow *io);

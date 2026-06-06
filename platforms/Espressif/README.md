@@ -1,6 +1,8 @@
 # Espressif
 
-LEAP device ports for Espressif hardware.
+LEAP device ports for Espressif hardware. Firmware builds with **ESP-IDF** inside
+each platform folder (`idf.py build`). Windows/Linux host controllers for bench tests
+use repo-root CMake — [docs/BUILD.md](../../docs/BUILD.md).
 
 | Target | Path | Status |
 | --- | --- | --- |

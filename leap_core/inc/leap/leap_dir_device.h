@@ -79,6 +79,18 @@ typedef struct LeapDirDeviceResult
 
 void leap_dir_device_init(LeapDirDeviceContext* ctx, const LeapDirDeviceConfig* config);
 
+/*
+ * Install a single digital I/O profile on config (replaces any existing profiles).
+ * output_bit_count / input_bit_count: 0 omits that endpoint direction.
+ * profile_id must be LEAP_PROFILE_DIGITAL_IO_8X8, _16X16, or _32X32.
+ * Returns 0 on success, -1 on invalid arguments.
+ */
+int leap_dir_device_config_set_digital_io(
+    LeapDirDeviceConfig* config,
+    uint32_t             profile_id,
+    uint16_t             output_bit_count,
+    uint16_t             input_bit_count);
+
 void leap_dir_device_sync_disc(LeapDirDeviceContext* dir, LeapDiscDeviceContext* disc);
 
 LeapDirDeviceStatus leap_dir_device_process_frame(

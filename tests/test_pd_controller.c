@@ -9,6 +9,7 @@
 
 #include "test_harness.h"
 
+#include "leap/conformance/leap_conformance_scenario.h"
 #include "leap/leap_mgmt_controller.h"
 #include "leap/leap_pd_controller.h"
 #include "leap/leap_protocol.h"
@@ -266,6 +267,30 @@ TEST(test_pd_controller_random_output_single_bit)
     }
 }
 
+TEST(test_pd_controller_network_rtt_percentile)
+{
+    LeapPdControllerStats stats;
+
+    memset(&stats, 0, sizeof(stats));
+
+    stats.network_rtt_samples = 100u;
+    stats.network_rtt_hist[0] = 98u;
+    stats.network_rtt_hist[2] = 2u;
+    ASSERT_TRUE(
+        leap_pd_stats_network_rtt_percentile_us(&stats, 99u) == 2000u);
+
+    memset(&stats, 0, sizeof(stats));
+    stats.network_rtt_samples = 274214u;
+    stats.network_rtt_hist[0] = 273000u;
+    stats.network_rtt_hist[1] = 1000u;
+    stats.network_rtt_hist[2] = 200u;
+    stats.network_rtt_hist[3] = 14u;
+    ASSERT_TRUE(
+        leap_pd_stats_network_rtt_percentile_us(&stats, 99u) <= 2000u);
+    stats.max_network_rtt_us = 3280u;
+    ASSERT_TRUE(leap_conf_io_bench_wire_rtt_pass(&stats, 0u) != 0);
+}
+
 void leap_run_pd_controller_tests(void)
 {
     printf("pd controller\n");
@@ -273,4 +298,5 @@ void leap_run_pd_controller_tests(void)
     RUN_TEST(test_pd_controller_cycle_metrics_and_heartbeat);
     RUN_TEST(test_pd_controller_send_failure_status);
     RUN_TEST(test_pd_controller_random_output_single_bit);
+    RUN_TEST(test_pd_controller_network_rtt_percentile);
 }

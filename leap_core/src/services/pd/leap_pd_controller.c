@@ -211,12 +211,31 @@ static void leap_pd_ctrl_sanitize_parallel_reply_recv_us(
     *reply_recv_us_io = cycle_start_us + corrected_rtt_us;
 }
 
+static unsigned leap_pd_ctrl_network_rtt_hist_bucket(uint64_t rtt_us)
+{
+    static const uint32_t k_edges_us[LEAP_PD_NETWORK_RTT_HIST_BUCKETS] = {
+        500u, 1000u, 2000u, 3000u, 5000u, 10000u, UINT32_MAX
+    };
+    unsigned i;
+
+    for (i = 0u; i < LEAP_PD_NETWORK_RTT_HIST_BUCKETS; i++)
+    {
+        if (rtt_us <= (uint64_t)k_edges_us[i])
+        {
+            return i;
+        }
+    }
+
+    return LEAP_PD_NETWORK_RTT_HIST_BUCKETS - 1u;
+}
+
 static void leap_pd_ctrl_update_network_rtt(
     LeapPdControllerContext* ctx,
     uint64_t                 send_us,
     uint64_t                 recv_us)
 {
     uint64_t rtt;
+    unsigned bucket;
 
     if (ctx == NULL || recv_us == 0u || recv_us <= send_us)
     {
@@ -231,6 +250,53 @@ static void leap_pd_ctrl_update_network_rtt(
     {
         ctx->stats.max_network_rtt_us = rtt;
     }
+
+    bucket = leap_pd_ctrl_network_rtt_hist_bucket(rtt);
+    ctx->stats.network_rtt_hist[bucket]++;
+
+    {
+        uint32_t sample =
+            (rtt > UINT32_MAX) ? UINT32_MAX : (uint32_t)rtt;
+        leap_pd_latency_history_push(&ctx->network_rtt_history, sample);
+    }
+}
+
+uint32_t leap_pd_stats_network_rtt_percentile_us(
+    const LeapPdControllerStats* stats,
+    unsigned                     percentile)
+{
+    static const uint32_t k_upper_us[LEAP_PD_NETWORK_RTT_HIST_BUCKETS] = {
+        500u, 1000u, 2000u, 3000u, 5000u, 10000u, UINT32_MAX
+    };
+    uint64_t total;
+    uint64_t rank;
+    uint64_t cumulative;
+    unsigned i;
+
+    if (stats == NULL || percentile == 0u || percentile > 100u ||
+        stats->network_rtt_samples == 0u)
+    {
+        return 0u;
+    }
+
+    total = stats->network_rtt_samples;
+    rank  = (total * (uint64_t)percentile + 99u) / 100u;
+    if (rank == 0u)
+    {
+        rank = 1u;
+    }
+
+    cumulative = 0u;
+    for (i = 0u; i < LEAP_PD_NETWORK_RTT_HIST_BUCKETS; i++)
+    {
+        cumulative += stats->network_rtt_hist[i];
+        if (cumulative >= rank)
+        {
+            return k_upper_us[i];
+        }
+    }
+
+    return UINT32_MAX;
 }
 
 static void leap_pd_ctrl_update_queue_wait(
@@ -491,6 +557,15 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
             500,
             &reply_recv_us) != 0)
     {
+        leap_log_printf(
+            "PD EXCHANGE wait: timeout peer=%02x:%02x:%02x:%02x:%02x:%02x seq=%u\n",
+            peer_mac[0],
+            peer_mac[1],
+            peer_mac[2],
+            peer_mac[3],
+            peer_mac[4],
+            peer_mac[5],
+            (unsigned)sent_process_sequence);
         pd->stats.recv_timeouts++;
         pd->stats.lost_frames++;
         return LEAP_PD_CTRL_OK;
@@ -501,6 +576,11 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
         cycle_start_us,
         finish_start_us,
         &reply_recv_us);
+
+    if (reply_recv_us == 0u && io->monotonic_us != NULL)
+    {
+        reply_recv_us = io->monotonic_us(io->user_ctx);
+    }
 
     if (reply_recv_us_out != NULL)
     {
@@ -564,16 +644,29 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
 
         if (validate_status == LEAP_PD_COMMON_SEQUENCE_MISMATCH)
         {
+            leap_log_printf(
+                "PD EXCHANGE reply rejected: sequence mismatch len=%u expected=%u\n",
+                (unsigned)reply_length,
+                (unsigned)sent_process_sequence);
             pd->stats.reply_sequence_mismatches++;
             pd->stats.reply_rejects++;
         }
         else if (validate_status == LEAP_PD_COMMON_STALE_FRAME)
         {
+            leap_log_printf(
+                "PD EXCHANGE reply rejected: stale frame len=%u expected=%u\n",
+                (unsigned)reply_length,
+                (unsigned)sent_process_sequence);
             pd->stats.reply_stale_rejects++;
             pd->stats.reply_rejects++;
         }
         else if (validate_status != LEAP_PD_COMMON_OK)
         {
+            leap_log_printf(
+                "PD EXCHANGE reply rejected: validate=%d len=%u expected=%u\n",
+                (int)validate_status,
+                (unsigned)reply_length,
+                (unsigned)sent_process_sequence);
             pd->stats.reply_rejects++;
         }
         else if (reply_length >=
@@ -941,7 +1034,6 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
     }
 
     profile        = leap_pd_ctrl_profile(pd);
-    cycle_start_us = (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : 0u;
     outputs        = leap_pd_ctrl_pick_outputs(pd);
     session_id     = leap_mgmt_controller_session_id(mgmt);
 
@@ -950,6 +1042,8 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
     if (pd->config.use_exchange != 0)
     {
         uint32_t max_frame_age_us = leap_pd_ctrl_max_frame_age_us(pd);
+        uint64_t frame_timestamp_us =
+            (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : 0u;
 
         payload_length = leap_pd_build_digital_exchange_mapped(
             payload,
@@ -958,7 +1052,7 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
             pd->config.cycle_period_ms * 1000u,
             profile,
             outputs,
-            cycle_start_us,
+            frame_timestamp_us,
             (pd->config.enforce_reply_frame_age != 0) ? max_frame_age_us : 0u);
 
         if (payload_length == 0u)
@@ -969,6 +1063,8 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
 
         pd->pending_process_sequence = pd->pd_sequence - 1u;
         sequence                     = leap_mgmt_controller_next_sequence(mgmt);
+        cycle_start_us =
+            (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : frame_timestamp_us;
         if (io->send_pd(
                 io->user_ctx,
                 peer_mac,
@@ -989,6 +1085,9 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle_send(
     else
     {
         LeapPdBuildParams params;
+
+        cycle_start_us =
+            (io->monotonic_us != NULL) ? io->monotonic_us(io->user_ctx) : 0u;
 
         memset(&params, 0, sizeof(params));
         params.profile_id       = profile->profile_id;

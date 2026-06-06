@@ -629,6 +629,11 @@ int leap_host_init(struct netif *netif)
     stack_config.mgmt.default_watchdog_us = 5000000u;
     stack_config.mgmt.max_lease_us        = 10000000u;
     stack_config.mgmt.max_watchdog_us     = 10000000u;
+    (void)leap_dir_device_config_set_digital_io(
+        &stack_config.dir,
+        LEAP_PROFILE_ID,
+        (uint16_t)LEAP_DO_COUNT,
+        (uint16_t)LEAP_DI_COUNT);
 
     leap_device_stack_init_full(&s_stack, &stack_config);
 

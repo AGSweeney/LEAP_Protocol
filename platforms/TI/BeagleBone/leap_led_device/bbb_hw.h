@@ -1,8 +1,14 @@
 #ifndef BBB_HW_H
 #define BBB_HW_H
 
+#include "leap/leap_protocol.h"
+
 #include <stddef.h>
 #include <stdint.h>
+
+#define BBB_LEAP_DO_COUNT 8u
+#define BBB_LEAP_DI_COUNT 8u
+#define BBB_LEAP_PROFILE_ID LEAP_PROFILE_DIGITAL_IO_8X8
 
 void bbb_wdt_disable_all(void);
 void bbb_uart_putc(uint8_t ch);

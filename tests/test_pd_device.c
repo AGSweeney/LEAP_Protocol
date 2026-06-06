@@ -156,7 +156,7 @@ TEST(test_pd_rejects_without_op)
     ASSERT_EQ_INT(
         leap_pd_device_process_frame(
             &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
-        LEAP_PD_DEVICE_REJECTED);
+        LEAP_PD_DEVICE_IGNORED_RESPONSE);
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_NOT_OWNER);
 }
 
@@ -167,6 +167,7 @@ TEST(test_pd_accepts_owner_write_in_op)
     LeapPdDeviceResult    result;
     LeapPdDeviceIoBinding io;
     uint16_t              outputs = 0u;
+    int                   outputs_dirty = 0;
     uint8_t               frame[TEST_PD_FRAME_BUF_SIZE];
     size_t                frame_length = 0u;
     uint32_t              session_id;
@@ -175,6 +176,7 @@ TEST(test_pd_accepts_owner_write_in_op)
     leap_pd_device_init(&pd, NULL);
     memset(&io, 0, sizeof(io));
     io.digital_outputs = &outputs;
+    io.outputs_dirty   = &outputs_dirty;
 
     ASSERT_TRUE(
         pd_build_write_frame(
@@ -189,12 +191,14 @@ TEST(test_pd_accepts_owner_write_in_op)
         leap_pd_device_process_frame(
             &ctx, &pd, &io, k_mac_a, 0u, frame, frame_length, &result),
         LEAP_PD_DEVICE_OK);
-    ASSERT_EQ_U16(outputs, 0x0015u);
+    ASSERT_EQ_U16(result.digital_outputs_applied, 0x0015u);
+    ASSERT_EQ_U16(outputs, 0u);
+    ASSERT_TRUE(outputs_dirty != 0);
     ASSERT_TRUE((result.flags & LEAP_PD_DEVICE_FLAG_OUTPUTS_APPLIED) != 0u);
     ASSERT_TRUE((result.flags & LEAP_PD_DEVICE_FLAG_LEASE_REFRESHED) != 0u);
 }
 
-TEST(test_pd_spoof_forces_safe)
+TEST(test_pd_spoof_is_ignored)
 {
     LeapMgmtDeviceContext ctx;
     LeapPdDeviceContext   pd;
@@ -218,12 +222,12 @@ TEST(test_pd_spoof_forces_safe)
     ASSERT_EQ_INT(
         leap_pd_device_process_frame(
             &ctx, &pd, NULL, k_mac_b, 0u, frame, frame_length, &result),
-        LEAP_PD_DEVICE_REJECTED);
+        LEAP_PD_DEVICE_IGNORED_RESPONSE);
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_NOT_OWNER);
-    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_OP);
 }
 
-TEST(test_pd_rejects_wrong_session_from_owner_mac)
+TEST(test_pd_ignores_wrong_session_from_owner_mac)
 {
     LeapMgmtDeviceContext ctx;
     LeapPdDeviceContext   pd;
@@ -247,9 +251,9 @@ TEST(test_pd_rejects_wrong_session_from_owner_mac)
     ASSERT_EQ_INT(
         leap_pd_device_process_frame(
             &ctx, &pd, NULL, k_mac_a, 0u, frame, frame_length, &result),
-        LEAP_PD_DEVICE_REJECTED);
+        LEAP_PD_DEVICE_IGNORED_RESPONSE);
     ASSERT_EQ_U16(result.error_code, LEAP_STATUS_NOT_OWNER);
-    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_SAFE);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_OP);
 }
 
 TEST(test_pd_watchdog_refresh_survives_tick)
@@ -381,8 +385,8 @@ void leap_run_pd_device_tests(void)
     printf("pd device\n");
     RUN_TEST(test_pd_rejects_without_op);
     RUN_TEST(test_pd_accepts_owner_write_in_op);
-    RUN_TEST(test_pd_spoof_forces_safe);
-    RUN_TEST(test_pd_rejects_wrong_session_from_owner_mac);
+    RUN_TEST(test_pd_spoof_is_ignored);
+    RUN_TEST(test_pd_ignores_wrong_session_from_owner_mac);
     RUN_TEST(test_pd_watchdog_refresh_survives_tick);
     RUN_TEST(test_pd_rejects_regressive_process_sequence);
     RUN_TEST(test_pd_rejects_stale_process_sequence);

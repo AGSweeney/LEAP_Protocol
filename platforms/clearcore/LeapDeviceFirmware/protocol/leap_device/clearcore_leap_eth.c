@@ -30,6 +30,11 @@ static int clearcore_leap_ethertype_match(uint16_t net_type)
             net_type == PP_HTONS(LEAP_ETHERTYPE_ALT_HOST)) ? 1 : 0;
 }
 
+int clearcore_leap_eth_init(void)
+{
+    return 0;
+}
+
 int clearcore_leap_eth_send(
     struct netif *  netif,
     const uint8_t * dst_mac,
@@ -47,6 +52,11 @@ int clearcore_leap_eth_send(
         return -1;
     }
 
+    /*
+     * Per-send pbuf alloc/free: lwIP may free the pbuf inside ethernet_output.
+     * Reusing pooled pbufs broke DISC HELLO_REPLY (discovery peers=0).
+     * See docs/LEAP_DEVICE_PERFORMANCE.md M1d — pool needs driver ownership rules.
+     */
     packet = pbuf_alloc(PBUF_LINK, (u16_t)payload_length, PBUF_RAM);
     if (packet == NULL)
     {
@@ -108,12 +118,14 @@ err_t LeapDevice_LwipUnknownEthProtocolHook(struct pbuf *packet, struct netif *n
     payload_length = (u16_t)(packet->tot_len - SIZEOF_ETH_HDR);
     if (payload_length > CLEARCORE_LEAP_HOST_MAX_FRAME)
     {
+        pbuf_free(packet);
         return ERR_VAL;
     }
 
     payload_copied = pbuf_copy_partial(packet, payload, payload_length, SIZEOF_ETH_HDR);
     if (payload_copied != payload_length)
     {
+        pbuf_free(packet);
         return ERR_VAL;
     }
 
@@ -122,11 +134,6 @@ err_t LeapDevice_LwipUnknownEthProtocolHook(struct pbuf *packet, struct netif *n
         header.src.addr,
         payload,
         payload_length);
-    if (status == 0)
-    {
-        pbuf_free(packet);
-        return ERR_OK;
-    }
-
-    return ERR_VAL;
+    pbuf_free(packet);
+    return (status == 0) ? ERR_OK : ERR_VAL;
 }

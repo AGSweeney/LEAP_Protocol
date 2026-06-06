@@ -4,6 +4,9 @@ Two-process LEAP over Npcap — mirrors `examples/linux_loopback/` for real adap
 
 ## Build
 
+From repo root, **`.\build.ps1`** builds into local **`build-win/`** (gitignored).
+Details: [docs/BUILD.md](../../docs/BUILD.md).
+
 ```powershell
 $cmake = "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
 & $cmake -S . -B build-win -DLEAP_BUILD_WIN_L2=ON

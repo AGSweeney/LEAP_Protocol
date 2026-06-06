@@ -22,6 +22,8 @@ docs/                                 spec, stack guides, golden vectors (see do
 schemas/leap-manifest-schema.json     JSON Schema for device/profile manifests
 tools/wireshark/leap_dissector.lua    Wireshark dissector (v1 services + PD exchange)
 tools/ci/wire_smoke_*                 manual end-to-end tests (Linux shell, Windows PS1)
+build.ps1 / build.bat                 Windows MSVC build helper → local `build-win/` (gitignored)
+docs/BUILD.md                         CMake build trees, clean workspace, CI paths
 src/                                  reference stack (see src/README.md)
 tests/                                conformance and regression tests (115–116)
 examples/linux_loopback/              Linux AF_PACKET device, controller, hub, discover
@@ -116,10 +118,15 @@ Before porting to embedded or Windows masters:
 
 Full module map: [docs/README.md](docs/README.md)
 
-## Quick start (Linux example)
+## Quick start
+
+Build trees (`build/`, `build-win/`, …) are **local and gitignored** — see
+[docs/BUILD.md](docs/BUILD.md) for full options and clean commands.
+
+### Linux example (native)
 
 ```bash
-cmake -S . -B build && cmake --build build
+cmake -S . -B build && cmake --build build -j
 ctest --test-dir build --output-on-failure
 
 # Terminal 1
@@ -127,23 +134,19 @@ sudo ./build/leap_linux_device lo
 
 # Terminal 2
 sudo ./build/leap_linux_controller lo
-# or: sudo ./build/leap_linux_controller --cyclic lo
 ```
 
 See [examples/linux_loopback/README.md](examples/linux_loopback/README.md).
 
-### Windows examples (Npcap)
-
-Build with `-DLEAP_BUILD_WIN_SMOKE=ON` and/or `-DLEAP_BUILD_WIN_L2=ON`:
+### Windows (Npcap + Studio)
 
 ```powershell
-cmake -S . -B build-win -DLEAP_BUILD_WIN_SMOKE=ON -DLEAP_BUILD_WIN_L2=ON
-cmake --build build-win --config Release
-.\build-win\Release\leap_win_smoke.exe
+.\build.ps1 -Test          # builds into build-win\ (gitignored)
 ```
 
-See [examples/win_smoke/README.md](examples/win_smoke/README.md) and
-[examples/win_l2/README.md](examples/win_l2/README.md).
+Manual CMake and Qt paths: [docs/BUILD.md](docs/BUILD.md),
+[leap_studio_qt/README.md](leap_studio_qt/README.md),
+[leap_cli/win_l2/README.md](leap_cli/win_l2/README.md).
 
 ### ClearCore LEAP device (ProjectTemplate)
 

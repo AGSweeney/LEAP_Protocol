@@ -79,43 +79,126 @@ static const LeapDirDeviceProfile* leap_dir_find_profile(
     return NULL;
 }
 
-static void leap_dir_install_default_digital_profile(LeapDirDeviceContext* ctx)
+static uint16_t leap_dir_profile_max_bits(uint32_t profile_id)
+{
+    switch (profile_id)
+    {
+    case LEAP_PROFILE_DIGITAL_IO_8X8:
+        return 8u;
+    case LEAP_PROFILE_DIGITAL_IO_16X16:
+        return 16u;
+    case LEAP_PROFILE_DIGITAL_IO_32X32:
+        return 32u;
+    default:
+        return 0u;
+    }
+}
+
+static uint16_t leap_dir_io_byte_length(uint16_t bit_count)
+{
+    if (bit_count == 0u)
+    {
+        return 0u;
+    }
+
+    return (uint16_t)((bit_count + 7u) / 8u);
+}
+
+int leap_dir_device_config_set_digital_io(
+    LeapDirDeviceConfig* config,
+    uint32_t             profile_id,
+    uint16_t             output_bit_count,
+    uint16_t             input_bit_count)
 {
     LeapDirDeviceProfile* profile;
+    uint16_t              max_bits;
+    uint16_t              endpoint_index;
+    uint16_t              byte_length;
 
+    if (config == NULL)
+    {
+        return -1;
+    }
+
+    max_bits = leap_dir_profile_max_bits(profile_id);
+    if (max_bits == 0u)
+    {
+        return -1;
+    }
+
+    if (output_bit_count == 0u && input_bit_count == 0u)
+    {
+        return -1;
+    }
+
+    if (output_bit_count > max_bits || input_bit_count > max_bits)
+    {
+        return -1;
+    }
+
+    memset(config->profiles, 0, sizeof(config->profiles));
+    config->profile_count = 0u;
+
+    profile = &config->profiles[0];
+    profile->descriptor.profile_id       = profile_id;
+    profile->descriptor.profile_revision = 1u;
+    profile->descriptor.profile_flags    = 0u;
+    profile->descriptor.schema_object_id = LEAP_DIR_PROFILE_OBJECT_ID;
+
+    endpoint_index = 0u;
+
+    if (output_bit_count > 0u)
+    {
+        LeapEndpointDescriptor* ep = &profile->endpoints[endpoint_index];
+
+        byte_length = leap_dir_io_byte_length(output_bit_count);
+        ep->endpoint_id      = LEAP_ENDPOINT_DIGITAL_OUTPUTS;
+        ep->direction        = (uint8_t)LEAP_ENDPOINT_DIR_CONTROLLER_TO_DEVICE;
+        ep->flags            = (uint8_t)LEAP_ENDPOINT_FLAG_FIXED;
+        ep->profile_id       = profile_id;
+        ep->byte_length      = byte_length;
+        ep->alignment        = byte_length;
+        ep->schema_object_id = LEAP_DIR_PROFILE_OBJECT_ID;
+        endpoint_index++;
+    }
+
+    if (input_bit_count > 0u)
+    {
+        LeapEndpointDescriptor* ep = &profile->endpoints[endpoint_index];
+
+        byte_length = leap_dir_io_byte_length(input_bit_count);
+        ep->endpoint_id      = LEAP_ENDPOINT_DIGITAL_INPUTS;
+        ep->direction        = (uint8_t)LEAP_ENDPOINT_DIR_DEVICE_TO_CONTROLLER;
+        ep->flags            =
+            (uint8_t)(LEAP_ENDPOINT_FLAG_FIXED | LEAP_ENDPOINT_FLAG_READABLE_SAFE);
+        ep->profile_id       = profile_id;
+        ep->byte_length      = byte_length;
+        ep->alignment        = byte_length;
+        ep->schema_object_id = LEAP_DIR_PROFILE_OBJECT_ID;
+        endpoint_index++;
+    }
+
+    profile->endpoint_count              = endpoint_index;
+    profile->descriptor.endpoint_count   = endpoint_index;
+    config->profile_count                = 1u;
+    config->default_profile_id           = profile_id;
+    config->active_profile_id            = profile_id;
+
+    return 0;
+}
+
+static void leap_dir_install_default_digital_profile(LeapDirDeviceContext* ctx)
+{
     if (ctx == NULL || ctx->config.profile_count > 0u)
     {
         return;
     }
 
-    profile = &ctx->config.profiles[0];
-    memset(profile, 0, sizeof(*profile));
-
-    profile->descriptor.profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
-    profile->descriptor.profile_revision = 1u;
-    profile->descriptor.endpoint_count   = 2u;
-    profile->descriptor.profile_flags    = 0u;
-    profile->descriptor.schema_object_id = LEAP_DIR_PROFILE_OBJECT_ID;
-
-    profile->endpoints[0].endpoint_id      = LEAP_ENDPOINT_DIGITAL_OUTPUTS;
-    profile->endpoints[0].direction        = (uint8_t)LEAP_ENDPOINT_DIR_CONTROLLER_TO_DEVICE;
-    profile->endpoints[0].flags            = (uint8_t)LEAP_ENDPOINT_FLAG_FIXED;
-    profile->endpoints[0].profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
-    profile->endpoints[0].byte_length      = 2u;
-    profile->endpoints[0].alignment        = 2u;
-    profile->endpoints[0].schema_object_id = LEAP_DIR_PROFILE_OBJECT_ID;
-
-    profile->endpoints[1].endpoint_id      = LEAP_ENDPOINT_DIGITAL_INPUTS;
-    profile->endpoints[1].direction        = (uint8_t)LEAP_ENDPOINT_DIR_DEVICE_TO_CONTROLLER;
-    profile->endpoints[1].flags            =
-        (uint8_t)(LEAP_ENDPOINT_FLAG_FIXED | LEAP_ENDPOINT_FLAG_READABLE_SAFE);
-    profile->endpoints[1].profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
-    profile->endpoints[1].byte_length      = 2u;
-    profile->endpoints[1].alignment        = 2u;
-    profile->endpoints[1].schema_object_id = LEAP_DIR_PROFILE_OBJECT_ID;
-
-    profile->endpoint_count = 2u;
-    ctx->config.profile_count = 1u;
+    (void)leap_dir_device_config_set_digital_io(
+        &ctx->config,
+        LEAP_PROFILE_DIGITAL_IO_16X16,
+        16u,
+        16u);
 
     if (ctx->config.default_profile_id == 0u)
     {

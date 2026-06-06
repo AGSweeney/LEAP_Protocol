@@ -347,6 +347,11 @@ int main(void)
     g_stack_config.mgmt.default_watchdog_us = 500000u;
     g_stack_config.mgmt.max_lease_us        = 10000000u;
     g_stack_config.mgmt.max_watchdog_us     = 10000000u;
+    (void)leap_dir_device_config_set_digital_io(
+        &g_stack_config.dir,
+        BBB_LEAP_PROFILE_ID,
+        BBB_LEAP_DO_COUNT,
+        BBB_LEAP_DI_COUNT);
 
     leap_device_stack_init_full(&g_stack, &g_stack_config);
     memcpy(g_stack.dir.config.identity.primary_mac, net.mac, 6u);

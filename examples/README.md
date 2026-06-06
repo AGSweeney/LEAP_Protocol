@@ -2,6 +2,10 @@
 
 Reference implementations for controller and device bring-up.
 
+Build host examples into a local **`build/`** (Linux) or **`build-win/`** (Windows)
+tree — see [docs/BUILD.md](../docs/BUILD.md). Embedded ports (ClearCore, ESP-IDF,
+TI CCS) use their own project build systems.
+
 ## Porting path vs learning examples
 
 | Example | Stack usage | Role |

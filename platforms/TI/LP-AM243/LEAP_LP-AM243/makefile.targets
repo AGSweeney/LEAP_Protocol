@@ -1,0 +1,15 @@
+# User build hooks (included by Debug/Release makefiles). Not overwritten by CCS.
+
+ENET_LP_PATCH_SCRIPT := $(abspath ../../scripts/patch_enet_lp.ps1)
+ENET_LP_PROJECT_ROOT := $(abspath ..)
+
+.PHONY: leap_enet_lp_patch
+# Run patch AFTER SysConfig regenerates generated C sources.
+leap_enet_lp_patch: syscfg/ti_enet_open_close.c syscfg/ti_enet_config.c syscfg/ti_board_config.c syscfg/ti_drivers_config.c syscfg/ti_enet_dma_init.c
+	@powershell -NoProfile -ExecutionPolicy Bypass -File "$(ENET_LP_PATCH_SCRIPT)" -ProjectRoot "$(ENET_LP_PROJECT_ROOT)"
+
+./syscfg/ti_enet_open_close.o: leap_enet_lp_patch
+./syscfg/ti_enet_config.o: leap_enet_lp_patch
+./syscfg/ti_board_config.o: leap_enet_lp_patch
+./syscfg/ti_drivers_config.o: leap_enet_lp_patch
+./syscfg/ti_enet_dma_init.o: leap_enet_lp_patch

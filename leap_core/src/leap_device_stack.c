@@ -12,7 +12,7 @@
 
 #include <string.h>
 
-static void leap_device_stack_note_rx(
+void leap_device_stack_note_frame_rx(
     LeapDeviceStack* stack,
     uint64_t         now_us,
     uint16_t         service_id)
@@ -22,8 +22,8 @@ static void leap_device_stack_note_rx(
         return;
     }
 
-    stack->last_frame_rx_us       = now_us;
-    stack->last_frame_service_id  = service_id;
+    stack->last_frame_rx_us      = now_us;
+    stack->last_frame_service_id = service_id;
 }
 
 static void leap_device_stack_on_mgmt_success(
@@ -91,6 +91,12 @@ void leap_device_stack_init_full(LeapDeviceStack* stack, const LeapDeviceStackCo
 
     leap_dir_device_sync_disc(&stack->dir, &stack->disc);
     leap_pd_device_init(&stack->pd, NULL);
+    /*
+     * DIR may already advertise the active digital-I/O profile (platform
+     * config) before SELECT_PROFILE runs. PD init defaults to 16x16; sync now
+     * so EXCHANGE validation matches LEAP-DIR (e.g. 8x8 ClearCore).
+     */
+    leap_pd_device_sync_profile_from_dir(&stack->pd, &stack->dir);
     leap_diag_device_on_transport_ready(&stack->diag, 0u);
     stack->pd_io_bound = 0;
 }
@@ -190,7 +196,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
                 mgmt_result.device_state,
                 now_us);
             leap_diag_device_on_frame_accepted(&stack->diag);
-            leap_device_stack_note_rx(stack, now_us, service_id);
+            leap_device_stack_note_frame_rx(stack, now_us, service_id);
             leap_device_stack_on_mgmt_success(stack, &mgmt_result);
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
@@ -235,7 +241,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         if (disc_status == LEAP_DISC_DEVICE_OK)
         {
             leap_diag_device_on_frame_accepted(&stack->diag);
-            leap_device_stack_note_rx(stack, now_us, service_id);
+            leap_device_stack_note_frame_rx(stack, now_us, service_id);
             result->flags |= LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY;
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
@@ -271,7 +277,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         if (dir_status == LEAP_DIR_DEVICE_OK)
         {
             leap_diag_device_on_frame_accepted(&stack->diag);
-            leap_device_stack_note_rx(stack, now_us, service_id);
+            leap_device_stack_note_frame_rx(stack, now_us, service_id);
             result->flags |= LEAP_DEVICE_STACK_FLAG_DIR_HAS_REPLY;
             if ((dir_result.flags & LEAP_DIR_DEVICE_FLAG_PROFILE_SELECTED) != 0u)
             {
@@ -291,14 +297,13 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
 
     if (service_id == (uint16_t)LEAP_SERVICE_PD)
     {
-        pd_status = leap_pd_device_process_frame(
+        pd_status = leap_pd_device_process_parsed_frame(
             &stack->mgmt,
             &stack->pd,
             stack->pd_io_bound ? &stack->pd_io : NULL,
             source_mac,
             now_us,
-            data,
-            length,
+            &view,
             &pd_result);
 
         result->frame        = pd_result.frame;
@@ -322,7 +327,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         if (pd_status == LEAP_PD_DEVICE_OK)
         {
             leap_diag_device_on_frame_accepted(&stack->diag);
-            leap_device_stack_note_rx(stack, now_us, service_id);
+            leap_device_stack_note_frame_rx(stack, now_us, service_id);
             if (pd_result.reply_payload_length > 0u)
             {
                 result->flags |= LEAP_DEVICE_STACK_FLAG_PD_HAS_REPLY;
@@ -337,6 +342,12 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         {
             result->status = LEAP_DEVICE_STACK_PD_REJECTED;
             return LEAP_DEVICE_STACK_PD_REJECTED;
+        }
+
+        if (pd_status == LEAP_PD_DEVICE_IGNORED_RESPONSE)
+        {
+            result->status = LEAP_DEVICE_STACK_OK;
+            return LEAP_DEVICE_STACK_OK;
         }
 
         result->status = LEAP_DEVICE_STACK_PD_REJECTED;
@@ -370,7 +381,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         if (diag_status == LEAP_DIAG_DEVICE_OK)
         {
             leap_diag_device_on_frame_accepted(&stack->diag);
-            leap_device_stack_note_rx(stack, now_us, service_id);
+            leap_device_stack_note_frame_rx(stack, now_us, service_id);
             result->flags |= LEAP_DEVICE_STACK_FLAG_DIAG_HAS_REPLY;
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
@@ -379,7 +390,7 @@ LeapDeviceStackStatus leap_device_stack_process_frame(
         if (diag_status == LEAP_DIAG_DEVICE_NO_REPLY)
         {
             leap_diag_device_on_frame_accepted(&stack->diag);
-            leap_device_stack_note_rx(stack, now_us, service_id);
+            leap_device_stack_note_frame_rx(stack, now_us, service_id);
             result->status = LEAP_DEVICE_STACK_OK;
             return LEAP_DEVICE_STACK_OK;
         }

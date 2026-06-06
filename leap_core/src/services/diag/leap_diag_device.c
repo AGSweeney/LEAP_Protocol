@@ -7,6 +7,7 @@
 
 #include "leap/leap_diag_device.h"
 
+#include "leap/leap_device_host_perf.h"
 #include "leap/leap_mgmt_process.h"
 #include "leap/leap_pd_device.h"
 
@@ -376,6 +377,22 @@ void leap_diag_device_on_frame_accepted(LeapDiagDeviceContext* ctx)
     ctx->rx_frames_accepted++;
 }
 
+static int leap_diag_device_should_sample_reply_latency(
+    const LeapDiagDeviceContext* ctx)
+{
+    if (ctx == NULL)
+    {
+        return 0;
+    }
+
+    if (LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL <= 1u)
+    {
+        return 1;
+    }
+
+    return (ctx->tx_frames_accepted % LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL) == 0u;
+}
+
 void leap_diag_device_on_frame_transmitted(
     LeapDiagDeviceContext* ctx,
     uint64_t               reply_latency_us)
@@ -392,11 +409,17 @@ void leap_diag_device_on_frame_transmitted(
         return;
     }
 
-    ctx->last_reply_latency_us = reply_latency_us;
     if (reply_latency_us > ctx->max_reply_latency_us)
     {
         ctx->max_reply_latency_us = reply_latency_us;
     }
+
+    if (!leap_diag_device_should_sample_reply_latency(ctx))
+    {
+        return;
+    }
+
+    ctx->last_reply_latency_us = reply_latency_us;
 }
 
 void leap_diag_device_on_frame_tx_dropped(LeapDiagDeviceContext* ctx)
@@ -414,6 +437,13 @@ void leap_diag_device_on_pd_cycle_time(
     uint32_t               cycle_time_us)
 {
     if (ctx == NULL || cycle_time_us == 0u)
+    {
+        return;
+    }
+
+    if (LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL > 1u &&
+        (ctx->tx_frames_accepted %
+         LEAP_DEVICE_PERF_DIAG_SAMPLE_INTERVAL) != 0u)
     {
         return;
     }

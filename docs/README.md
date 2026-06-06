@@ -7,6 +7,7 @@ in this repository.
 
 | Document | Purpose |
 | --- | --- |
+| [BUILD.md](BUILD.md) | CMake build directories (`build/`, `build-win/`), clean workspace, CI |
 | [LEAP_PROTOCOL_SPECIFICATION.md](LEAP_PROTOCOL_SPECIFICATION.md) | Normative protocol (services, state machine, PD rules, diagnostics) |
 | [../inc/leap/leap_protocol.h](../inc/leap/leap_protocol.h) | Packed wire structs, IDs, static size checks |
 | [vectors/LEAP_GOLDEN_FRAME_VECTORS.md](vectors/LEAP_GOLDEN_FRAME_VECTORS.md) | Golden frames and CRC check values |
@@ -76,6 +77,7 @@ stats are available via `leap_raw_winpcap_get_stats()`.
 
 ## Testing and CI
 
+- **Build:** [BUILD.md](BUILD.md) — local `build/` (Linux) or `build-win/` (Windows); never committed
 - **Unit tests:** `cmake --build build && ctest --test-dir build` — **116 tests on Windows**, **115 on Linux**
 - **CI (GitHub Actions):**
   - **Linux:** configure, build, `ctest`, verify Linux example binaries exist
