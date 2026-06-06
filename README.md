@@ -1,37 +1,50 @@
 # LEAP Protocol
 
-LEAP (Lightweight Ethernet Application Protocol) is a raw Layer 2 Ethernet
-control protocol for remote I/O and embedded devices on isolated machine
-networks. It runs without IP addressing — controllers find and own devices by
-MAC address, negotiate a process-data profile, then exchange cyclic I/O. On
-owner lease expiry, watchdog timeout, or any communication loss, the device
-applies its configured safe outputs without needing a controller stop command.
+LEAP (Lightweight Ethernet Application Protocol) is a raw Layer 2 Ethernet control
+protocol for remote I/O and embedded devices on isolated machine networks. It runs
+without IP addressing — controllers find and own devices by MAC address, negotiate a
+process-data profile, then exchange cyclic I/O. On owner lease expiry, watchdog
+timeout, or communication loss, the device applies its configured safe outputs
+without needing a controller stop command.
 
-Status: draft v1.0. Wire contract and spec are stable enough for independent
-implementation and conformance testing. Not tagged for production release yet.
+**Status:** draft v1.0. The wire contract and normative spec are stable enough for
+independent implementation and conformance testing. Not tagged for production release
+yet.
 
-LEAP targets private machine-cell networks on standard Ethernet switches. No
-managed switch firmware, VLANs, or special infrastructure required.
+LEAP targets private machine-cell networks on standard Ethernet switches. No managed
+switch firmware, VLANs, or special infrastructure required.
 
-## Repository
+---
+
+## Repository layout
 
 ```
-inc/leap/leap_protocol.h              wire contract — packed structs, constants,
-                                      service/profile IDs, static size checks
-docs/                                 spec, stack guides, golden vectors (see docs/README.md)
-schemas/leap-manifest-schema.json     JSON Schema for device/profile manifests
-tools/wireshark/leap_dissector.lua    Wireshark dissector (v1 services + PD exchange)
-tools/ci/wire_smoke_*                 manual end-to-end tests (Linux shell, Windows PS1)
-build.ps1 / build.bat                 Windows MSVC build helper → local `build-win/` (gitignored)
-docs/BUILD.md                         CMake build trees, clean workspace, CI paths
-src/                                  reference stack (see src/README.md)
-tests/                                conformance and regression tests (115–116)
-examples/linux_loopback/              Linux AF_PACKET device, controller, hub, discover
-examples/win_l2/                        Windows Npcap device, controller, hub, discover
-examples/win_smoke/                     Windows Npcap single-process wire smoke
-examples/device_minimal/              learning / fuzz harness (not porting template)
-platforms/clearcore/                  ClearCore LEAP device firmware (ProjectTemplate)
+leap_core/                          Reference stack (C library)
+  inc/leap/leap_protocol.h          Wire contract — packed structs, IDs, size checks
+  inc/leap/                         Public API (stacks, transport, conformance)
+  src/                              Service handlers, integration, transport
+leap_cli/                           Windows host tools (Npcap)
+  win_l2/                           Device, controller, hub, discover, identify
+  win_smoke/                        Single-process wire smoke
+  conformance/                      Conformance CLI (`leap_conformance`)
+leap_studio_qt/                     LEAP Conformance Studio (Qt 6, Windows)
+examples/
+  linux_loopback/                   Linux AF_PACKET porting templates
+  device_minimal/                   Learning / fuzz harness (not porting template)
+platforms/                          Embedded device ports (see below)
+docs/                               Spec, stack guides, golden vectors
+schemas/leap-manifest-schema.json   JSON Schema for device/profile manifests
+tests/                              Unit tests (115 Linux / 116 Windows)
+tools/
+  wireshark/leap_dissector.lua        Wireshark dissector (v1 services + PD + DIAG)
+  ci/wire_smoke_*                     Manual end-to-end wire tests
+build.ps1                           Windows MSVC build helper → local `build-win/`
+docs/BUILD.md                       CMake build trees, clean workspace, CI paths
 ```
+
+Local build output (`build/`, `build-win/`, …) is **gitignored** — never commit it.
+
+---
 
 ## Services
 
@@ -43,16 +56,9 @@ platforms/clearcore/                  ClearCore LEAP device firmware (ProjectTem
 | `0x0010` | `LEAP-PD` | Cyclic read, write, exchange |
 | `0x0020` | `LEAP-DIAG` | Counters, timing, event log, trace marks |
 
-## Development notes
+---
 
-Protocol changes go into the spec first, then the header, then vectors and
-schema as needed. The dissector is extended as services and profiles stabilize.
-
-LEAP v1.0 assumes an isolated machine network. It is not appropriate for
-plant-wide or routed networks without an authentication extension — the owner
-lease is not an access control mechanism on open networks. See spec §17.
-
-## Reference stack overview
+## Reference stack
 
 ### Device path
 
@@ -73,9 +79,9 @@ lease is not an access control mechanism on open networks. See spec §17.
 - `release()` — graceful OWNER_RELEASE
 
 **`leap_controller_session_hub`** — N concurrent device sessions (independent
-session ID, MGMT sequence, lease, PD state, frame sequence per slot).
+session ID, MGMT sequence, lease, PD state, and frame sequence per slot).
 
-### Service modules (`src/services/`)
+### Service modules (`leap_core/src/services/`)
 
 | Module | Device | Controller |
 | --- | --- | --- |
@@ -89,23 +95,19 @@ PD controller stats include cycle **latency**, **jitter** vs target period,
 **lost frames** (exchange timeouts), reply rejects, and overruns — see
 `leap_pd_controller_log_stats()`.
 
+### Conformance engine
+
+**`leap_core/src/conformance/`** — scenario-driven commissioning and conformance
+tests used by **`leap_conformance`** (CLI) and **LEAP Conformance Studio** (Qt).
+
 ### Multi-peer hardening
 
-Per-peer Ethernet sequence tracking, optional gap/out-of-window rejection,
-session binding after OP, PD exchange validation (profile + process_sequence +
-§13.4 frame age), foreign-owner skip on hub bootstrap, discovery early exit at
-`min_peers`, Linux recv demux by peer MAC, timestamped logging via `leap_log.h`,
-optional `LEAP_LOG_SECURITY` stderr diagnostics.
+Per-peer Ethernet sequence tracking, optional gap/out-of-window rejection, session
+binding after OP, PD exchange validation (profile + process_sequence + §13.4 frame
+age), foreign-owner skip on hub bootstrap, Linux recv demux by peer MAC, timestamped
+logging via `leap_log.h`, optional `LEAP_LOG_SECURITY` stderr diagnostics.
 
 Details: [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md)
-
-### DIAG and tooling
-
-Post-OP **`read_diag()`** / **`log_diag()`** on the controller stack; **`--diag`** in Linux and Windows controller examples. Golden DIAG vectors (spec §10), Wireshark dissector for v1 services + PD exchange + DIAG. Reconnect policy and link polling: [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md).
-
-### Examples and porting path
-
-Production-style examples use stacks only — **`linux_loopback/*`** and **`win_l2/*`**. Hub binaries support round-robin, parallel, and Windows **`--random-peer`** soak mode. **`device_minimal`** is a learning/fuzz harness, not the porting template. See [examples/README.md](examples/README.md).
 
 ### Porting gate
 
@@ -113,17 +115,18 @@ Before porting to embedded or Windows masters:
 
 1. Device app uses **`leap_device_stack`** only.
 2. Controller app uses **`leap_controller_stack`** or **session hub** — no duplicated MGMT/PD logic.
-3. Transport stays outside `src/services/` (callbacks / your link layer).
+3. Transport stays outside `leap_core/src/services/` (callbacks / your link layer).
 4. Run **`ctest`** green on the host toolchain before diverging.
 
-Full module map: [docs/README.md](docs/README.md)
+Full module map: [docs/README.md](docs/README.md) · stack source layout: [leap_core/src/README.md](leap_core/src/README.md)
+
+---
 
 ## Quick start
 
-Build trees (`build/`, `build-win/`, …) are **local and gitignored** — see
-[docs/BUILD.md](docs/BUILD.md) for full options and clean commands.
+See [docs/BUILD.md](docs/BUILD.md) for full CMake options and clean commands.
 
-### Linux example (native)
+### Linux (native)
 
 ```bash
 cmake -S . -B build && cmake --build build -j
@@ -136,79 +139,109 @@ sudo ./build/leap_linux_device lo
 sudo ./build/leap_linux_controller lo
 ```
 
-See [examples/linux_loopback/README.md](examples/linux_loopback/README.md).
+Wire examples need **native Linux** (not WSL2 `AF_PACKET`). See
+[examples/linux_loopback/README.md](examples/linux_loopback/README.md).
 
 ### Windows (Npcap + Studio)
 
 ```powershell
-.\build.ps1 -Test          # builds into build-win\ (gitignored)
+.\build.ps1              # Studio, conformance CLI, tests, win_l2 tools → build-win\
+.\build.ps1 -Test        # build + run leap_tests
+.\build.ps1 -Clean       # delete build-win and reconfigure
 ```
 
-Manual CMake and Qt paths: [docs/BUILD.md](docs/BUILD.md),
+| Artifact | Path |
+| --- | --- |
+| Unit tests | `build-win\Release\leap_tests.exe` |
+| Conformance CLI | `build-win\leap_cli\Release\leap_conformance.exe` |
+| Conformance Studio | `build-win\leap_studio_qt\Release\leap_studio_qt.exe` |
+| Npcap controller | `build-win\Release\leap_win_controller.exe` |
+
+Manual CMake, Qt paths, and Npcap notes: [docs/BUILD.md](docs/BUILD.md),
 [leap_studio_qt/README.md](leap_studio_qt/README.md),
 [leap_cli/win_l2/README.md](leap_cli/win_l2/README.md).
 
-### ClearCore LEAP device (ProjectTemplate)
+Run Npcap tools as **Administrator** on physical adapters.
 
-Pair a ClearCore on the wire with `leap_win_controller` or `leap_linux_controller`:
+---
+
+## Platform ports
+
+Embedded firmware builds **inside each platform project** — not in the root CMake
+trees. Pair devices on the wire with `leap_linux_controller` or `leap_win_controller`.
+
+| Platform | Targets | Doc |
+| --- | --- | --- |
+| ClearCore | Teknic ClearCore + lwIP raw hook | [platforms/clearcore/README.md](platforms/clearcore/README.md) |
+| Texas Instruments | BeagleBone (AM335x), LP-AM243 | [platforms/TI/README.md](platforms/TI/README.md) |
+| Espressif | GL-C-618WL, KC868-A16 (ESP-IDF) | [platforms/Espressif/README.md](platforms/Espressif/README.md) |
+| NetBurner | MOD54415LC (placeholder) | [platforms/NetBurner/README.md](platforms/NetBurner/README.md) |
+
+### ClearCore quick start
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File platforms/clearcore/import_project_template.ps1
 powershell -ExecutionPolicy Bypass -File platforms/clearcore/open_studio.ps1
 # Open: platforms/clearcore/LeapDeviceFirmware/LeapDeviceFirmware.atsln
-# Build ClearCore -> LwIP -> LeapDeviceFirmware (Release)
+# Build ClearCore → LwIP → LeapDeviceFirmware (Release)
 ```
 
-See [platforms/clearcore/README.md](platforms/clearcore/README.md).
+---
+
+## Examples
+
+Production-style examples use the stacks only — no hand-rolled MGMT/PD state machines.
+
+| Example | Stack | Role |
+| --- | --- | --- |
+| `examples/linux_loopback/*` | device / controller / hub | **Linux porting templates** |
+| `leap_cli/win_l2/*` | device / controller / hub | **Windows Npcap templates** |
+| `leap_cli/win_smoke/*` | cooperative single-handle | **Windows wire validation** |
+| `examples/device_minimal/` | stack + hand-built frames | **Learning / fuzz** — not the porting path |
+
+Hub binaries support round-robin, parallel, and Windows **`--random-peer`** soak mode.
+See [examples/README.md](examples/README.md).
+
+---
+
+## Development notes
+
+Protocol changes go into the spec first, then `leap_protocol.h`, then vectors and
+schema as needed. The dissector is extended as services and profiles stabilize.
+
+LEAP v1.0 assumes an isolated machine network. It is not appropriate for plant-wide
+or routed networks without an authentication extension — the owner lease is not an
+access control mechanism on open networks. See spec §17.
+
+---
 
 ## Roadmap
 
-Shipped reference-stack capabilities are summarized under [Reference stack overview](#reference-stack-overview) and in the **Done** list below. Remaining work is tracked in [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md).
+Shipped reference-stack capabilities are summarized above and in
+[docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md). Remaining work includes
+manual wire smoke on native hosts, hub DIAG variants, auto-reconnect FSM, and v1.0
+release readiness review.
 
-### Shipped (reference stack)
-
-- Wire contract, normative spec, golden vectors (incl. DIAG §10), manifest schema
-- Frame parser/serializer, CRC, fragment rejection policy, fuzz/regression tests (115–116)
-- All five v1 services: device handlers + controller helpers (where applicable)
-- **`leap_device_stack`** — DISC + DIR + MGMT + PD + DIAG + tick
-- **`leap_controller_stack`** — bootstrap, `on_frame`, `release`, `run_cyclic_pd`, `read_diag`, `--diag`
-- **`leap_controller_session_hub`** — round-robin, parallel, random-peer lap; peer discovery; hub integration tests
-- Multi-peer hardening (sequence, session bind, PD validation, frame age, foreign-owner skip, security log)
-- Linux AF_PACKET + Windows Npcap transport; link query/poll and reconnect policy doc
-- Linux and Windows device/controller/hub/discover examples; ClearCore firmware port
-- Wireshark dissector; timestamped `leap_log_printf`; CI unit tests (115 Linux / 116 Windows)
-
-### Open (see forward plan)
-
-**Near term**
-
-- Manual wire smoke on native Linux (`tools/ci/wire_smoke_*.sh`) and Windows (`wire_smoke_win.ps1`) before platform ports
-
-**Medium term**
-
-- Periodic transport stats during cyclic PD (partial — exit stats exist today)
-- Hub `--diag` variant; optional DIAG auto-poll in controller FSM
-- Auto-reconnect FSM (policy documented; examples poll link only)
-- v1.0 conformance / release readiness review
-
-**Later**
-
-- Rolling 64-bit sequence bitmap, fragment reassembly, multi-controller election
-- Production EtherType assignment, release tag
+---
 
 ## Documentation
 
 | Doc | Description |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Documentation index + module map |
-| [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md) | Open work and implemented capability reference |
+| [docs/BUILD.md](docs/BUILD.md) | CMake build trees and CI |
 | [docs/LEAP_PROTOCOL_SPECIFICATION.md](docs/LEAP_PROTOCOL_SPECIFICATION.md) | Normative spec |
+| [docs/LEAP_FORWARD_PLAN.md](docs/LEAP_FORWARD_PLAN.md) | Implemented capabilities and open work |
 | [docs/LEAP_CONTROLLER_STACK_PLAN.md](docs/LEAP_CONTROLLER_STACK_PLAN.md) | Controller stack design + status |
 | [docs/LEAP_MULTI_PEER_NOTES.md](docs/LEAP_MULTI_PEER_NOTES.md) | Multi-device / multi-controller notes |
 | [docs/LEAP_TRANSPORT_RECONNECT.md](docs/LEAP_TRANSPORT_RECONNECT.md) | Link monitoring and reconnect policy |
 | [examples/README.md](examples/README.md) | Example index and porting path |
 | [tests/README.md](tests/README.md) | Unit test suite index (115–116 tests) |
-| [platforms/clearcore/README.md](platforms/clearcore/README.md) | ClearCore firmware setup and build |
+| [leap_studio_qt/README.md](leap_studio_qt/README.md) | Conformance Studio build and usage |
+| [leap_cli/win_l2/README.md](leap_cli/win_l2/README.md) | Windows Npcap examples |
+| [platforms/clearcore/README.md](platforms/clearcore/README.md) | ClearCore firmware setup |
+
+---
 
 ## License
 
