@@ -183,7 +183,7 @@ TEST(test_diag_rejects_invalid_session_in_op)
     LeapDiagDeviceContext diag;
     LeapMgmtDeviceContext mgmt;
     LeapDiagDeviceResult  result;
-    uint32_t              session_id;
+    uint32_t              session_id = 0u;
     uint8_t               payload[32];
     uint8_t               frame[TEST_DIAG_BUF_SIZE];
     size_t                payload_length;

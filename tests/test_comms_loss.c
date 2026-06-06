@@ -91,7 +91,7 @@ static uint32_t comms_bootstrap_op(
     open_req.requested_lease_time_us    = lease_us;
     open_req.requested_watchdog_time_us = 200000u;
 
-    ASSERT_TRUE(
+    ASSERT_TRUE_RET(
         comms_build_frame(
             frame,
             TEST_COMMS_FRAME_BUF_SIZE,
@@ -100,19 +100,21 @@ static uint32_t comms_bootstrap_op(
             LEAP_MGMT_OPEN_SESSION,
             0u,
             (const uint8_t*)&open_req,
-            sizeof(open_req)) == 0);
-    ASSERT_EQ_INT(
+            sizeof(open_req)) == 0,
+        0u);
+    ASSERT_EQ_INT_RET(
         leap_device_stack_process_frame(
             stack, k_mac_a, now_us, frame, frame_length, &result),
-        LEAP_DEVICE_STACK_OK);
+        LEAP_DEVICE_STACK_OK,
+        0u);
     session_id =
         ((const LeapOpenSessionReply*)result.mgmt_reply.payload)->assigned_session_id;
-    ASSERT_TRUE(session_id != 0u);
+    ASSERT_TRUE_RET(session_id != 0u, 0u);
 
     memset(&set_req, 0, sizeof(set_req));
     set_req.requested_state = (uint16_t)LEAP_STATE_OP;
 
-    ASSERT_TRUE(
+    ASSERT_TRUE_RET(
         comms_build_frame(
             frame,
             TEST_COMMS_FRAME_BUF_SIZE,
@@ -121,12 +123,14 @@ static uint32_t comms_bootstrap_op(
             LEAP_MGMT_SET_STATE,
             session_id,
             (const uint8_t*)&set_req,
-            sizeof(set_req)) == 0);
-    ASSERT_EQ_INT(
+            sizeof(set_req)) == 0,
+        0u);
+    ASSERT_EQ_INT_RET(
         leap_device_stack_process_frame(
             stack, k_mac_a, now_us, frame, frame_length, &result),
-        LEAP_DEVICE_STACK_OK);
-    ASSERT_EQ_INT(result.device_state, LEAP_STATE_OP);
+        LEAP_DEVICE_STACK_OK,
+        0u);
+    ASSERT_EQ_INT_RET(result.device_state, LEAP_STATE_OP, 0u);
 
     return session_id;
 }

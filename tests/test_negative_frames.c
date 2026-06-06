@@ -103,7 +103,7 @@ static uint32_t neg_stack_bootstrap_op(
     memcpy(open_req.controller_mac, k_mac_a, 6);
     open_req.open_flags              = LEAP_OPEN_FLAG_REQUEST_OWNER;
     open_req.requested_lease_time_us = 1000000u;
-    ASSERT_TRUE(
+    ASSERT_TRUE_RET(
         neg_build_frame(
             frame,
             NEG_FRAME_BUF_SIZE,
@@ -112,15 +112,17 @@ static uint32_t neg_stack_bootstrap_op(
             LEAP_MGMT_OPEN_SESSION,
             0u,
             (const uint8_t*)&open_req,
-            sizeof(open_req)) == 0);
-    ASSERT_EQ_INT(
+            sizeof(open_req)) == 0,
+        0u);
+    ASSERT_EQ_INT_RET(
         leap_device_stack_process_frame(stack, k_mac_a, 0u, frame, frame_length, &result),
-        LEAP_DEVICE_STACK_OK);
+        LEAP_DEVICE_STACK_OK,
+        0u);
     session_id = ((const LeapOpenSessionReply*)result.mgmt_reply.payload)->assigned_session_id;
 
     memset(&set_req, 0, sizeof(set_req));
     set_req.requested_state = (uint16_t)LEAP_STATE_OP;
-    ASSERT_TRUE(
+    ASSERT_TRUE_RET(
         neg_build_frame(
             frame,
             NEG_FRAME_BUF_SIZE,
@@ -129,10 +131,12 @@ static uint32_t neg_stack_bootstrap_op(
             LEAP_MGMT_SET_STATE,
             session_id,
             (const uint8_t*)&set_req,
-            sizeof(set_req)) == 0);
-    ASSERT_EQ_INT(
+            sizeof(set_req)) == 0,
+        0u);
+    ASSERT_EQ_INT_RET(
         leap_device_stack_process_frame(stack, k_mac_a, 0u, frame, frame_length, &result),
-        LEAP_DEVICE_STACK_OK);
+        LEAP_DEVICE_STACK_OK,
+        0u);
 
     memset(&pd_params, 0, sizeof(pd_params));
     pd_params.profile_id       = LEAP_PROFILE_DIGITAL_IO_16X16;
@@ -143,8 +147,8 @@ static uint32_t neg_stack_bootstrap_op(
         sizeof(pd_payload),
         &pd_params,
         0x0001u);
-    ASSERT_TRUE(pd_payload_length > 0u);
-    ASSERT_TRUE(
+    ASSERT_TRUE_RET(pd_payload_length > 0u, 0u);
+    ASSERT_TRUE_RET(
         neg_build_frame(
             frame,
             NEG_FRAME_BUF_SIZE,
@@ -153,11 +157,13 @@ static uint32_t neg_stack_bootstrap_op(
             LEAP_PD_WRITE_ENDPOINT,
             session_id,
             pd_payload,
-            pd_payload_length) == 0);
-    ASSERT_EQ_INT(
+            pd_payload_length) == 0,
+        0u);
+    ASSERT_EQ_INT_RET(
         leap_device_stack_process_frame(stack, k_mac_a, 0u, frame, frame_length, &result),
-        LEAP_DEVICE_STACK_OK);
-    ASSERT_EQ_U16(result.pd_outputs_applied, 0x0001u);
+        LEAP_DEVICE_STACK_OK,
+        0u);
+    ASSERT_EQ_U16_RET(result.pd_outputs_applied, 0x0001u, 0u);
     *outputs_io = 0x0001u;
 
     return session_id;

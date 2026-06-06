@@ -139,6 +139,12 @@ sudo ./build/leap_linux_device lo
 sudo ./build/leap_linux_controller lo
 ```
 
+From **Windows**, run Linux unit tests in WSL:
+
+```powershell
+.\build-wsl.ps1 -Test
+```
+
 Wire examples need **native Linux** (not WSL2 `AF_PACKET`). See
 [examples/linux_loopback/README.md](examples/linux_loopback/README.md).
 

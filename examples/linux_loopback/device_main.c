@@ -42,7 +42,7 @@ static void device_send_reply(
     size_t                         payload_length)
 {
     if (leap_linux_send_leap(
-            transport,
+            (LeapRawLinuxSocket*)transport,
             dst_mac,
             (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ACK_REQUESTED),
             service_id,
@@ -83,7 +83,7 @@ static void device_send_error_reply(
     err.status_code = status_code;
 
     if (leap_linux_send_leap(
-            transport,
+            (LeapRawLinuxSocket*)transport,
             dst_mac,
             (uint8_t)(LEAP_FLAG_RESPONSE | LEAP_FLAG_ERROR | LEAP_FLAG_ACK_REQUESTED),
             service_id,

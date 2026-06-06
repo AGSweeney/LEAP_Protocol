@@ -462,6 +462,8 @@ void leap_run_conformance_engine_tests(void)
 {
     printf("conformance_engine:\n");
     RUN_TEST(test_conformance_scenario_lookup);
+    RUN_TEST(test_conformance_parse_profile_object);
+    RUN_TEST(test_conformance_caps_fallback_from_zeroed_endpoints);
     RUN_TEST(test_conformance_caps_generate_masks);
     RUN_TEST(test_conformance_mock_run_pass);
     RUN_TEST(test_conformance_step_filter);

@@ -298,7 +298,7 @@ static LeapControllerStackStatus leap_ctrl_stack_recv_expected_from_peer(
                 }
                 if (expect_service == (uint16_t)LEAP_SERVICE_DIAG)
                 {
-                    return LEAP_CTRL_STACK_DIAG_PARSE_ERROR;
+                    return LEAP_CTRL_STACK_DIAG_ERROR;
                 }
             }
         }

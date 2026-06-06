@@ -126,7 +126,7 @@ TEST(test_mgmt_tick_lease_safe_owner_survives_deadline)
 TEST(test_mgmt_tick_exact_lease_deadline_expires)
 {
     LeapMgmtDeviceContext ctx;
-    uint32_t              session_id;
+    uint32_t              session_id = 0u;
 
     boundary_setup(&ctx);
     boundary_open(&ctx, 100000u, &session_id);
@@ -143,7 +143,7 @@ TEST(test_mgmt_bad_frame_does_not_change_state)
     LeapMgmtDeviceRequest request;
     LeapMgmtDeviceReply   reply;
     LeapSetStateRequest   set_req;
-    uint32_t              session_id;
+    uint32_t              session_id = 0u;
     LeapState_u16         before;
 
     boundary_setup(&ctx);

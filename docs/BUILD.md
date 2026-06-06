@@ -83,13 +83,22 @@ Override build directory for scripts: `$env:LEAP_BUILD_DIR = "D:\path\build-win"
 
 ## WSL (unit tests only)
 
-WSL can compile and run **`ctest`**, but not AF_PACKET wire examples:
+From **Windows PowerShell**, use the WSL helper (recommended):
+
+```powershell
+.\build-wsl.ps1 -Test       # configure + build + ctest in WSL → build-wsl\
+.\build-wsl.ps1 -Clean      # delete build-wsl and reconfigure
+```
+
+Or from inside WSL:
 
 ```bash
 cmake -S . -B build-wsl
 cmake --build build-wsl -j
 ctest --test-dir build-wsl --output-on-failure
 ```
+
+WSL can compile and run **`ctest`**, but not AF_PACKET wire examples.
 
 ---
 
