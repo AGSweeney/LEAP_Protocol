@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 #define LEAP_PD_LATENCY_HISTORY_MAX 1000u
-#define LEAP_PD_NETWORK_RTT_HIST_BUCKETS 7u
+#define LEAP_PD_NETWORK_RTT_HIST_BUCKETS 10u
 
 typedef struct LeapPdLatencyHistory
 {
@@ -76,6 +76,11 @@ typedef struct LeapPdControllerConfig
     uint32_t         heartbeat_every_n_cycles;
     LeapPdProfileMap profile;
     /*
+     * Discovered digital output channel count from LEAP-DIR capabilities.
+     * When zero, the controller falls back to the active profile width.
+     */
+    uint16_t         output_bit_count;
+    /*
      * When non-zero (default), validate EXCHANGE_REPLY profile, endpoints, and
      * process_sequence before accepting inputs (multi-peer safety).
      */
@@ -94,8 +99,8 @@ typedef struct LeapPdControllerConfig
     int              hub_parallel_finish;
     unsigned         hub_finish_slot;
     /*
-     * When non-zero, each cycle drives a single random output bit (0..15)
-     * instead of walking bits 0..5 via cycle_index.
+     * When non-zero, each cycle drives a single random output bit
+     * within the active profile width (8 bits for 8x8, 16 bits for 16x16).
      */
     int              random_output;
     /*
@@ -251,6 +256,11 @@ uint32_t leap_pd_stats_network_rtt_percentile_permille_us(
 uint32_t leap_pd_stats_network_rtt_percentile_us(
     const LeapPdControllerStats* stats,
     unsigned                     percentile);
+
+uint32_t leap_pd_uint32_samples_percentile_permille_us(
+    const uint32_t* samples,
+    uint32_t        count,
+    unsigned        permille);
 
 uint32_t leap_pd_latency_history_percentile_permille_us(
     const LeapPdLatencyHistory* history,

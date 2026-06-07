@@ -554,8 +554,9 @@ static LeapConformanceStatus leap_conf_run_one(
         LeapPdControllerStats stats;
         unsigned              seconds = def->cyclic_seconds;
         /*
-         * outputs=0: rotating one-hot on the controller (IO-0..IO-5 in turn).
-         * Fixed cyclic_outputs (e.g. 0x003F) holds every line high — no exercise.
+         * outputs=0: rotating one-hot on the controller across the active
+         * profile width (e.g. IO-0..IO-7 for 8x8).
+         * Fixed cyclic_outputs (e.g. 0x00FF) holds every line high — no exercise.
          */
         uint16_t              outputs = 0u;
         const char*           exchange_detail = "PD EXCHANGE soak";
@@ -696,7 +697,8 @@ static LeapConformanceStatus leap_conf_run_one(
             (void)snprintf(
                 detail,
                 sizeof(detail),
-                "last/avg/p99/p99.9/max=%llu/%llu/%u/%u/%llu us (limit %u us)",
+                "last/avg/p99/p99.9/max=%llu/%llu/%u/%u/%llu us "
+                "(p99 limit %u us, max ceiling %u us)",
                 (unsigned long long)stats.last_network_rtt_us,
                 (unsigned long long)avg_rtt_us,
                 (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
@@ -704,8 +706,8 @@ static LeapConformanceStatus leap_conf_run_one(
                 (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
                     &stats, 999u),
                 (unsigned long long)stats.max_network_rtt_us,
-                (unsigned)leap_conf_io_bench_max_rtt_us(
-                    config->cyclic_period_ms));
+                (unsigned)LEAP_CONF_IO_BENCH_MAX_RTT_US,
+                (unsigned)LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US);
         }
         leap_conf_fill_step(
             row,

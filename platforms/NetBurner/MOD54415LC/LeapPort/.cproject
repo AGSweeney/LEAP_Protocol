@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
+	<storageModule moduleId="org.eclipse.cdt.core.settings">
+		<cconfiguration id="nbeclipse.toolchain.nbde30.exe.release.570700028">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="nbeclipse.toolchain.nbde30.exe.release.570700028" moduleId="org.eclipse.cdt.core.settings" name="Release">
+				<externalSettings/>
+				<extensions>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactExtension="bin" artifactName="LeapPort" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="nbeclipse.toolchain.nbde30.exe.release.570700028" name="Release" parent="nbeclipse.toolchain.nbde30.exe.release">
+					<folderInfo id="nbeclipse.toolchain.nbde30.exe.release.570700028." name="/" resourcePath="">
+						<toolChain id="nbeclipse.toolchain.nbde30.exe.release.tc.993712019" name="NetBurner Toolchain" superClass="nbeclipse.toolchain.nbde30.exe.release.tc" targetTool="nbeclipse.toolchain.tc30.tool.nb.compcode">
+							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="nbeclipse.toolchain.tc30.target.845492684" isAbstract="false" name="NetBurner Device" osList="all" superClass="nbeclipse.toolchain.tc30.target"/>
+							<builder buildPath="${workspace_loc:/LeapPort}/Release" enableAutoBuild="true" id="nbeclipse.toolchain.tc30.builder.2071759967" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="nbeclipse.toolchain.tc30.builder"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.1248163852" name="GNU C Compiler" superClass="nbeclipse.toolchain.tc30.tool.gnu.c.compiler">
+								<option defaultValue="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.optmization.optimization.level.more" id="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.optmization.optimization.level.452706330" name="Optimization Level" superClass="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.optmization.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option defaultValue="gnu.c.debugging.level.none" id="gnu.c.compiler.option.debugging.level.214895614" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.120256992" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.1229757675" name="GNU C++ Compiler" superClass="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler">
+								<option defaultValue="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.optmization.optimization.level.more" id="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.optmization.optimization.level.1374947239" name="Optimization Level" superClass="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.optmization.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option defaultValue="gnu.cpp.compiler.debugging.level.none" id="gnu.cpp.compiler.option.debugging.level.681128586" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.305941578" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.cpp.linker.304238460" name="GNU C/C++ Linker" superClass="nbeclipse.toolchain.tc30.tool.gnu.cpp.linker">
+								<option defaultValue="-Wl,-n -T${NNDK_ROOT}/platform/${PLATFORM}/lib/${PLATFORM}.ld -Wl,-R${NNDK_ROOT}/platform/${PLATFORM}/lib/sys.ld -Wl,--cref" id="nbeclipse.toolchain.tool.gnu.cpp.link.option.flags.1164680292" name="Linker flags" superClass="nbeclipse.toolchain.tool.gnu.cpp.link.option.flags" valueType="string"/>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="nbeclipse.toolchain.tool.gnu.cpp.link.option.paths.1533242607" superClass="nbeclipse.toolchain.tool.gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="${NNDK_ROOT}/platform/${PLATFORM}/original/lib"/>
+									<listOptionValue builtIn="false" value="nblibs"/>
+								</option>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1539738376" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
+									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
+									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
+								</inputType>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.archiver.532143287" name="GNU Archiver" superClass="nbeclipse.toolchain.tc30.tool.gnu.archiver"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.assembler.246138589" name="GNU Assembler" superClass="nbeclipse.toolchain.tc30.tool.gnu.assembler">
+								<inputType id="nbeclipse.toolchain.tc30.tool.gnu.assembler.input.409203542" name="GNU Assembler Input" superClass="nbeclipse.toolchain.tc30.tool.gnu.assembler.input"/>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.objcopy.973423307" name="GNU Objcopy" superClass="nbeclipse.toolchain.tc30.tool.gnu.objcopy"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.compcode.67890672" isHidden="false" name="NB Compcode" superClass="nbeclipse.toolchain.tc30.tool.nb.compcode"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.flashpack.964083367" isHidden="true" name="NB Flashpack" superClass="nbeclipse.toolchain.tc30.tool.nb.flashpack"/>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="overload"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+		<cconfiguration id="nbeclipse.toolchain.nbde30.exe.debug.77246631">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="nbeclipse.toolchain.nbde30.exe.debug.77246631" moduleId="org.eclipse.cdt.core.settings" name="Debug">
+				<externalSettings/>
+				<extensions>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactExtension="bin" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug" cleanCommand="rm -rf" description="" id="nbeclipse.toolchain.nbde30.exe.debug.77246631" name="Debug" parent="nbeclipse.toolchain.nbde30.exe.debug">
+					<folderInfo id="nbeclipse.toolchain.nbde30.exe.debug.77246631." name="/" resourcePath="">
+						<toolChain id="nbeclipse.toolchain.nbde30.exe.debug.tc.414606808" name="NetBurner Toolchain" superClass="nbeclipse.toolchain.nbde30.exe.debug.tc" targetTool="nbeclipse.toolchain.tc30.tool.nb.compcode">
+							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="nbeclipse.toolchain.tc30.target.1103193203" isAbstract="false" name="NetBurner Device" osList="all" superClass="nbeclipse.toolchain.tc30.target"/>
+							<builder arguments="NBDEBUG=1 -j" buildPath="${workspace_loc:/LeapPort}/Debug" enableAutoBuild="true" id="nbeclipse.toolchain.tc30.builder.107185393" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="nbeclipse.toolchain.tc30.builder"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.602223997" name="GNU C Compiler" superClass="nbeclipse.toolchain.tc30.tool.gnu.c.compiler">
+								<option defaultValue="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.optmization.optimization.level.none" id="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.optmization.optimization.level.1189537731" name="Optimization Level" superClass="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.optmization.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option defaultValue="gnu.c.debugging.level.max" id="gnu.c.compiler.option.debugging.level.837167121" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="nbeclipse.toolchain.tool.gnu.c.compiler.option.preprocessor.def.symbols.642593976" name="Defined symbols (-D)" superClass="nbeclipse.toolchain.tool.gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="_DEBUG"/>
+								</option>
+								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.2104715696" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.162859871" name="GNU C++ Compiler" superClass="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler">
+								<option defaultValue="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.optmization.optimization.level.none" id="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.optmization.optimization.level.144614275" name="Optimization Level" superClass="nbeclipse.toolchain.tc30.tool.gnu.cpp.compiler.optmization.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option defaultValue="gnu.cpp.compiler.debugging.level.max" id="gnu.cpp.compiler.option.debugging.level.476629427" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="nbeclipse.toolchain.tool.gnu.cpp.compiler.option.preprocessor.def.1134501593" name="Defined symbols (-D)" superClass="nbeclipse.toolchain.tool.gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="_DEBUG"/>
+								</option>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.852911920" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.cpp.linker.309131409" name="GNU C/C++ Linker" superClass="nbeclipse.toolchain.tc30.tool.gnu.cpp.linker">
+								<option defaultValue="-Wl,-n -T${NNDK_ROOT}/platform/${PLATFORM}/lib/${PLATFORM}.ld -Wl,-R${NNDK_ROOT}/platform/${PLATFORM}/lib/sys.ld -Wl,--cref" id="nbeclipse.toolchain.tool.gnu.cpp.link.option.flags.330493184" name="Linker flags" superClass="nbeclipse.toolchain.tool.gnu.cpp.link.option.flags" valueType="string"/>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="nbeclipse.toolchain.tool.gnu.cpp.link.option.paths.1456788229" superClass="nbeclipse.toolchain.tool.gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="${NNDK_ROOT}/platform/${PLATFORM}/original/lib"/>
+									<listOptionValue builtIn="false" value="nblibs"/>
+								</option>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1028335468" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
+									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
+									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
+								</inputType>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.archiver.266511335" name="GNU Archiver" superClass="nbeclipse.toolchain.tc30.tool.gnu.archiver"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.assembler.75041683" name="GNU Assembler" superClass="nbeclipse.toolchain.tc30.tool.gnu.assembler">
+								<inputType id="nbeclipse.toolchain.tc30.tool.gnu.assembler.input.1514785207" name="GNU Assembler Input" superClass="nbeclipse.toolchain.tc30.tool.gnu.assembler.input"/>
+							</tool>
+							<tool id="nbeclipse.toolchain.tc30.tool.gnu.objcopy.2053770908" name="GNU Objcopy" superClass="nbeclipse.toolchain.tc30.tool.gnu.objcopy"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.compcode.1572323644" isHidden="false" name="NB Compcode" superClass="nbeclipse.toolchain.tc30.tool.nb.compcode"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.flashpack.1373780161" isHidden="true" name="NB Flashpack" superClass="nbeclipse.toolchain.tc30.tool.nb.flashpack"/>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="overload"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+	</storageModule>
+	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+		<project id="LeapPort.nbeclipse.toolchain.nbde30.exe.1596051073" name="Executable" projectType="nbeclipse.toolchain.nbde30.exe"/>
+	</storageModule>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
+		<buildTargets>
+			<target name="Clean NetBurner System Library" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+				<buildCommand>make</buildCommand>
+				<buildArguments>-j32</buildArguments>
+				<buildTarget>clean-nblibs</buildTarget>
+				<stopOnError>true</stopOnError>
+				<useDefaultCommand>true</useDefaultCommand>
+				<runAllBuilders>true</runAllBuilders>
+			</target>
+			<target name="Run As NetBurner Application" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+				<buildCommand>make</buildCommand>
+				<buildArguments>-j32</buildArguments>
+				<buildTarget>loadapp LOAD_TARGET=NBIMAGE NBIMAGE=${BuildArtifactFileName} DEVIP=${IPADDR}</buildTarget>
+				<stopOnError>true</stopOnError>
+				<useDefaultCommand>true</useDefaultCommand>
+				<runAllBuilders>true</runAllBuilders>
+			</target>
+		</buildTargets>
+	</storageModule>
+</cproject>

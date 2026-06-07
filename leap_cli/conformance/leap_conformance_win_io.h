@@ -60,6 +60,10 @@ int leap_conformance_win_prepare_io_session(LeapConformanceWinContext* ctx);
 
 int leap_conformance_win_io_session_prepared(const LeapConformanceWinContext* ctx);
 
+void leap_conformance_win_set_io_soak_diag_enabled(
+    LeapConformanceWinContext* ctx,
+    int                        enabled);
+
 void leap_conformance_win_set_progress(
     LeapConformanceWinContext*    ctx,
     LeapConformanceProgressFn     progress_fn,

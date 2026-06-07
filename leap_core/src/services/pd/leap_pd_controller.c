@@ -72,9 +72,39 @@ void leap_pd_controller_seed_rand(uint32_t seed)
     leap_pd_ctrl_rng_state = (seed != 0u) ? seed : 0xA341316Cu;
 }
 
+static uint32_t leap_pd_ctrl_cycle_bit_count(const LeapPdControllerContext* pd)
+{
+    uint32_t bits;
+
+    if (pd == NULL)
+    {
+        return 16u;
+    }
+
+    if (pd->config.output_bit_count > 0u)
+    {
+        bits = pd->config.output_bit_count;
+        if (bits > 16u)
+        {
+            bits = 16u;
+        }
+        return bits;
+    }
+
+    switch (pd->config.profile_id)
+    {
+    case LEAP_PROFILE_DIGITAL_IO_8X8:
+        return 8u;
+    case LEAP_PROFILE_DIGITAL_IO_16X16:
+    default:
+        return 16u;
+    }
+}
+
 static uint16_t leap_pd_ctrl_pick_outputs(const LeapPdControllerContext* pd)
 {
     uint32_t bit;
+    uint32_t bit_count;
 
     if (pd == NULL)
     {
@@ -88,11 +118,13 @@ static uint16_t leap_pd_ctrl_pick_outputs(const LeapPdControllerContext* pd)
 
     if (pd->config.random_output != 0)
     {
-        bit = leap_pd_controller_rand_u32() % 16u;
+        bit_count = leap_pd_ctrl_cycle_bit_count(pd);
+        bit = leap_pd_controller_rand_u32() % bit_count;
         return (uint16_t)(1u << bit);
     }
 
-    return (uint16_t)(0x0001u << (pd->cycle_index % 6u));
+    bit_count = leap_pd_ctrl_cycle_bit_count(pd);
+    return (uint16_t)(0x0001u << (pd->cycle_index % bit_count));
 }
 
 void leap_pd_controller_sleep_us(uint64_t sleep_us)
@@ -215,7 +247,16 @@ static void leap_pd_ctrl_sanitize_parallel_reply_recv_us(
 static unsigned leap_pd_ctrl_network_rtt_hist_bucket(uint64_t rtt_us)
 {
     static const uint32_t k_edges_us[LEAP_PD_NETWORK_RTT_HIST_BUCKETS] = {
-        500u, 1000u, 2000u, 3000u, 5000u, 10000u, UINT32_MAX
+        500u,
+        1000u,
+        2000u,
+        3000u,
+        5000u,
+        10000u,
+        20000u,
+        50000u,
+        100000u,
+        UINT32_MAX
     };
     unsigned i;
 
@@ -262,12 +303,38 @@ static void leap_pd_ctrl_update_network_rtt(
     }
 }
 
+static int leap_pd_uint32_compare_asc(const void* a, const void* b)
+{
+    const uint32_t lhs = *(const uint32_t*)a;
+    const uint32_t rhs = *(const uint32_t*)b;
+
+    if (lhs < rhs)
+    {
+        return -1;
+    }
+    if (lhs > rhs)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 uint32_t leap_pd_stats_network_rtt_percentile_permille_us(
     const LeapPdControllerStats* stats,
     unsigned                     permille)
 {
     static const uint32_t k_upper_us[LEAP_PD_NETWORK_RTT_HIST_BUCKETS] = {
-        500u, 1000u, 2000u, 3000u, 5000u, 10000u, UINT32_MAX
+        500u,
+        1000u,
+        2000u,
+        3000u,
+        5000u,
+        10000u,
+        20000u,
+        50000u,
+        100000u,
+        100000u
     };
     uint64_t total;
     uint64_t rank;
@@ -293,11 +360,58 @@ uint32_t leap_pd_stats_network_rtt_percentile_permille_us(
         cumulative += stats->network_rtt_hist[i];
         if (cumulative >= rank)
         {
+            if (i + 1u == LEAP_PD_NETWORK_RTT_HIST_BUCKETS &&
+                stats->max_network_rtt_us > 0u)
+            {
+                return (stats->max_network_rtt_us > UINT32_MAX)
+                           ? UINT32_MAX
+                           : (uint32_t)stats->max_network_rtt_us;
+            }
+
             return k_upper_us[i];
         }
     }
 
-    return UINT32_MAX;
+    if (stats->max_network_rtt_us > 0u)
+    {
+        return (stats->max_network_rtt_us > UINT32_MAX)
+                   ? UINT32_MAX
+                   : (uint32_t)stats->max_network_rtt_us;
+    }
+
+    return 0u;
+}
+
+uint32_t leap_pd_uint32_samples_percentile_permille_us(
+    const uint32_t* samples,
+    uint32_t        count,
+    unsigned        permille)
+{
+    uint32_t scratch[LEAP_PD_LATENCY_HISTORY_MAX];
+    uint32_t copy_count;
+    uint64_t rank;
+
+    if (samples == NULL || count == 0u || permille == 0u || permille > 1000u)
+    {
+        return 0u;
+    }
+
+    copy_count = count;
+    if (copy_count > LEAP_PD_LATENCY_HISTORY_MAX)
+    {
+        copy_count = LEAP_PD_LATENCY_HISTORY_MAX;
+    }
+
+    memcpy(scratch, samples, (size_t)copy_count * sizeof(scratch[0]));
+    qsort(scratch, (size_t)copy_count, sizeof(scratch[0]), leap_pd_uint32_compare_asc);
+
+    rank = ((uint64_t)copy_count * (uint64_t)permille + 999u) / 1000u;
+    if (rank == 0u)
+    {
+        rank = 1u;
+    }
+
+    return scratch[(size_t)rank - 1u];
 }
 
 uint32_t leap_pd_stats_network_rtt_percentile_us(
@@ -312,23 +426,6 @@ uint32_t leap_pd_stats_network_rtt_percentile_us(
     return leap_pd_stats_network_rtt_percentile_permille_us(
         stats,
         percentile * 10u);
-}
-
-static int leap_pd_uint32_compare_asc(const void* a, const void* b)
-{
-    const uint32_t lhs = *(const uint32_t*)a;
-    const uint32_t rhs = *(const uint32_t*)b;
-
-    if (lhs < rhs)
-    {
-        return -1;
-    }
-    if (lhs > rhs)
-    {
-        return 1;
-    }
-
-    return 0;
 }
 
 uint32_t leap_pd_latency_history_percentile_permille_us(

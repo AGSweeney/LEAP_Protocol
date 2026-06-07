@@ -11,8 +11,8 @@
 
 static const LeapConformanceScenarioStep k_io_exchange_bench_steps[] = {
     /*
-     * pd_outputs=0: I/O bench engine passes outputs=0 → rotating one-hot on
-     * IO-0..IO-5 each EXCHANGE cycle (physical exercise + wire soak).
+     * pd_outputs=0: I/O bench engine passes outputs=0 -> rotating one-hot
+     * across the active profile width (IO-0..IO-7 for 8x8).
      */
     { "io_exchange_bench", "I/O bench", "PD EXCHANGE soak", LEAP_CONF_KIND_IO_EXCHANGE_BENCH, 0u, 10u, 0u },
 };

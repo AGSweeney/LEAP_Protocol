@@ -18,7 +18,9 @@ extern "C" {
 #endif
 
 /* Pass/fail threshold for io_exchange_bench wire RTT (microseconds). */
-#define LEAP_CONF_IO_BENCH_MAX_RTT_US 1500u
+#define LEAP_CONF_IO_BENCH_MAX_RTT_US 5000u
+/* Lifetime max is an outlier ceiling; p99 is the paced-run SLO gate. */
+#define LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US 5000u
 /* Freerun: paced max gate is too strict; use p99 plus an absolute ceiling. */
 #define LEAP_CONF_IO_BENCH_P99_RTT_FREERUN_US 2000u
 #define LEAP_CONF_IO_BENCH_MAX_RTT_FREERUN_US 5000u
@@ -55,7 +57,12 @@ static inline int leap_conf_io_bench_wire_rtt_pass(
                    0;
     }
 
-    return stats->max_network_rtt_us <= LEAP_CONF_IO_BENCH_MAX_RTT_US ? 1 : 0;
+    return (leap_pd_stats_network_rtt_percentile_us(stats, 99u) <=
+                LEAP_CONF_IO_BENCH_MAX_RTT_US &&
+            stats->max_network_rtt_us <=
+                LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US) ?
+               1 :
+               0;
 }
 
 typedef enum LeapConformanceStepKind

@@ -1,0 +1,16 @@
+HTMLDIR = ../html
+OBJDIR = nblibs
+TARGET = $(OBJDIR)/libnetburner.a
+TARGET_TYPE = lib
+LOCAL_OVERLOAD_DIR = ../overload
+NBALL = nball
+NBCLEAN = nbclean
+
+nbfind = $(foreach x,$(wildcard $1*),$(call nbfind,$x/,$2)$(filter $(subst *,%,$2),$x))
+COMPHTML_SRCS := $(call nbfind,$(HTMLDIR)/,*.htm *.html *.HTM *.HTML *.Htm *.Html *.js *.Js *.JS *.css *.CSS *.Css *.jpg *.jpeg *.gif *.png)
+ifneq ($(COMPHTML_SRCS),)
+	OBJS += htmldata.o
+	C_UPPER_DEPS += htmldata.cpp
+endif
+
+include $(NNDK_ROOT)/make/boilerplate.mk

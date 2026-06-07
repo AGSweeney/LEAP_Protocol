@@ -291,6 +291,15 @@ TEST(test_pd_controller_network_rtt_percentile)
         leap_pd_stats_network_rtt_percentile_us(&stats, 99u) <= 2000u);
     stats.max_network_rtt_us = 3280u;
     ASSERT_TRUE(leap_conf_io_bench_wire_rtt_pass(&stats, 0u) != 0);
+
+    memset(&stats, 0, sizeof(stats));
+    stats.network_rtt_samples = 100u;
+    stats.network_rtt_hist[LEAP_PD_NETWORK_RTT_HIST_BUCKETS - 1u] = 100u;
+    stats.max_network_rtt_us = 99773u;
+    ASSERT_TRUE(
+        leap_pd_stats_network_rtt_percentile_us(&stats, 99u) == 99773u);
+    ASSERT_TRUE(
+        leap_pd_stats_network_rtt_percentile_us(&stats, 99u) != UINT32_MAX);
 }
 
 void leap_run_pd_controller_tests(void)

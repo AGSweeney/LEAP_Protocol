@@ -1,5 +1,6 @@
 #include "ui/DiagnosticsLatencyChart.h"
 
+#include "leap/conformance/leap_conformance_scenario.h"
 #include "ui/theme/StatusPalette.h"
 
 #include <climits>
@@ -28,7 +29,17 @@ constexpr int kWarnLatencyUs = 750;
 constexpr int kStatGreenMaxUs = 250;
 constexpr int kStatYellowMaxUs = 500;
 
-QColor latencyStatColor(int micros) {
+QColor latencyStatColor(int micros, DiagnosticsLatencyChart::ChartMode mode) {
+    if (mode == DiagnosticsLatencyChart::ChartMode::WireRtt) {
+        if (micros <= static_cast<int>(LEAP_CONF_IO_BENCH_MAX_RTT_US)) {
+            return leap::studio::theme::statusPass();
+        }
+        if (micros <= static_cast<int>(LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US)) {
+            return leap::studio::theme::statusWarn();
+        }
+        return leap::studio::theme::statusFail();
+    }
+
     if (micros < kStatGreenMaxUs) {
         return leap::studio::theme::statusPass();
     }
@@ -58,6 +69,33 @@ int percentileFromSamples(const QVector<int>& samples, unsigned permille) {
 
 constexpr int kThresholdsUs[] = {250, 750, 1000};
 constexpr int kHistogramAxisLabelsUs[] = {0, 100, 200, 300, 400, 500, 1000};
+
+int niceWireRttChartYMaxUs(int dataMaxUs) {
+    if (dataMaxUs <= kLineYMaxUs) {
+        return kLineYMaxUs;
+    }
+
+    const int padded = (dataMaxUs * 12) / 10;
+    const int rounded = ((padded + 4999) / 5000) * 5000;
+    return qMax(10000, rounded);
+}
+
+QVector<int> wireRttHistogramBinEdges(int axisMaxUs) {
+    constexpr int kWireHistBinCount = 6;
+    QVector<int> edges;
+    edges.reserve(kWireHistBinCount + 1);
+    for (int i = 0; i <= kWireHistBinCount; ++i) {
+        edges.append((axisMaxUs * i) / kWireHistBinCount);
+    }
+    return edges;
+}
+
+QVector<int> wireRttHistogramAxisLabels(int axisMaxUs) {
+    QVector<int> labels;
+    labels << 0 << (axisMaxUs / 4) << (axisMaxUs / 2)
+           << ((axisMaxUs * 3) / 4) << axisMaxUs;
+    return labels;
+}
 
 QVector<int> downsampleSparkline(const QVector<int>& series, int maxPoints) {
     if (series.isEmpty() || maxPoints <= 0) {
@@ -317,12 +355,22 @@ DiagnosticsLatencyChart::HealthSummary DiagnosticsLatencyChart::computeHealth(
         soakHealth &&
         (recvTimeouts_ > 0u ||
          (cyclesCompleted_ > 0u && exchangeReplies_ < cyclesCompleted_));
+    const bool latencyWarn =
+        stats.count > 0 &&
+        (soakHealth ? (stats.p999Us > LEAP_CONF_IO_BENCH_MAX_RTT_US ||
+                       stats.maxUs > LEAP_CONF_IO_BENCH_MAX_RTT_US)
+                    : (stats.maxUs >= kWarnLatencyUs));
+    const bool latencySevere =
+        stats.count > 0 &&
+        (soakHealth ? (stats.p99Us > LEAP_CONF_IO_BENCH_MAX_RTT_US ||
+                       stats.maxUs > LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US)
+                    : (stats.maxUs >= 1000));
     const bool hasIssues =
         hasSoakFailures || staleFrames_ > 0u || duplicateFrames_ > 0u ||
-        (stats.count > 0 && stats.maxUs >= kWarnLatencyUs);
+        latencyWarn;
     const bool severe =
         hasSoakFailures || staleFrames_ > 0u || duplicateFrames_ > 0u ||
-        (stats.count > 0 && stats.maxUs >= 1000);
+        latencySevere;
 
     if (stats.count == 0 && !soakHealth) {
         health.label = QStringLiteral("NO DATA");
@@ -363,19 +411,50 @@ QVector<double> DiagnosticsLatencyChart::computeRollingAverage() const {
 }
 
 QVector<int> DiagnosticsLatencyChart::computeHistogram(int* maxCountOut) const {
-    QVector<int> bins(kHistBinCount, 0);
+    QVector<int> bins;
     int maxCount = 0;
 
-    for (int sample : samples_) {
-        int index = kHistBinCount - 1;
-        for (int i = 0; i < kHistBinCount; ++i) {
-            if (sample < kHistBinEdges[i + 1]) {
-                index = i;
-                break;
-            }
+    if (samples_.isEmpty()) {
+        if (maxCountOut != nullptr) {
+            *maxCountOut = 0;
         }
-        bins[index]++;
-        maxCount = qMax(maxCount, bins[index]);
+        return bins;
+    }
+
+    if (chartMode_ == ChartMode::WireRtt) {
+        int dataMax = 0;
+        for (int sample : samples_) {
+            dataMax = qMax(dataMax, sample);
+        }
+        const int axisMax = niceWireRttChartYMaxUs(dataMax);
+        const QVector<int> edges = wireRttHistogramBinEdges(axisMax);
+        const int binCount = edges.size() - 1;
+        bins = QVector<int>(binCount, 0);
+
+        for (int sample : samples_) {
+            int index = binCount - 1;
+            for (int i = 0; i < binCount; ++i) {
+                if (sample < edges.at(i + 1)) {
+                    index = i;
+                    break;
+                }
+            }
+            bins[index]++;
+            maxCount = qMax(maxCount, bins[index]);
+        }
+    } else {
+        bins = QVector<int>(kHistBinCount, 0);
+        for (int sample : samples_) {
+            int index = kHistBinCount - 1;
+            for (int i = 0; i < kHistBinCount; ++i) {
+                if (sample < kHistBinEdges[i + 1]) {
+                    index = i;
+                    break;
+                }
+            }
+            bins[index]++;
+            maxCount = qMax(maxCount, bins[index]);
+        }
     }
 
     if (maxCountOut != nullptr) {
@@ -592,7 +671,7 @@ void DiagnosticsLatencyChart::paintStatCards(QPainter& painter, const QRect& are
         painter.setFont(valueFont);
         QColor valueColor = cardValueColor_;
         if (cards[i].thresholdColor && hasData) {
-            valueColor = latencyStatColor(cards[i].thresholdMicros);
+            valueColor = latencyStatColor(cards[i].thresholdMicros, chartMode_);
         }
         painter.setPen(valueColor);
         const QFontMetrics valueMetrics(valueFont);
@@ -608,8 +687,9 @@ void DiagnosticsLatencyChart::paintStatCards(QPainter& painter, const QRect& are
 }
 
 void DiagnosticsLatencyChart::paintLineChart(QPainter& painter, const QRect& plot,
-                                             const QVector<double>& rollingAvg) {
-    const qreal yMax = kLineYMaxUs;
+                                             const QVector<double>& rollingAvg,
+                                             int yMaxUs) {
+    const qreal yMax = qMax(kLineYMaxUs, yMaxUs);
     const qreal xMin = static_cast<qreal>(baseExchange_);
     const qreal xMax =
         samples_.isEmpty()
@@ -655,13 +735,29 @@ void DiagnosticsLatencyChart::paintLineChart(QPainter& painter, const QRect& plo
     QPen thresholdPen(thresholdColor_, 1.0, Qt::DashLine);
     painter.setFont(font());
     const QFontMetrics metrics(font());
-    for (int threshold : kThresholdsUs) {
-        const int y = static_cast<int>(mapY(threshold, yMax, plot));
-        painter.setPen(thresholdPen);
-        painter.drawLine(plot.left(), y, plot.right(), y);
-        painter.setPen(thresholdColor_);
-        painter.drawText(plot.right() + 4, y + metrics.ascent() / 2,
-                         QString::number(threshold));
+    if (chartMode_ == ChartMode::WireRtt) {
+        const int thresholds[] = {LEAP_CONF_IO_BENCH_MAX_RTT_US,
+                                  LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US};
+        for (int threshold : thresholds) {
+            if (threshold <= 0 || threshold > static_cast<int>(yMax)) {
+                continue;
+            }
+            const int y = static_cast<int>(mapY(threshold, yMax, plot));
+            painter.setPen(thresholdPen);
+            painter.drawLine(plot.left(), y, plot.right(), y);
+            painter.setPen(thresholdColor_);
+            painter.drawText(plot.right() + 4, y + metrics.ascent() / 2,
+                             QString::number(threshold));
+        }
+    } else {
+        for (int threshold : kThresholdsUs) {
+            const int y = static_cast<int>(mapY(threshold, yMax, plot));
+            painter.setPen(thresholdPen);
+            painter.drawLine(plot.left(), y, plot.right(), y);
+            painter.setPen(thresholdColor_);
+            painter.drawText(plot.right() + 4, y + metrics.ascent() / 2,
+                             QString::number(threshold));
+        }
     }
 
     auto drawPath = [&](const QVector<double>& values, const QColor& color,
@@ -728,7 +824,9 @@ void DiagnosticsLatencyChart::paintLineChart(QPainter& painter, const QRect& plo
 }
 
 void DiagnosticsLatencyChart::paintHistogram(QPainter& painter, const QRect& area,
-                                             const QVector<int>& bins, int maxCount) {
+                                             const QVector<int>& bins, int maxCount,
+                                             const QVector<int>& binEdges,
+                                             int axisMaxUs) {
     const QColor axisText(QStringLiteral("#444444"));
     QFont titleFont = font();
     titleFont.setBold(true);
@@ -767,9 +865,16 @@ void DiagnosticsLatencyChart::paintHistogram(QPainter& painter, const QRect& are
         const int x = plot.left() + i * (barWidth + barGap);
         const int y = plot.bottom() - barHeight;
 
-        const int binStartUs = kHistBinEdges[i];
+        const int binStartUs =
+            (i < binEdges.size()) ? binEdges.at(i) : (i * axisMaxUs / bins.size());
         QColor barColor = histogramGreenBar_;
-        if (binStartUs >= 500) {
+        if (chartMode_ == ChartMode::WireRtt) {
+            if (binStartUs >= LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US) {
+                barColor = histogramRedBar_;
+            } else if (binStartUs >= LEAP_CONF_IO_BENCH_MAX_RTT_US) {
+                barColor = histogramAmberBar_;
+            }
+        } else if (binStartUs >= 500) {
             barColor = histogramRedBar_;
         } else if (binStartUs >= 250) {
             barColor = histogramAmberBar_;
@@ -781,11 +886,18 @@ void DiagnosticsLatencyChart::paintHistogram(QPainter& painter, const QRect& are
 
     painter.setPen(axisText);
     const int labelY = plot.bottom() + metrics.ascent() + 4;
-    for (int labelUs : kHistogramAxisLabelsUs) {
-        const qreal xNorm = static_cast<qreal>(labelUs) / kLineYMaxUs;
+    const QVector<int> axisLabels =
+        chartMode_ == ChartMode::WireRtt
+            ? wireRttHistogramAxisLabels(axisMaxUs)
+            : QVector<int>(std::begin(kHistogramAxisLabelsUs),
+                           std::end(kHistogramAxisLabelsUs));
+    const int histAxisMax =
+        chartMode_ == ChartMode::WireRtt ? axisMaxUs : kLineYMaxUs;
+    for (int labelUs : axisLabels) {
+        const qreal xNorm = static_cast<qreal>(labelUs) / histAxisMax;
         const int x = plot.left() + static_cast<int>(xNorm * plot.width());
         const QString label =
-            (labelUs == kLineYMaxUs)
+            (labelUs == histAxisMax)
                 ? QStringLiteral("%1 µs").arg(labelUs)
                 : QString::number(labelUs);
         painter.drawText(x - metrics.horizontalAdvance(label) / 2, labelY, label);
@@ -839,12 +951,22 @@ void DiagnosticsLatencyChart::paintEvent(QPaintEvent* event) {
     int histMax = 0;
     const QVector<int> bins =
         samples_.isEmpty() ? QVector<int>() : computeHistogram(&histMax);
+    const int lineYMax =
+        chartMode_ == ChartMode::WireRtt
+            ? niceWireRttChartYMaxUs(stats.maxUs)
+            : kLineYMaxUs;
+    const QVector<int> histBinEdges =
+        chartMode_ == ChartMode::WireRtt
+            ? wireRttHistogramBinEdges(lineYMax)
+            : QVector<int>(std::begin(kHistBinEdges), std::end(kHistBinEdges));
+    const int histAxisMax =
+        chartMode_ == ChartMode::WireRtt ? lineYMax : kLineYMaxUs;
 
-    paintLineChart(painter, linePlot, rollingAvg);
+    paintLineChart(painter, linePlot, rollingAvg, lineYMax);
     if (samples_.isEmpty()) {
         painter.setPen(mutedTextColor_);
         painter.drawText(linePlot, Qt::AlignCenter,
                          QStringLiteral("No exchange data yet"));
     }
-    paintHistogram(painter, histArea, bins, histMax);
+    paintHistogram(painter, histArea, bins, histMax, histBinEdges, histAxisMax);
 }

@@ -65,9 +65,10 @@ private:
     void paintSparkline(QPainter& painter, const QRect& area,
                         const QVector<int>& samples, const QColor& color) const;
     void paintLineChart(QPainter& painter, const QRect& plot,
-                        const QVector<double>& rollingAvg);
+                        const QVector<double>& rollingAvg, int yMaxUs);
     void paintHistogram(QPainter& painter, const QRect& area,
-                        const QVector<int>& bins, int maxCount);
+                        const QVector<int>& bins, int maxCount,
+                        const QVector<int>& binEdges, int axisMaxUs);
 
     qreal mapY(int latencyUs, qreal yMax, const QRect& plot) const;
 

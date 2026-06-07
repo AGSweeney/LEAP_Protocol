@@ -25,6 +25,8 @@ in this repository.
 | [../examples/win_smoke/README.md](../examples/win_smoke/README.md) | Windows Npcap single-process wire smoke |
 | [../examples/win_l2/README.md](../examples/win_l2/README.md) | Windows Npcap two-process L2 pair |
 | [../platforms/clearcore/README.md](../platforms/clearcore/README.md) | ClearCore embedded device firmware |
+| [../platforms/NetBurner/README.md](../platforms/NetBurner/README.md) | NetBurner port status and target links |
+| [../leap_studio_qt/README.md](../leap_studio_qt/README.md) | Studio build/run + I/O bench DIAG toggle behavior |
 
 ## Reference stack module map
 

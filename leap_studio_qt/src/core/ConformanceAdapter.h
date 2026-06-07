@@ -40,6 +40,7 @@ public slots:
     void stopMonitor();
     void refreshSnapshot();
     void prepareIoSession(const QString& adapterPath, const QString& peerMac);
+    void setIoBenchDiagEnabled(bool enabled);
     void shutdown();
 
     bool conformanceRunInProgress() const { return conformanceRunActive_; }

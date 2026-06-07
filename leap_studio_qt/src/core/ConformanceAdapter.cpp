@@ -239,6 +239,16 @@ void ConformanceAdapter::prepareIoSession(const QString& adapterPath,
         Qt::QueuedConnection);
 }
 
+void ConformanceAdapter::setIoBenchDiagEnabled(bool enabled) {
+    QMetaObject::invokeMethod(
+        worker_,
+        [this, enabled]() {
+            leap_conformance_win_set_io_soak_diag_enabled(
+                worker_->ctx(), enabled ? 1 : 0);
+        },
+        Qt::QueuedConnection);
+}
+
 void ConformanceAdapter::closeAdapter() {
     QMetaObject::invokeMethod(
         worker_,
@@ -276,6 +286,13 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
                 configStorage.push_back(text.toUtf8());
                 return configStorage.back().constData();
             };
+
+            if (scenarioId == QStringLiteral("io_exchange_bench") &&
+                leap_conformance_win_io_session_prepared(worker_->ctx()) == 0) {
+                emit logLine(QStringLiteral("[FAIL] I/O bench requires Connect first"));
+                emit runFinished(false, QStringLiteral("Connect I/O session first"), token);
+                return;
+            }
 
             lastRunStartedLocal_ =
                 QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
@@ -324,38 +341,40 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
             }
 
             QStringList tableRows;
-            if (!cancelled) {
-                for (size_t i = 0; i < result.step_count; ++i) {
-                    const auto& step = result.steps[i];
-                    const QString stepStatus =
-                        QString::fromUtf8(leap_conformance_step_status_text(step.status));
-                    const QString phase = QString::fromUtf8(step.phase);
-                    const QString name = QString::fromUtf8(step.name);
-                    const QString detail = QString::fromUtf8(step.detail);
-                    emit logLine(
-                        QStringLiteral("[%1] %2 — %3").arg(stepStatus, name, detail));
-                    tableRows.append(
-                        phase + QLatin1Char('\t') + name + QLatin1Char('\t') + stepStatus +
-                        QLatin1Char('\t') + detail);
-                }
+            for (size_t i = 0; i < result.step_count; ++i) {
+                const auto& step = result.steps[i];
+                const QString stepStatus =
+                    QString::fromUtf8(leap_conformance_step_status_text(step.status));
+                const QString phase = QString::fromUtf8(step.phase);
+                const QString name = QString::fromUtf8(step.name);
+                const QString detail = QString::fromUtf8(step.detail);
+                emit logLine(
+                    QStringLiteral("[%1] %2 — %3").arg(stepStatus, name, detail));
+                tableRows.append(
+                    phase + QLatin1Char('\t') + name + QLatin1Char('\t') + stepStatus +
+                    QLatin1Char('\t') + detail);
             }
             emit conformanceRows(tableRows, token);
 
             lastResult_ = result;
-            hasLastResult_ = result.step_count > 0u && !cancelled;
+            hasLastResult_ = result.step_count > 0u;
 
             conformanceRunActive_ = false;
             workerRunBusy_ = false;
 
             const QString summary =
-                cancelled ? QStringLiteral("Cancelled")
-                          : QStringLiteral("Passed %1 Failed %2")
-                                .arg(result.summary.passed)
-                                .arg(result.summary.failed);
+                cancelled
+                    ? (result.step_count > 0u
+                           ? QStringLiteral("Cancelled (partial: Passed %1 Failed %2)")
+                                 .arg(result.summary.passed)
+                                 .arg(result.summary.failed)
+                           : QStringLiteral("Cancelled"))
+                    : QStringLiteral("Passed %1 Failed %2")
+                          .arg(result.summary.passed)
+                          .arg(result.summary.failed);
 
-            if (cancelled && worker_->io() != nullptr) {
-                worker_->io()->close_transport(worker_->io()->user_ctx);
-                emit logLine(QStringLiteral("Run cancelled — transport reset"));
+            if (cancelled) {
+                emit logLine(QStringLiteral("Run stopped"));
             }
 
             emit runFinished(pass, summary, token);

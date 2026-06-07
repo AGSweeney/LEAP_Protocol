@@ -57,6 +57,7 @@ struct LeapConformanceWinContext
     unsigned                       bootstrap_retries;
     unsigned                       retry_delay_ms;
     volatile int                   cancel_flag;
+    volatile int*                  cyclic_stop_ptr;
     char                           capture_path[LEAP_CONF_PCAP_PATH_MAX];
     LeapControllerStackDiagResult  cached_diag;
     int                            cached_diag_valid;
@@ -79,19 +80,10 @@ struct LeapConformanceWinContext
     LeapConformanceDeviceCaps      session_caps;
     int                            session_caps_valid;
     int                            soak_in_progress;
+    int                            soak_diag_poll_enabled;
     int                            exchange_session_ready;
     uint64_t                       last_exchange_prepare_us;
 };
-
-static uint16_t leap_conf_win_bootstrap_outputs(const LeapConformanceWinContext* ctx)
-{
-    if (ctx != NULL && ctx->session_caps_valid)
-    {
-        return ctx->session_caps.bootstrap_outputs;
-    }
-
-    return 0x0001u;
-}
 
 static uint16_t leap_conf_win_soak_outputs(
     const LeapConformanceWinContext* ctx,
@@ -134,14 +126,19 @@ static void leap_conf_win_apply_session_profile(LeapConformanceWinContext* ctx)
 {
     LeapPdProfileMap map;
     uint32_t         profile_id = 0u;
+    uint16_t         output_bit_count = 0u;
 
     if (ctx == NULL)
     {
         return;
     }
 
+    ctx->stack.config.pd.output_bit_count = 0u;
+    ctx->stack.pd.config.output_bit_count = 0u;
+
     if (ctx->session_caps_valid)
     {
+        output_bit_count = ctx->session_caps.dir.output_bit_count;
         if (ctx->session_caps.dir.pd_map.profile_id != 0u)
         {
             profile_id = ctx->session_caps.dir.pd_map.profile_id;
@@ -157,6 +154,8 @@ static void leap_conf_win_apply_session_profile(LeapConformanceWinContext* ctx)
     {
         ctx->stack.config.pd.profile = map;
         ctx->stack.pd.config.profile = map;
+        ctx->stack.config.pd.output_bit_count = output_bit_count;
+        ctx->stack.pd.config.output_bit_count = output_bit_count;
         return;
     }
 
@@ -170,6 +169,8 @@ static void leap_conf_win_apply_session_profile(LeapConformanceWinContext* ctx)
     leap_conf_win_normalize_pd_profile(&map);
     ctx->stack.config.pd.profile = map;
     ctx->stack.pd.config.profile = map;
+    ctx->stack.config.pd.output_bit_count = output_bit_count;
+    ctx->stack.pd.config.output_bit_count = output_bit_count;
 }
 
 static void leap_conf_win_apply_pd_outputs(
@@ -192,6 +193,21 @@ static void leap_conf_win_apply_pd_outputs(
         ctx->stack.config.pd.fixed_digital_outputs = 0u;
         ctx->stack.pd.config.use_fixed_outputs     = 0;
         ctx->stack.pd.config.fixed_digital_outputs = 0u;
+        return;
+    }
+
+    ctx->stack.config.pd.use_fixed_outputs     = 1;
+    ctx->stack.config.pd.fixed_digital_outputs = outputs;
+    ctx->stack.pd.config.use_fixed_outputs     = 1;
+    ctx->stack.pd.config.fixed_digital_outputs = outputs;
+}
+
+static void leap_conf_win_apply_fixed_pd_outputs(
+    LeapConformanceWinContext* ctx,
+    uint16_t                     outputs)
+{
+    if (ctx == NULL)
+    {
         return;
     }
 
@@ -366,7 +382,7 @@ static int leap_conf_win_probe_owner_session(
     ctx->stack.pd.config.cycle_period_ms  = 0u;
 
     leap_conf_win_apply_session_profile(ctx);
-    leap_conf_win_apply_pd_outputs(ctx, outputs);
+    leap_conf_win_apply_fixed_pd_outputs(ctx, outputs);
 
     for (attempt = 0u; attempt < LEAP_CONF_VERIFY_PD_PROBE_RETRIES; ++attempt)
     {
@@ -417,8 +433,8 @@ static int leap_conf_win_probe_owner_session(
     }
 
     /*
-     * Leave the soak output mask configured — a successful EXCHANGE has
-     * already driven GPIO on the device (ClearCore leaves safe on apply).
+     * Leave the requested probe output configured. Connect probes use fixed
+     * zero so preparing a session never asserts physical outputs.
      */
     ctx->stack.config.pd.use_exchange    = saved_use_exchange;
     ctx->stack.pd.config.use_exchange    = saved_use_exchange;
@@ -489,17 +505,12 @@ static int leap_conf_win_ensure_exchange_session(
     LeapConformanceWinContext* ctx,
     int                        force_bootstrap)
 {
-    uint16_t session_outputs = leap_conf_win_soak_outputs(ctx, 0u);
+    uint16_t session_outputs = 0u;
     int      op              = 0;
 
     if (ctx == NULL)
     {
         return -1;
-    }
-
-    if (session_outputs == 0u)
-    {
-        session_outputs = leap_conf_win_bootstrap_outputs(ctx);
     }
 
     (void)leap_raw_winpcap_drain_rx(&ctx->transport);
@@ -538,7 +549,7 @@ static int leap_conf_win_ensure_exchange_session(
     }
 
     leap_conf_win_apply_session_profile(ctx);
-    leap_conf_win_apply_pd_outputs(ctx, session_outputs);
+    leap_conf_win_apply_fixed_pd_outputs(ctx, session_outputs);
     if (leap_conf_win_probe_owner_session(ctx, session_outputs) != 0)
     {
         leap_log_printf(
@@ -554,6 +565,92 @@ static int leap_conf_win_ensure_exchange_session(
         (unsigned)leap_mgmt_controller_session_id(&ctx->stack.mgmt),
         (unsigned)session_outputs);
     return 0;
+}
+
+static int leap_conf_win_cleanup_after_cyclic(
+    LeapConformanceWinContext* ctx,
+    int                        exchange)
+{
+    volatile int saved_cancel;
+    int          cleanup_ok = -1;
+
+    if (ctx == NULL)
+    {
+        return -1;
+    }
+
+    saved_cancel      = ctx->cancel_flag;
+    ctx->cancel_flag  = 0;
+    (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+
+    if (exchange == 0 && leap_conformance_win_session_is_op(ctx) != 0)
+    {
+        ctx->stack.config.pd.use_exchange = 0;
+        ctx->stack.pd.config.use_exchange = 0;
+        leap_conf_win_apply_session_profile(ctx);
+        leap_conf_win_apply_fixed_pd_outputs(ctx, 0u);
+        if (leap_pd_controller_send_single_write(
+                &ctx->stack.pd,
+                &ctx->stack.mgmt,
+                &ctx->raw_io.pd_io,
+                ctx->stack.peer_mac,
+                0u) == LEAP_PD_CTRL_OK)
+        {
+            cleanup_ok = 0;
+        }
+    }
+
+    if (cleanup_ok != 0 &&
+        leap_conf_win_probe_owner_session(ctx, 0u) == 0)
+    {
+        cleanup_ok = 0;
+    }
+
+    if (cleanup_ok != 0)
+    {
+        leap_log_printf(
+            "I/O bench cleanup: probe failed, re-bootstrapping owner session\n");
+        if (leap_conf_win_ensure_exchange_session(ctx, 1) == 0)
+        {
+            cleanup_ok = 0;
+        }
+    }
+
+    if (cleanup_ok != 0)
+    {
+        leap_log_printf(
+            "I/O bench cleanup: EXCHANGE failed, falling back to PD WRITE outputs=0\n");
+        if (leap_conformance_win_session_is_op(ctx) == 0)
+        {
+            int op = 0;
+
+            if (leap_conf_win_bootstrap(ctx, 0u, &op) != 0 || !op)
+            {
+                ctx->cancel_flag = saved_cancel;
+                return -1;
+            }
+        }
+
+        ctx->stack.config.pd.use_exchange = 0;
+        ctx->stack.pd.config.use_exchange = 0;
+        leap_conf_win_apply_session_profile(ctx);
+        leap_conf_win_apply_fixed_pd_outputs(ctx, 0u);
+        if (leap_pd_controller_send_single_write(
+                &ctx->stack.pd,
+                &ctx->stack.mgmt,
+                &ctx->raw_io.pd_io,
+                ctx->stack.peer_mac,
+                0u) != LEAP_PD_CTRL_OK)
+        {
+            ctx->cancel_flag = saved_cancel;
+            return -1;
+        }
+
+        cleanup_ok = 0;
+    }
+
+    ctx->cancel_flag = saved_cancel;
+    return cleanup_ok;
 }
 
 static int leap_conf_win_configure_soak_outputs(
@@ -1063,7 +1160,12 @@ int leap_conformance_win_ensure_op(LeapConformanceWinContext* ctx, uint16_t outp
         return 0;
     }
 
-    if (leap_conf_win_bootstrap(ctx, outputs, &op) != 0 || !op)
+    if (leap_conformance_win_session_is_op(ctx) != 0)
+    {
+        (void)leap_raw_winpcap_drain_rx(&ctx->transport);
+        op = 1;
+    }
+    else if (leap_conf_win_bootstrap(ctx, outputs, &op) != 0 || !op)
     {
         return -1;
     }
@@ -1470,7 +1572,7 @@ static DWORD WINAPI leap_conf_metrics_poll_thread(LPVOID param)
         return 0;
     }
 
-    while (*args->stop_flag == 0)
+    while (args->ctx->soak_in_progress != 0 && *args->stop_flag == 0)
     {
         if (args->ctx->progress_fn != NULL && args->ctx->io.snapshot != NULL)
         {
@@ -1573,6 +1675,7 @@ static int leap_conf_win_cyclic(
 {
     LeapConformanceWinContext* ctx = (LeapConformanceWinContext*)user_ctx;
     int                        op = 0;
+    int                        safe_outputs_ok = 0;
     LeapPdControllerStatus     pd_status;
 
 #if defined(_WIN32)
@@ -1613,6 +1716,7 @@ static int leap_conf_win_cyclic(
 
     if (ctx->cancel_flag != 0)
     {
+        (void)leap_conf_win_cleanup_after_cyclic(ctx, exchange);
         *ok_out = 0;
         return 0;
     }
@@ -1622,7 +1726,10 @@ static int leap_conf_win_cyclic(
     leap_conf_win_start_metrics_poll(ctx);
 
 #if defined(_WIN32)
-    timer_args.stop_flag = &ctx->cancel_flag;
+    volatile int cyclic_stop = 0;
+
+    ctx->cyclic_stop_ptr = (volatile int*)&cyclic_stop;
+    timer_args.stop_flag = (volatile int*)&cyclic_stop;
     timer_args.seconds   = seconds > 0u ? seconds : 2u;
     timer_thread = CreateThread(
         NULL,
@@ -1636,7 +1743,9 @@ static int leap_conf_win_cyclic(
         &ctx->stack,
         &ctx->raw_io.pd_io,
         &ctx->transport,
-        &ctx->cancel_flag);
+        (volatile int*)&cyclic_stop);
+
+    ctx->cyclic_stop_ptr = NULL;
 
     if (timer_thread != NULL)
     {
@@ -1648,16 +1757,31 @@ static int leap_conf_win_cyclic(
     pd_status = LEAP_PD_CTRL_STOPPED;
 #endif
 
-    leap_conf_win_stop_metrics_poll(ctx);
     ctx->soak_in_progress = 0;
+    ctx->force_diag_poll = 1;
+    leap_conf_win_stop_metrics_poll(ctx);
+    leap_win_install_ctrl_handler(NULL);
 
     if (stats_out != NULL)
     {
         *stats_out = ctx->stack.pd.stats;
     }
 
+    safe_outputs_ok =
+        (leap_conf_win_cleanup_after_cyclic(ctx, exchange) == 0) ? 1 : 0;
+    if (safe_outputs_ok)
+    {
+        leap_log_printf("I/O bench cleanup: outputs returned to SAFE/off\n");
+    }
+    else
+    {
+        leap_log_printf(
+            "I/O bench cleanup: failed to return outputs to SAFE/off\n");
+    }
+
     *ok_out = (pd_status == LEAP_PD_CTRL_OK || pd_status == LEAP_PD_CTRL_STOPPED) &&
-              ctx->stack.pd.stats.pd_sent_fail == 0u;
+              ctx->stack.pd.stats.pd_sent_fail == 0u &&
+              safe_outputs_ok != 0;
     return 0;
 }
 
@@ -2095,7 +2219,7 @@ static void leap_conf_win_poll_device_diag(LeapConformanceWinContext* ctx)
         return;
     }
 
-    if (ctx->soak_in_progress != 0)
+    if (ctx->soak_in_progress != 0 && ctx->soak_diag_poll_enabled == 0)
     {
         return;
     }
@@ -2313,8 +2437,6 @@ int leap_conformance_win_transport_is_open(LeapConformanceWinContext* ctx)
 int leap_conformance_win_prepare_io_session(LeapConformanceWinContext* ctx)
 {
     unsigned peer_count = 0u;
-    uint16_t bootstrap_outputs;
-    uint16_t soak_outputs;
 
     if (ctx == NULL || !ctx->transport_open || !ctx->has_peer_mac)
     {
@@ -2323,12 +2445,11 @@ int leap_conformance_win_prepare_io_session(LeapConformanceWinContext* ctx)
 
     if (leap_conformance_win_session_is_op(ctx) != 0)
     {
-        soak_outputs = leap_conf_win_soak_outputs(ctx, 0u);
         if (leap_conf_win_ensure_exchange_session(ctx, 0) != 0)
         {
             return -1;
         }
-        return leap_conf_win_configure_soak_outputs(ctx, soak_outputs);
+        return 0;
     }
 
     if (ctx->table.count == 0u)
@@ -2353,15 +2474,12 @@ int leap_conformance_win_prepare_io_session(LeapConformanceWinContext* ctx)
         }
     }
 
-    bootstrap_outputs = leap_conf_win_bootstrap_outputs(ctx);
-    soak_outputs      = leap_conf_win_soak_outputs(ctx, 0u);
-
     if (leap_conf_win_ensure_exchange_session(ctx, 0) != 0)
     {
         return -1;
     }
 
-    return leap_conf_win_configure_soak_outputs(ctx, soak_outputs);
+    return 0;
 }
 
 int leap_conformance_win_io_session_prepared(const LeapConformanceWinContext* ctx)
@@ -2414,6 +2532,10 @@ static void leap_conf_win_cancel(void* user_ctx)
 
     if (ctx != NULL)
     {
+        if (ctx->cyclic_stop_ptr != NULL)
+        {
+            *ctx->cyclic_stop_ptr = 1;
+        }
         ctx->cancel_flag = 1;
         ctx->progress_fn = NULL;
     }
@@ -2431,6 +2553,7 @@ LeapConformanceWinContext* leap_conformance_win_create(void)
 
     ctx->bootstrap_retries = 3u;
     ctx->retry_delay_ms    = 1000u;
+    ctx->soak_diag_poll_enabled = 1;
 
     memset(&ctx->io, 0, sizeof(ctx->io));
     ctx->io.user_ctx         = ctx;
@@ -2451,6 +2574,18 @@ LeapConformanceWinContext* leap_conformance_win_create(void)
     ctx->io.is_cancelled     = leap_conf_win_is_cancelled;
 
     return ctx;
+}
+
+void leap_conformance_win_set_io_soak_diag_enabled(
+    LeapConformanceWinContext* ctx,
+    int                        enabled)
+{
+    if (ctx == NULL)
+    {
+        return;
+    }
+
+    ctx->soak_diag_poll_enabled = (enabled != 0) ? 1 : 0;
 }
 
 void leap_conformance_win_destroy(LeapConformanceWinContext* ctx)

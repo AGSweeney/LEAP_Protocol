@@ -4,6 +4,7 @@ extern "C" {
 #include "leap/conformance/leap_conformance_metrics.h"
 #include "leap/conformance/leap_conformance_scenario.h"
 #include "leap/leap_log.h"
+#include "leap/leap_pd_controller.h"
 #include "leap/leap_raw_winpcap.h"
 }
 
@@ -405,9 +406,9 @@ void MainWindow::buildIoPerformanceTab(QWidget* page) {
     layout->addWidget(ioBenchSummary_);
 
     auto* runRow = new QHBoxLayout();
-    auto* connectBtn = makeButton(QStringLiteral("Connect device"), page);
-    connect(connectBtn, &QPushButton::clicked, this, &MainWindow::onPrepareIoSession);
-    runRow->addWidget(connectBtn);
+    ioSessionButton_ = makeButton(QStringLiteral("Connect device"), page);
+    connect(ioSessionButton_, &QPushButton::clicked, this, &MainWindow::onPrepareIoSession);
+    runRow->addWidget(ioSessionButton_);
     auto* runBtn = makeButton(QStringLiteral("Run I/O bench"), page);
     connect(runBtn, &QPushButton::clicked, this, &MainWindow::onRunIoBench);
     runRow->addWidget(runBtn);
@@ -433,6 +434,19 @@ void MainWindow::buildIoPerformanceTab(QWidget* page) {
     ioBenchCycleMsSpin_->setValue(5);
     ioBenchCycleMsSpin_->setSuffix(QStringLiteral(" ms"));
     tuning->addWidget(ioBenchCycleMsSpin_);
+    ioBenchDiagPollCheck_ = new QCheckBox(
+        QStringLiteral("Enable DIAG polling during soak"), page);
+    ioBenchDiagPollCheck_->setChecked(true);
+    tuning->addWidget(ioBenchDiagPollCheck_);
+    connect(ioBenchDiagPollCheck_, &QCheckBox::toggled, this, [this](bool enabled) {
+        if (adapter_ != nullptr) {
+            adapter_->setIoBenchDiagEnabled(enabled);
+        }
+        if (ioBenchStatsTable_ != nullptr) {
+            ioBenchStatsTable_->setRowHidden(17, !enabled);
+            ioBenchStatsTable_->setRowHidden(18, !enabled);
+        }
+    });
     tuning->addStretch();
     layout->addLayout(tuning);
 
@@ -445,7 +459,7 @@ void MainWindow::buildIoPerformanceTab(QWidget* page) {
     ioBenchSloLabel_->setWordWrap(true);
     layout->addWidget(ioBenchSloLabel_);
 
-    constexpr int kIoMetricRows = 18;
+    constexpr int kIoMetricRows = 19;
     ioBenchStatsTable_ = new QTableWidget(kIoMetricRows, 2, page);
     ioBenchStatsTable_->setHorizontalHeaderLabels(
         {QStringLiteral("Metric"), QStringLiteral("Value")});
@@ -456,6 +470,8 @@ void MainWindow::buildIoPerformanceTab(QWidget* page) {
     ioBenchStatsTable_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ioBenchStatsTable_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     ioBenchStatsTable_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ioBenchStatsTable_->setRowHidden(17, false);
+    ioBenchStatsTable_->setRowHidden(18, false);
 
     ioPerformanceChart_ = new DiagnosticsLatencyChart(page);
     ioPerformanceChart_->setChartMode(DiagnosticsLatencyChart::ChartMode::WireRtt);
@@ -670,6 +686,18 @@ int MainWindow::tabIndexByLabel(const QString& label) const {
 }
 
 void MainWindow::onRunIoBench() {
+    if (!ioSessionConnected_) {
+        if (ioBenchSummary_ != nullptr) {
+            ioBenchSummary_->setText(QStringLiteral("Connect I/O session before running bench."));
+        }
+        if (ioSessionStatus_ != nullptr) {
+            ioSessionStatus_->setText(QStringLiteral("Session: connect required"));
+        }
+        setStatusText(QStringLiteral("I/O bench requires an active connected session"));
+        showTab(tabIndexByLabel(QStringLiteral("I/O Performance")));
+        return;
+    }
+
     adapter_->cancelRun();
     ioBenchRunToken_ = 0;
     conformanceRunToken_ = 0;
@@ -711,13 +739,47 @@ void MainWindow::onRunIoBench() {
 }
 
 void MainWindow::onPrepareIoSession() {
+    if (ioSessionConnected_) {
+        if (ioBenchRunActive_) {
+            if (ioSessionStatus_ != nullptr) {
+                ioSessionStatus_->setText(QStringLiteral("Session: stop bench before disconnect"));
+            }
+            setStatusText(QStringLiteral("Stop I/O bench before disconnecting"));
+            return;
+        }
+
+        ioSessionConnected_ = false;
+        adapter_->closeAdapter();
+        if (ioSessionStatus_ != nullptr) {
+            ioSessionStatus_->setText(QStringLiteral("Session: disconnected"));
+        }
+        if (ioSessionButton_ != nullptr) {
+            ioSessionButton_->setText(QStringLiteral("Connect device"));
+            ioSessionButton_->setEnabled(true);
+        }
+        setStatusText(QStringLiteral("I/O session disconnected"));
+        return;
+    }
+
+    ioSessionConnected_ = false;
     if (ioSessionStatus_ != nullptr) {
         ioSessionStatus_->setText(QStringLiteral("Session: connecting…"));
+    }
+    if (ioSessionButton_ != nullptr) {
+        ioSessionButton_->setText(QStringLiteral("Connecting…"));
+        ioSessionButton_->setEnabled(false);
     }
     adapter_->prepareIoSession(selectedAdapterPath(), peerMacEdit_->text());
 }
 
 void MainWindow::onIoSessionReady(bool ok, const QString& detail) {
+    ioSessionConnected_ = ok;
+    if (ioSessionButton_ != nullptr) {
+        ioSessionButton_->setText(
+            ok ? QStringLiteral("Disconnect device")
+               : QStringLiteral("Connect device"));
+        ioSessionButton_->setEnabled(true);
+    }
     if (ioSessionStatus_ == nullptr) {
         return;
     }
@@ -736,6 +798,11 @@ void MainWindow::runAutoBenchDemo(unsigned cyclicSeconds) {
 }
 
 void MainWindow::onRunAll() {
+    ioSessionConnected_ = false;
+    if (ioSessionButton_ != nullptr) {
+        ioSessionButton_->setText(QStringLiteral("Connect device"));
+        ioSessionButton_->setEnabled(true);
+    }
     adapter_->cancelRun();
     ioBenchRunToken_ = 0;
     conformanceRunToken_ = 0;
@@ -758,6 +825,11 @@ void MainWindow::onRunAll() {
 }
 
 void MainWindow::onRunSelected() {
+    ioSessionConnected_ = false;
+    if (ioSessionButton_ != nullptr) {
+        ioSessionButton_->setText(QStringLiteral("Connect device"));
+        ioSessionButton_->setEnabled(true);
+    }
     QStringList steps;
     for (QCheckBox* cb : stepChecks_) {
         if (cb->isChecked()) {
@@ -802,7 +874,6 @@ void MainWindow::onStop() {
     }
 
     if (conformanceRunToken_ != 0) {
-        conformanceRunToken_ = 0;
         if (runProgress_ != nullptr) {
             runProgress_->setValue(0);
         }
@@ -835,7 +906,8 @@ void MainWindow::onRunFinished(bool pass, const QString& summary, quint64 runTok
     const bool wasIoBench =
         runToken != 0 && runToken == ioBenchRunToken_;
     const bool wasConformance =
-        runToken != 0 && runToken == conformanceRunToken_;
+        runToken != 0 &&
+        (runToken == conformanceRunToken_ || summary.startsWith(QStringLiteral("Cancelled")));
 
     if (!wasIoBench && !wasConformance) {
         if (stopPending_ && adapter_ != nullptr && !adapter_->workerRunBusy()) {
@@ -1022,10 +1094,7 @@ void MainWindow::onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers) {
 }
 
 void MainWindow::onConformanceRows(const QStringList& rows, quint64 runToken) {
-    const bool applies =
-        runToken != 0 &&
-        (runToken == conformanceRunToken_ || runToken == ioBenchRunToken_);
-    if (!applies || resultsTable_ == nullptr) {
+    if (runToken == 0 || resultsTable_ == nullptr) {
         return;
     }
     resultsTable_->setRowCount(rows.size());
@@ -1130,6 +1199,11 @@ void MainWindow::onListAdapters() {
 }
 
 void MainWindow::onOpenAdapter() {
+    ioSessionConnected_ = false;
+    if (ioSessionButton_ != nullptr) {
+        ioSessionButton_->setText(QStringLiteral("Connect device"));
+        ioSessionButton_->setEnabled(true);
+    }
     const QString path = selectedAdapterPath();
     if (path.isEmpty()) {
         appendLog(QStringLiteral("[FAIL] select an adapter from the list"));
@@ -1145,9 +1219,17 @@ void MainWindow::onOpenAdapter() {
 }
 
 void MainWindow::onCloseAdapter() {
+    ioSessionConnected_ = false;
     adapter_->closeAdapter();
+    if (ioSessionButton_ != nullptr) {
+        ioSessionButton_->setText(QStringLiteral("Connect device"));
+        ioSessionButton_->setEnabled(true);
+    }
     if (connectionStatus_ != nullptr) {
         connectionStatus_->setText(QStringLiteral("Adapter closed."));
+    }
+    if (ioSessionStatus_ != nullptr) {
+        ioSessionStatus_->setText(QStringLiteral("Session: disconnected"));
     }
 }
 
@@ -1280,11 +1362,16 @@ void MainWindow::populateIoPerformanceStats(const LeapConformanceMetrics& metric
     };
 
     uint64_t avgRtt = 0u;
+    uint32_t p99Rtt = 0u;
     uint32_t minTrendRtt = 0u;
     if (metrics.pd.network_rtt_samples > 0u) {
         avgRtt = metrics.pd.total_network_rtt_us / metrics.pd.network_rtt_samples;
     }
     if (metrics.network_rtt_trend.count > 0u) {
+        p99Rtt = leap_pd_uint32_samples_percentile_permille_us(
+            metrics.network_rtt_trend.samples,
+            metrics.network_rtt_trend.count,
+            990u);
         minTrendRtt = UINT32_MAX;
         for (uint32_t i = 0u; i < metrics.network_rtt_trend.count; ++i) {
             minTrendRtt = qMin(minTrendRtt, metrics.network_rtt_trend.samples[i]);
@@ -1292,6 +1379,8 @@ void MainWindow::populateIoPerformanceStats(const LeapConformanceMetrics& metric
         if (minTrendRtt == UINT32_MAX) {
             minTrendRtt = 0u;
         }
+    } else if (metrics.pd.network_rtt_samples > 0u) {
+        p99Rtt = leap_pd_stats_network_rtt_percentile_us(&metrics.pd, 99u);
     }
 
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
@@ -1332,47 +1421,57 @@ void MainWindow::populateIoPerformanceStats(const LeapConformanceMetrics& metric
     set(2, QStringLiteral("wire_rtt_min"),
         minTrendRtt > 0u ? QStringLiteral("%1 µs").arg(minTrendRtt)
                          : QStringLiteral("—"));
-    set(3, QStringLiteral("wire_rtt_max"), rttText(metrics.pd.max_network_rtt_us));
-    set(4, QStringLiteral("wire_rtt_samples"),
+    set(3, QStringLiteral("wire_rtt_p99"), rttText(p99Rtt));
+    set(4, QStringLiteral("wire_rtt_max_lifetime"), rttText(metrics.pd.max_network_rtt_us));
+    set(5, QStringLiteral("wire_rtt_samples"),
         QString::number(metrics.pd.network_rtt_samples));
-    set(5, QStringLiteral("cycle_work_last"),
+    set(6, QStringLiteral("cycle_work_last"),
         workText(metrics.pd.last_cycle_work_us));
-    set(6, QStringLiteral("cycle_work_max"),
+    set(7, QStringLiteral("cycle_work_max"),
         workText(metrics.pd.max_cycle_work_us));
-    set(7, QStringLiteral("exchange_replies"),
+    set(8, QStringLiteral("exchange_replies"),
         QString::number(metrics.pd.exchange_replies));
-    set(8, QStringLiteral("cycles_completed"),
+    set(9, QStringLiteral("cycles_completed"),
         QString::number(metrics.pd.cycles_completed));
-    set(9, QStringLiteral("exchanges_per_sec"),
+    set(10, QStringLiteral("exchanges_per_sec"),
         liveExchPerSec > 0.0 ? QString::number(liveExchPerSec, 'f', 1)
                              : QStringLiteral("—"));
-    set(10, QStringLiteral("exchanges_per_cycle"),
+    set(11, QStringLiteral("exchanges_per_cycle"),
         soakExchPerSec > 0.0 ? QString::number(soakExchPerSec, 'f', 1)
                              : QStringLiteral("—"));
-    set(11, QStringLiteral("recv_timeouts"),
+    set(12, QStringLiteral("recv_timeouts"),
         QString::number(metrics.pd.recv_timeouts));
-    set(12, QStringLiteral("reply_rejects"),
+    set(13, QStringLiteral("reply_rejects"),
         QString::number(metrics.pd.reply_rejects));
-    set(13, QStringLiteral("lost_frames"),
+    set(14, QStringLiteral("lost_frames"),
         QString::number(metrics.pd.lost_frames));
-    set(14, QStringLiteral("last_digital_input"),
+    set(15, QStringLiteral("last_digital_input"),
         QStringLiteral("0x%1")
             .arg(metrics.pd.last_digital_inputs, 4, 16, QChar('0')));
-    set(15, QStringLiteral("pd_sent_fail"),
+    set(16, QStringLiteral("pd_sent_fail"),
         QString::number(metrics.pd.pd_sent_fail));
-    set(16, QStringLiteral("device_reply_last"),
-        metrics.has_cycle_timing != 0 && metrics.timing.last_reply_latency_us > 0u
+    const bool showDiagDetails =
+        ioBenchDiagPollCheck_ != nullptr && ioBenchDiagPollCheck_->isChecked();
+    if (ioBenchStatsTable_ != nullptr) {
+        ioBenchStatsTable_->setRowHidden(17, !showDiagDetails);
+        ioBenchStatsTable_->setRowHidden(18, !showDiagDetails);
+    }
+    set(17, QStringLiteral("device_reply_last"),
+        showDiagDetails && metrics.has_cycle_timing != 0 &&
+                metrics.timing.last_reply_latency_us > 0u
             ? QStringLiteral("%1 µs").arg(metrics.timing.last_reply_latency_us)
             : QStringLiteral("—"));
-    set(17, QStringLiteral("device_reply_worst"),
-        metrics.has_cycle_timing != 0 && metrics.timing.max_reply_latency_us > 0u
+    set(18, QStringLiteral("device_reply_worst"),
+        showDiagDetails && metrics.has_cycle_timing != 0 &&
+                metrics.timing.max_reply_latency_us > 0u
             ? QStringLiteral("%1 µs").arg(metrics.timing.max_reply_latency_us)
             : QStringLiteral("—"));
 
     if (ioBenchSloLabel_ != nullptr) {
         const bool rttPass =
             metrics.pd.network_rtt_samples > 0u &&
-            metrics.pd.max_network_rtt_us <= LEAP_CONF_IO_BENCH_MAX_RTT_US;
+            p99Rtt <= LEAP_CONF_IO_BENCH_MAX_RTT_US &&
+            metrics.pd.max_network_rtt_us <= LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US;
         const bool timeoutPass = metrics.pd.recv_timeouts == 0u;
         const bool replyPass =
             metrics.pd.exchange_replies > 0u &&
@@ -1383,12 +1482,14 @@ void MainWindow::populateIoPerformanceStats(const LeapConformanceMetrics& metric
         };
         ioBenchSloLabel_->setText(
             QStringLiteral(
-                "SLO Wire RTT max %1 / %2 µs [%3] | "
-                "Timeouts %4 [%5] | "
-                "Exchanges %6/%7 rejects=%8 [%9] | "
-                "PD fail %10 [%11]")
-                .arg(metrics.pd.max_network_rtt_us)
+                "SLO Wire RTT p99 %1 / %2 µs, max %3 / %4 µs [%5] | "
+                "Timeouts %6 [%7] | "
+                "Exchanges %8/%9 rejects=%10 [%11] | "
+                "PD fail %12 [%13]")
+                .arg(p99Rtt)
                 .arg(LEAP_CONF_IO_BENCH_MAX_RTT_US)
+                .arg(metrics.pd.max_network_rtt_us)
+                .arg(LEAP_CONF_IO_BENCH_MAX_RTT_CEILING_US)
                 .arg(mark(rttPass))
                 .arg(metrics.pd.recv_timeouts)
                 .arg(mark(timeoutPass))

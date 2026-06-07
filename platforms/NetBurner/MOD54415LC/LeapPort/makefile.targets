@@ -1,0 +1,45 @@
+ifeq ($(MKNBLIBS),1)
+all: $(TARGET)
+$(ELF): $(TARGET)
+endif
+
+ifeq ($(NBDEBUG),1)
+$(TARGET): $(DBLIB_OBJ_FILES)
+else
+$(TARGET): $(LIB_OBJ_FILES)
+endif
+	$(RM) $@
+	$(call max_args,$(AR) cr $@ ,10,$^)
+
+.PHONY: clean-nblibs load-nbimage
+
+clean-nblibs:
+	$(RM) $(OBJDIR)
+
+load-nbimage:
+	@echo "Sending $(NBIMAGE) to $(DEVIP)"
+	$(APPUPDATE) -q -O- --post-file=$(NBIMAGE) $(DEVIP):20034/appupdate.htm
+
+htmldata.cpp: $(COMPHTML_SRCS)
+	comphtml $(HTMLDIR) -o$@
+
+htmldata.o: htmldata.cpp
+	$(CXX) -c -I"../src" $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+
+ifneq ($(wildcard $(OBJDIR)/.stale),)
+clean: clean-nblibs
+endif
+
+ifneq ($(strip $(ELF)),)
+.SECONDEXPANSION:
+ELF1 := $(firstword $(ELF))
+TIMESTAMP_SRC = "extern const char LinkTime[]; const char LinkTime[] = \"`date -u +"%Y-%m-%dT%H:%M:%SZ"`\";"
+LINKSTAMP_OBJ := $(dir $(ELF1))$(notdir $(basename $(ELF1)))_linkDTStamp.o
+USER_OBJS += $(LINKSTAMP_OBJ)
+$(ELF1): $(LINKSTAMP_OBJ)
+
+$(LINKSTAMP_OBJ): $$(filter-out $$(LINKSTAMP_OBJ),$$(OBJS) $$(USER_OBJS)) $$(LIBS) makefile objects.mk sources.mk subdir.mk
+	@echo "Time stamping $@"
+	@mkdir -p $(dir $@)
+	@echo $(TIMESTAMP_SRC) | $(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ -xc++ -c -
+endif

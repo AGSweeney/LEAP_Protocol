@@ -11,6 +11,9 @@ without needing a controller stop command.
 independent implementation and conformance testing. Not tagged for production release
 yet.
 
+**June 2026 update:** NetBurner `MOD54415LC` now passes full `device_conformance`
+in LEAP Conformance Studio (including cyclic WRITE and cyclic EXCHANGE).
+
 LEAP targets private machine-cell networks on standard Ethernet switches. No managed
 switch firmware, VLANs, or special infrastructure required.
 
@@ -181,7 +184,7 @@ trees. Pair devices on the wire with `leap_linux_controller` or `leap_win_contro
 | ClearCore | Teknic ClearCore + lwIP raw hook | [platforms/clearcore/README.md](platforms/clearcore/README.md) |
 | Texas Instruments | BeagleBone (AM335x), LP-AM243 | [platforms/TI/README.md](platforms/TI/README.md) |
 | Espressif | GL-C-618WL, KC868-A16 (ESP-IDF) | [platforms/Espressif/README.md](platforms/Espressif/README.md) |
-| NetBurner | MOD54415LC (placeholder) | [platforms/NetBurner/README.md](platforms/NetBurner/README.md) |
+| NetBurner | MOD54415LC (active port) | [platforms/NetBurner/README.md](platforms/NetBurner/README.md) |
 
 ### ClearCore quick start
 
