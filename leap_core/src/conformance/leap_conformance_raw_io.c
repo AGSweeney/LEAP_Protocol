@@ -264,6 +264,11 @@ static int leap_conf_raw_pd_wait_exchange(
 
     for (;;)
     {
+        if (io->stop_flag != NULL && *io->stop_flag != 0)
+        {
+            return -1;
+        }
+
         recv_us = 0u;
         if (leap_conf_raw_recv_leap(
                 io->transport,
@@ -406,7 +411,8 @@ void leap_conformance_raw_io_bind(
     }
 
     memset(io, 0, sizeof(*io));
-    io->transport = transport;
+    io->transport  = transport;
+    io->stop_flag  = NULL;
 
     memset(&io->stack_io, 0, sizeof(io->stack_io));
     io->stack_io.user_ctx     = io;

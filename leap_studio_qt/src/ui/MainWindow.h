@@ -38,12 +38,16 @@ protected:
 
 public slots:
     void appendLog(const QString& line);
+    bool shouldAcceptRunLog(const QString& line);
 
 private slots:
     void setThemeDark();
     void setThemeLight();
     void onRunAll();
     void onRunSelected();
+    void onRunIoBench();
+    void onPrepareIoSession();
+    void onIoSessionReady(bool ok, const QString& detail);
     void onStop();
     void onDiscover();
     void onIdentify();
@@ -59,16 +63,18 @@ private slots:
     void onOpenAdapter();
     void onCloseAdapter();
     void onProgressUpdated(const QString& stepName, unsigned percent);
-    void onRunFinished(bool pass, const QString& summary);
-    void onConformanceRows(const QStringList& rows);
+    void onRunFinished(bool pass, const QString& summary, quint64 runToken);
+    void onConformanceRows(const QStringList& rows, quint64 runToken);
     void onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers);
     void refreshDiscoveryLastSeen();
 
 private:
+    void shutdownForExit();
     void buildUi();
     void buildConnectionTab(QWidget* page);
     void buildDiscoveryTab(QWidget* page);
     void buildConformanceTab(QWidget* page);
+    void buildIoPerformanceTab(QWidget* page);
     void buildMonitorTab(QWidget* page);
     void buildDiagnosticsTab(QWidget* page);
     void applySavedTheme();
@@ -78,8 +84,14 @@ private:
     QString selectedScenarioId() const;
     void setStatusText(const QString& text);
     void showTab(int index);
+    int tabIndexByLabel(const QString& label) const;
     void populateDiscoveryTable(const QVector<DiscoveryPeerRow>& peers);
     void populateDiagnosticsTable(const LeapConformanceMetrics& metrics);
+    void populateIoPerformanceStats(const LeapConformanceMetrics& metrics);
+    void updateMonitorMetricsTable(const LeapConformanceMetrics& metrics);
+    void updateIoBenchMetrics(const LeapConformanceMetrics& metrics);
+    void setIoBenchRunActive(bool active);
+    bool isIoBenchStepName(const QString& stepName) const;
     void resetDiagnosticsTrafficRates();
     void restoreMainSplitter();
     void saveMainSplitter();
@@ -109,6 +121,27 @@ private:
     QTableWidget* metricsTable_ = nullptr;
     QTableWidget* diagnosticsTable_ = nullptr;
     DiagnosticsLatencyChart* diagnosticsLatencyChart_ = nullptr;
+    DiagnosticsLatencyChart* ioPerformanceChart_ = nullptr;
+    QSpinBox* ioBenchSoakSecondsSpin_ = nullptr;
+    QSpinBox* ioBenchCycleMsSpin_ = nullptr;
+    QProgressBar* ioBenchProgress_ = nullptr;
+    QLabel* ioBenchSummary_ = nullptr;
+    QLabel* ioBenchSloLabel_ = nullptr;
+    QLabel* ioSessionStatus_ = nullptr;
+    QTableWidget* ioBenchStatsTable_ = nullptr;
+    uint64_t ioLastExchangeReplies_ = 0u;
+    qint64 ioLastExchangeMs_ = 0;
+    bool monitorLiveActive_ = false;
+    bool diagnosticsLiveActive_ = false;
+    bool diagnosticsSnapshotPending_ = false;
+    bool ioBenchRunActive_ = false;
+    quint64 ioBenchRunToken_ = 0;
+    quint64 conformanceRunToken_ = 0;
+    bool shuttingDown_ = false;
+    bool suppressRunLogs_ = false;
+    bool stopPending_ = false;
+    qint64 logBurstWindowMs_ = 0;
+    int logBurstCount_ = 0;
     uint64_t diagLastRxFrames_ = 0u;
     uint64_t diagLastTxFrames_ = 0u;
     qint64 diagLastMetricsMs_ = 0;

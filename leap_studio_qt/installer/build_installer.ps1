@@ -112,19 +112,33 @@ if (-not $SkipIcons) {
 }
 
 if (-not $SkipBuild) {
-    if (-not (Test-Path -LiteralPath $BuildDir)) {
-        Write-Host "Configuring CMake ($BuildDir)..." -ForegroundColor Yellow
-        & cmake -B $BuildDir `
-            -DLEAP_BUILD_WIN_L2=ON `
-            -DLEAP_BUILD_STUDIO_QT=ON `
-            -DCMAKE_PREFIX_PATH=(Join-Path $QtRoot)
-        if ($LASTEXITCODE -ne 0) {
-            throw "CMake configure failed (exit $LASTEXITCODE)"
+    $needsConfigure = -not (Test-Path -LiteralPath (Join-Path $BuildDir 'CMakeCache.txt'))
+    if (-not $needsConfigure) {
+        $cacheText = Get-Content -LiteralPath (Join-Path $BuildDir 'CMakeCache.txt') -Raw
+        if ($cacheText -match 'Qt6_DIR:PATH=Qt6_DIR-NOTFOUND') {
+            Write-Host 'CMake cache missing Qt6 — reconfiguring...' -ForegroundColor Yellow
+            $needsConfigure = $true
         }
     }
 
-    Write-Host "Building leap_studio_qt ($Config)..." -ForegroundColor Yellow
-    & cmake --build $BuildDir --config $Config --target leap_studio_qt
+    $buildScript = Join-Path $repoRoot 'build.ps1'
+    if (-not (Test-Path -LiteralPath $buildScript)) {
+        throw "build.ps1 not found at $buildScript"
+    }
+
+    $buildArgs = @(
+        '-File', $buildScript,
+        '-BuildDir', (Split-Path -Leaf $BuildDir),
+        '-QtRoot', $QtRoot,
+        '-Configuration', $Config,
+        '-Target', 'leap_studio_qt'
+    )
+    if ($needsConfigure) {
+        $buildArgs += '-Configure'
+    }
+
+    Write-Host "Building leap_studio_qt ($Config) via build.ps1..." -ForegroundColor Yellow
+    & powershell -NoProfile -ExecutionPolicy Bypass @buildArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed (exit $LASTEXITCODE)"
     }
@@ -133,9 +147,6 @@ if (-not $SkipBuild) {
     if (-not (Test-Path -LiteralPath $exePath)) {
         throw "Expected executable missing: $exePath"
     }
-
-    Write-Host 'Running windeployqt...' -ForegroundColor Yellow
-    & (Join-Path $studioRoot 'deploy.ps1') -QtRoot $QtRoot -ExePath $exePath
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $stageDir 'leap_studio_qt.exe'))) {

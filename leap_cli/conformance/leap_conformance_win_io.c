@@ -1118,6 +1118,11 @@ static int leap_conf_win_bootstrap(
 
     for (attempt = 1u; attempt <= ctx->bootstrap_retries; attempt++)
     {
+        if (ctx->cancel_flag != 0)
+        {
+            return -1;
+        }
+
         if (attempt > 1u)
         {
 #if defined(_WIN32)
@@ -1150,6 +1155,7 @@ static int leap_conf_win_open(
     if (adapter != NULL && ctx->transport_open &&
         strcmp(ctx->open_adapter_path, adapter) == 0)
     {
+        ctx->cancel_flag = 0;
         return 0;
     }
 
@@ -1190,6 +1196,7 @@ static int leap_conf_win_open(
 
     (void)leap_raw_winpcap_drain_rx(&ctx->transport);
     leap_conformance_raw_io_bind(&ctx->raw_io, &ctx->transport);
+    ctx->raw_io.stop_flag = &ctx->cancel_flag;
     leap_controller_peer_table_init(&ctx->table);
     ctx->transport_open = 1;
     ctx->cancel_flag    = 0;
@@ -1537,10 +1544,17 @@ static void leap_conf_win_stop_metrics_poll(LeapConformanceWinContext* ctx)
 static DWORD WINAPI leap_conf_cyclic_timer_thread(LPVOID param)
 {
     LeapConfCyclicTimerArgs* args = (LeapConfCyclicTimerArgs*)param;
+    unsigned                 elapsed_ms = 0u;
+    unsigned                 target_ms;
 
     if (args != NULL && args->stop_flag != NULL && args->seconds > 0u)
     {
-        Sleep(args->seconds * 1000u);
+        target_ms = args->seconds * 1000u;
+        while (*args->stop_flag == 0 && elapsed_ms < target_ms)
+        {
+            Sleep(50);
+            elapsed_ms += 50u;
+        }
         *args->stop_flag = 1;
     }
 
@@ -1597,7 +1611,12 @@ static int leap_conf_win_cyclic(
     leap_conf_win_apply_pd_outputs(
         ctx, leap_conf_win_soak_outputs(ctx, outputs));
 
-    ctx->cancel_flag      = 0;
+    if (ctx->cancel_flag != 0)
+    {
+        *ok_out = 0;
+        return 0;
+    }
+
     ctx->soak_in_progress = 1;
     leap_win_install_ctrl_handler(&ctx->cancel_flag);
     leap_conf_win_start_metrics_poll(ctx);
@@ -2382,6 +2401,13 @@ int leap_conformance_win_prepare_diagnostics(LeapConformanceWinContext* ctx)
     return 0;
 }
 
+static int leap_conf_win_is_cancelled(void* user_ctx)
+{
+    LeapConformanceWinContext* ctx = (LeapConformanceWinContext*)user_ctx;
+
+    return (ctx != NULL && ctx->cancel_flag != 0) ? 1 : 0;
+}
+
 static void leap_conf_win_cancel(void* user_ctx)
 {
     LeapConformanceWinContext* ctx = (LeapConformanceWinContext*)user_ctx;
@@ -2389,6 +2415,7 @@ static void leap_conf_win_cancel(void* user_ctx)
     if (ctx != NULL)
     {
         ctx->cancel_flag = 1;
+        ctx->progress_fn = NULL;
     }
 }
 
@@ -2421,6 +2448,7 @@ LeapConformanceWinContext* leap_conformance_win_create(void)
     ctx->io.locate           = leap_conf_win_locate;
     ctx->io.snapshot         = leap_conf_win_snapshot;
     ctx->io.cancel           = leap_conf_win_cancel;
+    ctx->io.is_cancelled     = leap_conf_win_is_cancelled;
 
     return ctx;
 }

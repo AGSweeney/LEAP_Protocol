@@ -11,11 +11,21 @@ extern "C" {
 class DiagnosticsLatencyChart : public QWidget {
     Q_OBJECT
 public:
+    enum class ChartMode {
+        ReplyLatency,
+        WireRtt,
+    };
+
     explicit DiagnosticsLatencyChart(QWidget* parent = nullptr);
+
+    void setChartMode(ChartMode mode);
+    ChartMode chartMode() const { return chartMode_; }
 
     void applyMetrics(const LeapConformanceMetrics& metrics);
     void clearTrend();
     void refreshTheme();
+    void setLiveUpdatesEnabled(bool enabled);
+    bool liveUpdatesEnabled() const { return liveUpdatesEnabled_; }
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -37,6 +47,9 @@ private:
         QColor labelColor;
         uint64_t staleFrames = 0u;
         uint64_t duplicateFrames = 0u;
+        uint64_t recvTimeouts = 0u;
+        uint64_t exchangeReplies = 0u;
+        uint64_t cyclesCompleted = 0u;
         int worstLatencyUs = 0;
     };
 
@@ -63,6 +76,17 @@ private:
     uint32_t baseExchange_ = 0u;
     uint64_t staleFrames_ = 0u;
     uint64_t duplicateFrames_ = 0u;
+    uint64_t recvTimeouts_ = 0u;
+    uint64_t exchangeReplies_ = 0u;
+    uint64_t cyclesCompleted_ = 0u;
+    uint64_t replyRejects_ = 0u;
+    bool hasPdRttAggregate_ = false;
+    int pdRttLastUs_ = 0;
+    int pdRttAvgUs_ = 0;
+    int pdRttMinUs_ = 0;
+    int pdRttMaxUs_ = 0;
+    ChartMode chartMode_ = ChartMode::ReplyLatency;
+    bool liveUpdatesEnabled_ = true;
 
     QColor panelBackground_;
     QColor plotBackground_;

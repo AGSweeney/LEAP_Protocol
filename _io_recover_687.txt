@@ -1,0 +1,286 @@
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+    auto* conformancePage = new QWidget(mainTabs_);
+    auto* ioPerformancePage = new QWidget(mainTabs_);
+    auto* monitorPage = new QWidget(mainTabs_);
+    auto* diagnosticsPage = new QWidget(mainTabs_);
+    buildConnectionTab(connectionPage);
+    buildDiscoveryTab(discoveryPage);
+    buildConformanceTab(conformancePage);
+    buildIoPerformanceTab(ioPerformancePage);
+    buildMonitorTab(monitorPage);
+    buildDiagnosticsTab(diagnosticsPage);
+    mainTabs_->addTab(connectionPage, QStringLiteral("Connection"));
+    mainTabs_->addTab(discoveryPage, QStringLiteral("Discovery"));
+    mainTabs_->addTab(conformancePage, QStringLiteral("Conformance"));
+    mainTabs_->addTab(ioPerformancePage, QStringLiteral("I/O Performance"));
+    mainTabs_->addTab(monitorPage, QStringLiteral("Monitor"));
+    mainTabs_->addTab(diagnosticsPage, QStringLiteral("Diagnostics"));
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+void MainWindow::buildIoPerformanceTab(QWidget* page) {
+    auto* layout = new QVBoxLayout(page);
+
+    auto* intro = new QLabel(
+        QStringLiteral(
+            "Sustained PD EXCHANGE bench: measures wire RTT (controller send → "
+            "device reply) and exchange reliability. Target: sub-millisecond RTT "
+            "with zero timeouts."),
+        page);
+    intro->setWordWrap(true);
+    layout->addWidget(intro);
+
+    auto* runRow = new QHBoxLayout();
+    auto* runBtn = makeButton(QStringLiteral("Run I/O bench"), page);
+    connect(runBtn, &QPushButton::clicked, this, &MainWindow::onRunIoBench);
+    runRow->addWidget(runBtn);
+    auto* stopBtn = makeButton(QStringLiteral("Stop"), page);
+    connect(stopBtn, &QPushButton::clicked, this, &MainWindow::onStop);
+    runRow->addWidget(stopBtn);
+    runRow->addStretch();
+    layout->addLayout(runRow);
+
+    auto* configRow = new QHBoxLayout();
+    configRow->addWidget(new QLabel(QStringLiteral("Soak duration (s):"), page));
+    ioBenchDurationSpin_ = new QSpinBox(page);
+    ioBenchDurationSpin_->setRange(3, 300);
+    ioBenchDurationSpin_->setValue(10);
+    configRow->addWidget(ioBenchDurationSpin_);
+    configRow->addSpacing(16);
+    configRow->addWidget(new QLabel(QStringLiteral("PD cycle period (ms):"), page));
+    ioBenchPeriodSpin_ = new QSpinBox(page);
+    ioBenchPeriodSpin_->setRange(0, 2000);
+    ioBenchPeriodSpin_->setSingleStep(10);
+    ioBenchPeriodSpin_->setSpecialValueText(QStringLiteral("freerun"));
+    ioBenchPeriodSpin_->setValue(0);
+    ioBenchPeriodSpin_->setSuffix(QStringLiteral(" ms"));
+    ioBenchPeriodSpin_->setToolTip(
+        QStringLiteral("0 = freerun (no delay between exchanges)."));
+    configRow->addWidget(ioBenchPeriodSpin_);
+    configRow->addStretch();
+    layout->addLayout(configRow);
+
+    ioBenchProgress_ = new QProgressBar(page);
+    ioBenchProgress_->setRange(0, 100);
+    ioBenchProgress_->setValue(0);
+    layout->addWidget(ioBenchProgress_);
+
+    ioBenchSummary_ = new QLabel(QStringLiteral("No I/O bench run yet."), page);
+    layout->addWidget(ioBenchSummary_);
+
+    ioBenchStatsTable_ = new QTableWidget(8, 2, page);
+    ioBenchStatsTable_->setHorizontalHeaderLabels(
+        {QStringLiteral("Metric"), QStringLiteral("Value")});
+    ioBenchStatsTable_->horizontalHeader()->setStretchLastSection(true);
+    ioBenchStatsTable_->verticalHeader()->setVisible(false);
+    ioBenchStatsTable_->setAlternatingRowColors(true);
+    ioBenchStatsTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ioBenchStatsTable_->setMaximumHeight(220);
+    layout->addWidget(ioBenchStatsTable_);
+
+    ioPerformanceChart_ = new DiagnosticsLatencyChart(page);
+    ioPerformanceChart_->setMetricMode(DiagnosticsLatencyChart::MetricMode::WireRtt);
+    ioPerformanceChart_->refreshTheme();
+
+    auto* chartPanel = new QGroupBox(QStringLiteral("Wire RTT live"), page);
+    auto* chartLayout = new QVBoxLayout(chartPanel);
+    chartLayout->addWidget(ioPerformanceChart_);
+    layout->addWidget(chartPanel, 1);
+
+    ioBenchResultsTable_ = new QTableWidget(0, 4, page);
+    ioBenchResultsTable_->setHorizontalHeaderLabels(
+        {QStringLiteral("Phase"), QStringLiteral("Test"), QStringLiteral("Status"),
+         QStringLiteral("Detail")});
+    ioBenchResultsTable_->horizontalHeader()->setStretchLastSection(true);
+    ioBenchResultsTable_->setAlternatingRowColors(true);
+    ioBenchResultsTable_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ioBenchResultsTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ioBenchResultsTable_->setMaximumHeight(160);
+    layout->addWidget(ioBenchResultsTable_);
+
+    LeapConformanceMetrics empty{};
+    populateIoPerformanceStats(empty);
+}
+
+void MainWindow::buildMonitorTab(QWidget* page) {
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+void MainWindow::runAutoBenchDemo(unsigned cyclicSeconds) {
+    refreshAdapterList();
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->clearTrend();
+    }
+    resetDiagnosticsTrafficRates();
+    showTab(tabIndexByLabel(QStringLiteral("I/O Performance")));
+    setStatusText(QStringLiteral("Auto-bench: opening adapter…"));
+    adapter_->openAdapter(selectedAdapterPath());
+    QTimer::singleShot(
+        800,
+        this,
+        [this, cyclicSeconds]() {
+            setStatusText(
+                QStringLiteral("Auto-bench: running I/O EXCHANGE bench"));
+            lastRunScenarioId_ = QStringLiteral("io_exchange_bench");
+            if (ioBenchDurationSpin_ != nullptr) {
+                ioBenchDurationSpin_->setValue(static_cast<int>(cyclicSeconds));
+            }
+            if (ioBenchPeriodSpin_ != nullptr) {
+                ioBenchPeriodSpin_->setValue(0);
+            }
+            onRunIoBench();
+        });
+}
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+void MainWindow::onRunIoBench() {
+    const int ioTab = tabIndexByLabel(QStringLiteral("I/O Performance"));
+    showTab(ioTab);
+    if (ioBenchProgress_ != nullptr) {
+        ioBenchProgress_->setValue(0);
+    }
+    if (ioBenchResultsTable_ != nullptr) {
+        ioBenchResultsTable_->setRowCount(0);
+    }
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->clearTrend();
+    }
+    resetDiagnosticsTrafficRates();
+    lastRunScenarioId_ = QStringLiteral("io_exchange_bench");
+
+    const unsigned duration =
+        ioBenchDurationSpin_ ? static_cast<unsigned>(ioBenchDurationSpin_->value())
+                             : 10u;
+    const unsigned period =
+        ioBenchPeriodSpin_ ? static_cast<unsigned>(ioBenchPeriodSpin_->value()) : 0u;
+
+    adapter_->runScenario(
+        QStringLiteral("io_exchange_bench"),
+        {},
+        selectedAdapterPath(),
+        selectedAdapterLabel(),
+        peerMacEdit_->text(),
+        duration,
+        period);
+}
+
+void MainWindow::onRunSelected() {
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+void MainWindow::onProgressUpdated(const QString& stepName, unsigned percent) {
+    if (runProgress_ != nullptr) {
+        runProgress_->setValue(static_cast<int>(percent));
+    }
+    if (ioBenchProgress_ != nullptr &&
+        lastRunScenarioId_ == QStringLiteral("io_exchange_bench")) {
+        ioBenchProgress_->setValue(static_cast<int>(percent));
+    }
+    if (!stepName.isEmpty()) {
+        setStatusText(QStringLiteral("Running: %1 (%2%)").arg(stepName).arg(percent));
+    }
+}
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+    if (runSummary_ != nullptr) {
+        runSummary_->setText(
+            QStringLiteral("%1 — %2")
+                .arg(pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"), summary));
+    }
+    if (ioBenchSummary_ != nullptr &&
+        lastRunScenarioId_ == QStringLiteral("io_exchange_bench")) {
+        ioBenchSummary_->setText(
+            QStringLiteral("%1 — %2")
+                .arg(pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"), summary));
+        if (ioBenchProgress_ != nullptr) {
+            ioBenchProgress_->setValue(100);
+        }
+        showTab(tabIndexByLabel(QStringLiteral("I/O Performance")));
+    }
+
+    if (peerMacEdit_ != nullptr) {
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+void MainWindow::onConformanceRows(const QStringList& rows) {
+    QTableWidget* benchTable =
+        (lastRunScenarioId_ == QStringLiteral("io_exchange_bench"))
+            ? ioBenchResultsTable_
+            : resultsTable_;
+    if (benchTable == nullptr) {
+        return;
+    }
+    benchTable->setRowCount(rows.size());
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+QString MainWindow::selectedScenarioId() const {
+    return QStringLiteral("device_conformance");
+}
+
+int MainWindow::tabIndexByLabel(const QString& label) const {
+    if (mainTabs_ == nullptr) {
+        return 0;
+    }
+    for (int i = 0; i < mainTabs_->count(); ++i) {
+        if (mainTabs_->tabText(i) == label) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+void MainWindow::populateIoPerformanceStats(const LeapConformanceMetrics& metrics) {
+    if (ioBenchStatsTable_ == nullptr) {
+        return;
+    }
+
+    const auto set = [this](int row, const QString& key, const QString& val) {
+        ioBenchStatsTable_->setItem(row, 0, new QTableWidgetItem(key));
+        ioBenchStatsTable_->setItem(row, 1, new QTableWidgetItem(val));
+    };
+
+    uint64_t avgRtt = 0u;
+    if (metrics.pd.network_rtt_samples > 0u) {
+        avgRtt = metrics.pd.total_network_rtt_us / metrics.pd.network_rtt_samples;
+    }
+
+    double exchPerSec = 0.0;
+    if (ioBenchDurationSpin_ != nullptr && ioBenchDurationSpin_->value() > 0) {
+        exchPerSec = static_cast<double>(metrics.pd.exchange_replies) /
+                     static_cast<double>(ioBenchDurationSpin_->value());
+    }
+
+    set(0, QStringLiteral("wire_rtt_last"),
+        metrics.pd.network_rtt_samples > 0u
+            ? QStringLiteral("%1 µs").arg(metrics.pd.last_network_rtt_us)
+            : QStringLiteral("—"));
+    set(1, QStringLiteral("wire_rtt_avg"),
+        metrics.pd.network_rtt_samples > 0u
+            ? QStringLiteral("%1 µs").arg(avgRtt)
+            : QStringLiteral("—"));
+    set(2, QStringLiteral("wire_rtt_max"),
+        metrics.pd.network_rtt_samples > 0u
+            ? QStringLiteral("%1 µs").arg(metrics.pd.max_network_rtt_us)
+            : QStringLiteral("—"));
+    set(3, QStringLiteral("exchange_replies"),
+        QString::number(metrics.pd.exchange_replies));
+    set(4, QStringLiteral("cycles_completed"),
+        QString::number(metrics.pd.cycles_completed));
+    set(5, QStringLiteral("recv_timeouts"),
+        QString::number(metrics.pd.recv_timeouts));
+    set(6, QStringLiteral("lost_frames"),
+        QString::number(metrics.pd.lost_frames));
+    set(7, QStringLiteral("exchanges_per_sec"),
+        metrics.pd.exchange_replies > 0u
+            ? QString::number(exchPerSec, 'f', 1)
+            : QStringLiteral("—"));
+
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->applyMetrics(metrics);
+    }
+}
+
+FILE d:\LEAP_Protocol\leap_studio_qt\src\ui\MainWindow.cpp
+void MainWindow::onStartDiagnostics() {
+    resetDiagnosticsTrafficRates();
+    adapter_->openAdapter(selectedAdapterPath());
+    adapter_->startMonitor(500);
+    showTab(tabIndexByLabel(QStringLiteral("Diagnostics")));
+}
+

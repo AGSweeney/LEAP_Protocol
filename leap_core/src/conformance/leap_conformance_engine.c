@@ -942,6 +942,13 @@ LeapConformanceStatus leap_conformance_run_steps(
 
         for (i = 0u; i < (unsigned)scenario->step_count; i++)
         {
+            if (config->io->is_cancelled != NULL &&
+                config->io->is_cancelled(config->io->user_ctx))
+            {
+                status = LEAP_CONF_CANCELLED;
+                break;
+            }
+
             status = leap_conf_run_one(
                 config,
                 result_out,

@@ -14,6 +14,7 @@ param(
     [ValidateSet("Release", "Debug", "RelWithDebInfo", "MinSizeRel")]
     [string]$Configuration = "Release",
     [string]$BuildDir = "build-win",
+    [string]$QtRoot = "C:\Qt\6.8.3\msvc2022_64",
     [string[]]$Target = @(
         "leap_studio_qt",
         "leap_conformance",
@@ -67,13 +68,25 @@ if ($Clean -and (Test-Path $BuildPath)) {
     Remove-Item -LiteralPath $BuildPath -Recurse -Force
 }
 
-$needsConfigure = $Configure -or -not (Test-Path (Join-Path $BuildPath "CMakeCache.txt"))
+$cacheFile = Join-Path $BuildPath "CMakeCache.txt"
+$needsConfigure = $Configure -or -not (Test-Path $cacheFile)
+if (-not $needsConfigure -and (Test-Path $cacheFile)) {
+    $cacheText = Get-Content -LiteralPath $cacheFile -Raw
+    if ($cacheText -match 'Qt6_DIR:PATH=Qt6_DIR-NOTFOUND') {
+        Write-Host "CMake cache missing Qt6 - reconfiguring ..."
+        $needsConfigure = $true
+    }
+}
 
 if ($needsConfigure) {
     Write-Host "Configuring ($Configuration) -> $BuildPath"
+    if (-not (Test-Path -LiteralPath $QtRoot)) {
+        throw "Qt not found at $QtRoot. Install Qt 6.8.x msvc2022_64 or pass -QtRoot."
+    }
     & $Cmake -S $RepoRoot -B $BuildPath `
         -DLEAP_BUILD_WIN_L2=ON `
-        -DLEAP_BUILD_STUDIO_QT=ON
+        -DLEAP_BUILD_STUDIO_QT=ON `
+        "-DCMAKE_PREFIX_PATH=$QtRoot"
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

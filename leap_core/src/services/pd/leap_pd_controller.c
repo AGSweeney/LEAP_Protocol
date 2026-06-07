@@ -596,7 +596,8 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
     uint64_t                     cycle_start_us,
     uint64_t                     finish_start_us,
     uint32_t                     sent_process_sequence,
-    uint64_t*                    reply_recv_us_out)
+    uint64_t*                    reply_recv_us_out,
+    volatile int*                stop_flag)
 {
     uint8_t  reply[LEAP_PD_CTRL_RX_BUF];
     size_t   reply_length;
@@ -628,6 +629,11 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
             500,
             &reply_recv_us) != 0)
     {
+        if (stop_flag != NULL && *stop_flag != 0)
+        {
+            return LEAP_PD_CTRL_STOPPED;
+        }
+
         leap_log_printf(
             "PD EXCHANGE wait: timeout peer=%02x:%02x:%02x:%02x:%02x:%02x seq=%u\n",
             peer_mac[0],
@@ -1261,7 +1267,8 @@ LeapPdControllerStatus leap_pd_controller_run_one_cycle_finish(
             cycle_start_us,
             finish_start_us,
             sent_process_sequence,
-            &reply_recv_us);
+            &reply_recv_us,
+            stop_flag);
         if (status != LEAP_PD_CTRL_OK)
         {
             return status;

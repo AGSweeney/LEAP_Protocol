@@ -67,6 +67,7 @@ typedef struct LeapConformanceIo
 
     int (*snapshot)(void* user_ctx, LeapConformanceMetrics* out);
     void (*cancel)(void* user_ctx);
+    int (*is_cancelled)(void* user_ctx);
 } LeapConformanceIo;
 
 typedef struct LeapConformanceRunConfig

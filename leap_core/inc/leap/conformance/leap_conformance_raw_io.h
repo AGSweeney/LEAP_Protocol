@@ -21,6 +21,7 @@ extern "C" {
 typedef struct LeapConformanceRawIo
 {
     LeapRawWinpcapSocket*  transport;
+    volatile int*          stop_flag;
     LeapControllerStackIo  stack_io;
     LeapPdControllerIo     pd_io;
 } LeapConformanceRawIo;

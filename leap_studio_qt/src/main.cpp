@@ -20,6 +20,7 @@ int main(int argc, char* argv[]) {
     qRegisterMetaType<LeapConformanceMetrics>("LeapConformanceMetrics");
 
     QApplication app(argc, argv);
+    QApplication::setQuitOnLastWindowClosed(true);
     QApplication::setApplicationName(leap::studio::theme::kAppName);
     QApplication::setOrganizationName(leap::studio::theme::kOrgName);
     QApplication::setApplicationDisplayName(

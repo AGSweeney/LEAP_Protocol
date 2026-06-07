@@ -2,6 +2,8 @@
 
 #include "ui/theme/StatusPalette.h"
 
+#include <climits>
+
 #include <QApplication>
 #include <QFontMetrics>
 #include <QPaintEvent>
@@ -57,6 +59,84 @@ int percentileFromSamples(const QVector<int>& samples, unsigned permille) {
 constexpr int kThresholdsUs[] = {250, 750, 1000};
 constexpr int kHistogramAxisLabelsUs[] = {0, 100, 200, 300, 400, 500, 1000};
 
+QVector<int> downsampleSparkline(const QVector<int>& series, int maxPoints) {
+    if (series.isEmpty() || maxPoints <= 0) {
+        return {};
+    }
+    if (series.size() <= maxPoints) {
+        return series;
+    }
+
+    QVector<int> out;
+    out.reserve(maxPoints);
+    for (int i = 0; i < maxPoints; ++i) {
+        const int index = (i * (series.size() - 1)) / (maxPoints - 1);
+        out.append(series.at(index));
+    }
+    return out;
+}
+
+QVector<int> rollingAvgSparkline(const QVector<int>& samples, int window,
+                                 int maxPoints) {
+    if (samples.isEmpty()) {
+        return {};
+    }
+
+    QVector<int> rolling(samples.size());
+    for (int i = 0; i < samples.size(); ++i) {
+        const int start = qMax(0, i - window + 1);
+        double sum = 0.0;
+        for (int j = start; j <= i; ++j) {
+            sum += samples.at(j);
+        }
+        rolling[i] = static_cast<int>(qRound(sum / static_cast<double>(i - start + 1)));
+    }
+    return downsampleSparkline(rolling, maxPoints);
+}
+
+QVector<int> rollingMinSparkline(const QVector<int>& samples, int window,
+                                 int maxPoints) {
+    if (samples.isEmpty()) {
+        return {};
+    }
+
+    QVector<int> rolling(samples.size());
+    for (int i = 0; i < samples.size(); ++i) {
+        const int start = qMax(0, i - window + 1);
+        int minV = samples.at(start);
+        for (int j = start + 1; j <= i; ++j) {
+            minV = qMin(minV, samples.at(j));
+        }
+        rolling[i] = minV;
+    }
+    return downsampleSparkline(rolling, maxPoints);
+}
+
+QVector<int> rollingStdSparkline(const QVector<int>& samples, int window,
+                                 int maxPoints) {
+    if (samples.isEmpty()) {
+        return {};
+    }
+
+    QVector<int> rolling(samples.size());
+    for (int i = 0; i < samples.size(); ++i) {
+        const int start = qMax(0, i - window + 1);
+        const int count = i - start + 1;
+        double sum = 0.0;
+        for (int j = start; j <= i; ++j) {
+            sum += samples.at(j);
+        }
+        const double avg = sum / static_cast<double>(count);
+        double variance = 0.0;
+        for (int j = start; j <= i; ++j) {
+            const double delta = samples.at(j) - avg;
+            variance += delta * delta;
+        }
+        rolling[i] = static_cast<int>(qRound(qSqrt(variance / count)));
+    }
+    return downsampleSparkline(rolling, maxPoints);
+}
+
 }  // namespace
 
 DiagnosticsLatencyChart::DiagnosticsLatencyChart(QWidget* parent)
@@ -96,44 +176,105 @@ void DiagnosticsLatencyChart::refreshTheme() {
     update();
 }
 
+void DiagnosticsLatencyChart::setChartMode(ChartMode mode) {
+    if (chartMode_ == mode) {
+        return;
+    }
+    chartMode_ = mode;
+    clearTrend();
+    update();
+}
+
+void DiagnosticsLatencyChart::setLiveUpdatesEnabled(bool enabled) {
+    liveUpdatesEnabled_ = enabled;
+}
+
 void DiagnosticsLatencyChart::clearTrend() {
     samples_.clear();
-    trendTitle_ = QStringLiteral("Reply Latency Trend");
+    trendTitle_ = chartMode_ == ChartMode::WireRtt
+                      ? QStringLiteral("Wire RTT (soak only)")
+                      : QStringLiteral("Reply Latency Trend");
     baseExchange_ = 0u;
     staleFrames_ = 0u;
     duplicateFrames_ = 0u;
+    recvTimeouts_ = 0u;
+    exchangeReplies_ = 0u;
+    cyclesCompleted_ = 0u;
+    replyRejects_ = 0u;
+    hasPdRttAggregate_ = false;
+    pdRttLastUs_ = 0;
+    pdRttAvgUs_ = 0;
+    pdRttMinUs_ = 0;
+    pdRttMaxUs_ = 0;
     update();
 }
 
 void DiagnosticsLatencyChart::applyMetrics(const LeapConformanceMetrics& metrics) {
+    if (!liveUpdatesEnabled_) {
+        return;
+    }
+
     staleFrames_ = metrics.stale_frames;
     duplicateFrames_ = metrics.duplicate_frames;
+    recvTimeouts_ = metrics.pd.recv_timeouts;
+    exchangeReplies_ = metrics.pd.exchange_replies;
+    cyclesCompleted_ = metrics.pd.cycles_completed;
+    replyRejects_ = metrics.pd.reply_rejects;
+    hasPdRttAggregate_ = metrics.pd.network_rtt_samples > 0u;
+    if (hasPdRttAggregate_) {
+        pdRttLastUs_ = static_cast<int>(
+            qMin<uint64_t>(metrics.pd.last_network_rtt_us, INT_MAX));
+        pdRttMaxUs_ = static_cast<int>(
+            qMin<uint64_t>(metrics.pd.max_network_rtt_us, INT_MAX));
+        pdRttAvgUs_ = static_cast<int>(qMin<uint64_t>(
+            metrics.pd.total_network_rtt_us / metrics.pd.network_rtt_samples,
+            INT_MAX));
+        pdRttMinUs_ = pdRttLastUs_;
+        if (metrics.network_rtt_trend.count > 0u) {
+            uint32_t minTrend = UINT32_MAX;
+            for (uint32_t i = 0u; i < metrics.network_rtt_trend.count; ++i) {
+                minTrend = qMin(minTrend, metrics.network_rtt_trend.samples[i]);
+            }
+            if (minTrend != UINT32_MAX) {
+                pdRttMinUs_ = static_cast<int>(minTrend);
+            }
+        }
+    } else {
+        pdRttLastUs_ = 0;
+        pdRttAvgUs_ = 0;
+        pdRttMinUs_ = 0;
+        pdRttMaxUs_ = 0;
+    }
 
     const bool useWireRtt =
-        metrics.network_rtt_trend.count > 0u &&
-        metrics.network_rtt_trend.count >= metrics.reply_latency_trend.count;
+        chartMode_ == ChartMode::WireRtt ||
+        (metrics.network_rtt_trend.count > 0u &&
+         metrics.network_rtt_trend.count >= metrics.reply_latency_trend.count);
     const LeapConformanceLatencyTrend& trend =
         useWireRtt ? metrics.network_rtt_trend : metrics.reply_latency_trend;
 
-    trendTitle_ = useWireRtt ? QStringLiteral("Wire RTT (soak)")
+    trendTitle_ = useWireRtt ? QStringLiteral("Wire RTT (soak only)")
                              : QStringLiteral("Reply Latency Trend");
-
-    if (trend.count == 0u && !samples_.isEmpty()) {
-        update();
-        return;
-    }
 
     samples_.resize(static_cast<int>(trend.count));
     for (uint32_t i = 0u; i < trend.count; i++) {
         samples_[static_cast<int>(i)] = static_cast<int>(trend.samples[i]);
     }
-    baseExchange_ = trend.base_exchange;
+    baseExchange_ = trend.count > 0u ? trend.base_exchange : 0u;
     update();
 }
 
 DiagnosticsLatencyChart::LatencyStats DiagnosticsLatencyChart::computeStats() const {
     LatencyStats stats;
     if (samples_.isEmpty()) {
+        if (chartMode_ == ChartMode::WireRtt && hasPdRttAggregate_) {
+            stats.count = 1;
+            stats.lastUs = pdRttLastUs_;
+            stats.minUs = pdRttMinUs_;
+            stats.maxUs = pdRttMaxUs_;
+            stats.avgUs = pdRttAvgUs_;
+            return stats;
+        }
         return stats;
     }
 
@@ -166,16 +307,27 @@ DiagnosticsLatencyChart::HealthSummary DiagnosticsLatencyChart::computeHealth(
     HealthSummary health;
     health.staleFrames = staleFrames_;
     health.duplicateFrames = duplicateFrames_;
+    health.recvTimeouts = recvTimeouts_;
+    health.exchangeReplies = exchangeReplies_;
+    health.cyclesCompleted = cyclesCompleted_;
     health.worstLatencyUs = stats.maxUs;
 
+    const bool soakHealth = chartMode_ == ChartMode::WireRtt;
+    const bool hasSoakFailures =
+        soakHealth &&
+        (recvTimeouts_ > 0u ||
+         (cyclesCompleted_ > 0u && exchangeReplies_ < cyclesCompleted_));
     const bool hasIssues =
-        staleFrames_ > 0u || duplicateFrames_ > 0u ||
+        hasSoakFailures || staleFrames_ > 0u || duplicateFrames_ > 0u ||
         (stats.count > 0 && stats.maxUs >= kWarnLatencyUs);
     const bool severe =
-        staleFrames_ > 0u || duplicateFrames_ > 0u ||
+        hasSoakFailures || staleFrames_ > 0u || duplicateFrames_ > 0u ||
         (stats.count > 0 && stats.maxUs >= 1000);
 
-    if (stats.count == 0) {
+    if (stats.count == 0 && !soakHealth) {
+        health.label = QStringLiteral("NO DATA");
+        health.labelColor = leap::studio::theme::statusNeutral();
+    } else if (stats.count == 0 && soakHealth && cyclesCompleted_ == 0u) {
         health.label = QStringLiteral("NO DATA");
         health.labelColor = leap::studio::theme::statusNeutral();
     } else if (severe) {
@@ -278,10 +430,28 @@ void DiagnosticsLatencyChart::paintHealthCard(QPainter& painter, const QRect& ar
         y += lineHeight;
     };
 
-    drawLine(QStringLiteral("Stale Frames:"), QString::number(health.staleFrames));
-    drawLine(QStringLiteral("Duplicate Frames:"),
-             QString::number(health.duplicateFrames));
-    if (health.worstLatencyUs > 0) {
+    if (chartMode_ == ChartMode::WireRtt) {
+        drawLine(QStringLiteral("Recv Timeouts:"),
+                 QString::number(health.recvTimeouts));
+        drawLine(QStringLiteral("Reply Rejects:"),
+                 QString::number(replyRejects_));
+        drawLine(QStringLiteral("Exchanges:"),
+                 QStringLiteral("%1 / %2")
+                     .arg(health.exchangeReplies)
+                     .arg(health.cyclesCompleted));
+    } else {
+        drawLine(QStringLiteral("Stale Frames:"), QString::number(health.staleFrames));
+        drawLine(QStringLiteral("Duplicate Frames:"),
+                 QString::number(health.duplicateFrames));
+    }
+    if (chartMode_ == ChartMode::WireRtt) {
+        if (health.worstLatencyUs > 0) {
+            drawLine(QStringLiteral("Worst Wire RTT:"),
+                     QStringLiteral("%1 µs").arg(health.worstLatencyUs));
+        } else {
+            drawLine(QStringLiteral("Worst Wire RTT:"), QStringLiteral("—"));
+        }
+    } else if (health.worstLatencyUs > 0) {
         drawLine(QStringLiteral("Worst Latency:"),
                  QStringLiteral("%1 µs").arg(health.worstLatencyUs));
     } else {
@@ -326,43 +496,78 @@ void DiagnosticsLatencyChart::paintStatCards(QPainter& painter, const QRect& are
     struct CardDef {
         QString label;
         QString value;
-        bool sparkline;
+        const QVector<int>* spark = nullptr;
         bool thresholdColor;
         int thresholdMicros;
     };
 
     const QString noData = QStringLiteral("—");
     const bool hasData = stats.count > 0;
-    const CardDef cards[] = {
+    const bool wireRtt = chartMode_ == ChartMode::WireRtt;
+    const QVector<int> sparkRaw = sparklineSamples(kSparklinePoints);
+    const QVector<int> sparkAvg =
+        rollingAvgSparkline(samples_, kRollingWindow, kSparklinePoints);
+    const QVector<int> sparkMin =
+        rollingMinSparkline(samples_, kRollingWindow, kSparklinePoints);
+    const QVector<int> sparkStd =
+        rollingStdSparkline(samples_, kRollingWindow, kSparklinePoints);
+
+    const CardDef wireCards[] = {
         {QStringLiteral("Last (\u00b5s)"),
          hasData ? QString::number(stats.lastUs) : noData,
-         true,
+         &sparkRaw,
          false,
          0},
         {QStringLiteral("Avg (\u00b5s)"),
          hasData ? QString::number(qRound(stats.avgUs)) : noData,
+         &sparkAvg,
+         false,
+         0},
+        {QStringLiteral("Min (\u00b5s)"),
+         hasData ? QString::number(stats.minUs) : noData,
+         &sparkMin,
+         false,
+         0},
+        {QStringLiteral("Max (\u00b5s)"),
+         hasData ? QString::number(stats.maxUs) : noData,
+         &sparkRaw,
          true,
+         stats.maxUs},
+        {QStringLiteral("Std (\u00b5s)"),
+         hasData ? QString::number(qRound(stats.stdUs)) : noData,
+         &sparkStd,
+         false,
+         0},
+    };
+    const CardDef replyCards[] = {
+        {QStringLiteral("Last (\u00b5s)"),
+         hasData ? QString::number(stats.lastUs) : noData,
+         &sparkRaw,
+         false,
+         0},
+        {QStringLiteral("Avg (\u00b5s)"),
+         hasData ? QString::number(qRound(stats.avgUs)) : noData,
+         &sparkAvg,
          false,
          0},
         {QStringLiteral("P99 (\u00b5s)"),
          hasData ? QString::number(stats.p99Us) : noData,
-         false,
+         nullptr,
          true,
          stats.p99Us},
         {QStringLiteral("P99.9 (\u00b5s)"),
          hasData ? QString::number(stats.p999Us) : noData,
-         false,
+         nullptr,
          true,
          stats.p999Us},
         {QStringLiteral("Max (\u00b5s)"),
          hasData ? QString::number(stats.maxUs) : noData,
-         true,
+         &sparkRaw,
          true,
          stats.maxUs},
     };
-
-    const QVector<int> spark = sparklineSamples(kSparklinePoints);
-    const int cardCount = static_cast<int>(sizeof(cards) / sizeof(cards[0]));
+    const CardDef* cards = wireRtt ? wireCards : replyCards;
+    const int cardCount = 5;
     const int gap = 6;
     const int cardWidth = (area.width() - gap * (cardCount - 1)) / cardCount;
     const int cardHeight = area.height();
@@ -394,10 +599,10 @@ void DiagnosticsLatencyChart::paintStatCards(QPainter& painter, const QRect& are
         const int valueBaseline = cardRect.top() + 40 + valueMetrics.ascent();
         painter.drawText(cardRect.left() + 8, valueBaseline, cards[i].value);
 
-        if (cards[i].sparkline && !spark.isEmpty()) {
+        if (cards[i].spark != nullptr && !cards[i].spark->isEmpty()) {
             const QRect sparkRect(cardRect.left() + 6, cardRect.bottom() - 24,
                                   cardRect.width() - 12, 18);
-            paintSparkline(painter, sparkRect, spark, rawLineColor_);
+            paintSparkline(painter, sparkRect, *cards[i].spark, rawLineColor_);
         }
     }
 }
@@ -407,7 +612,10 @@ void DiagnosticsLatencyChart::paintLineChart(QPainter& painter, const QRect& plo
     const qreal yMax = kLineYMaxUs;
     const qreal xMin = static_cast<qreal>(baseExchange_);
     const qreal xMax =
-        static_cast<qreal>(baseExchange_ + static_cast<uint32_t>(samples_.size()) - 1u);
+        samples_.isEmpty()
+            ? xMin
+            : static_cast<qreal>(
+                  baseExchange_ + static_cast<uint32_t>(samples_.size()) - 1u);
     const qreal xSpan = (xMax > xMin) ? (xMax - xMin) : 1.0;
     const QColor axisText(QStringLiteral("#444444"));
 
@@ -526,8 +734,12 @@ void DiagnosticsLatencyChart::paintHistogram(QPainter& painter, const QRect& are
     titleFont.setBold(true);
     painter.setFont(titleFont);
     painter.setPen(axisText);
+    const QString histTitle =
+        chartMode_ == ChartMode::WireRtt
+            ? QStringLiteral("Wire RTT Distribution")
+            : QStringLiteral("Reply Latency Distribution");
     painter.drawText(QRect(area.left(), area.top(), area.width(), 18), Qt::AlignLeft,
-                     QStringLiteral("Reply Latency Distribution"));
+                     histTitle);
 
     const QRect plot = area.adjusted(kMarginLeft, 22, -8, -22);
     if (plot.width() < 40 || plot.height() < 40 || maxCount <= 0) {
@@ -622,17 +834,17 @@ void DiagnosticsLatencyChart::paintEvent(QPaintEvent* event) {
     paintHealthCard(painter, healthArea, health);
     paintStatCards(painter, statsArea, stats);
 
+    const QVector<double> rollingAvg =
+        samples_.isEmpty() ? QVector<double>() : computeRollingAverage();
+    int histMax = 0;
+    const QVector<int> bins =
+        samples_.isEmpty() ? QVector<int>() : computeHistogram(&histMax);
+
+    paintLineChart(painter, linePlot, rollingAvg);
     if (samples_.isEmpty()) {
         painter.setPen(mutedTextColor_);
         painter.drawText(linePlot, Qt::AlignCenter,
                          QStringLiteral("No exchange data yet"));
-        return;
     }
-
-    const QVector<double> rollingAvg = computeRollingAverage();
-    int histMax = 0;
-    const QVector<int> bins = computeHistogram(&histMax);
-
-    paintLineChart(painter, linePlot, rollingAvg);
     paintHistogram(painter, histArea, bins, histMax);
 }

@@ -63,7 +63,8 @@ static DiscoveryPeerRow rowFromPeerEntry(const LeapControllerPeerEntry& entry) {
 
 static void studio_progress(void* ctx, const LeapConformanceProgress* progress) {
     auto* adapter = static_cast<ConformanceAdapter*>(ctx);
-    if (adapter == nullptr || progress == nullptr) {
+    if (adapter == nullptr || progress == nullptr ||
+        !adapter->conformanceRunInProgress()) {
         return;
     }
 
@@ -71,6 +72,9 @@ static void studio_progress(void* ctx, const LeapConformanceProgress* progress) 
         QMetaObject::invokeMethod(
             adapter,
             [adapter]() {
+                if (!adapter->conformanceRunInProgress()) {
+                    return;
+                }
                 emit adapter->logLine(QStringLiteral("--- conformance run start ---"));
                 emit adapter->progressUpdated(QString(), 0);
             },
@@ -81,8 +85,9 @@ static void studio_progress(void* ctx, const LeapConformanceProgress* progress) 
             adapter,
             [adapter, name = QString::fromUtf8(progress->step_name),
              percent = progress->percent]() {
-                emit adapter->logLine(
-                    QStringLiteral("[RUN] %1 (%2%)").arg(name).arg(percent));
+                if (!adapter->conformanceRunInProgress()) {
+                    return;
+                }
                 emit adapter->progressUpdated(name, percent);
             },
             Qt::QueuedConnection);
@@ -90,14 +95,24 @@ static void studio_progress(void* ctx, const LeapConformanceProgress* progress) 
     if (progress->phase == LEAP_CONF_PROGRESS_DONE) {
         QMetaObject::invokeMethod(
             adapter,
-            [adapter]() { emit adapter->progressUpdated(QStringLiteral("Done"), 100); },
+            [adapter]() {
+                if (!adapter->conformanceRunInProgress()) {
+                    return;
+                }
+                emit adapter->progressUpdated(QStringLiteral("Done"), 100);
+            },
             Qt::QueuedConnection);
     }
     if (progress->phase == LEAP_CONF_PROGRESS_METRICS && progress->metrics != nullptr) {
         const LeapConformanceMetrics metrics = *progress->metrics;
         QMetaObject::invokeMethod(
             adapter,
-            [adapter, metrics]() { emit adapter->metricsUpdated(metrics); },
+            [adapter, metrics]() {
+                if (!adapter->conformanceRunInProgress()) {
+                    return;
+                }
+                emit adapter->soakMetricsUpdated(metrics);
+            },
             Qt::QueuedConnection);
     }
     (void)g_progress_adapter;
@@ -112,10 +127,45 @@ ConformanceAdapter::ConformanceAdapter(QObject* parent) : QObject(parent) {
 }
 
 ConformanceAdapter::~ConformanceAdapter() {
-    stopMonitor();
+    shutdown();
+}
+
+void ConformanceAdapter::shutdown() {
+    if (shutdownDone_) {
+        return;
+    }
+    shutdownDone_ = true;
+
+    if (g_progress_adapter == this) {
+        g_progress_adapter = nullptr;
+    }
+
+    cancelRun();
+    monitorActive_ = false;
+    conformanceRunActive_ = false;
+    workerRunBusy_ = false;
+
+    if (worker_ == nullptr || !workerThread_.isRunning()) {
+        return;
+    }
+
+    QMetaObject::invokeMethod(
+        worker_,
+        [this]() {
+            if (worker_->monitorTimer() != nullptr) {
+                worker_->monitorTimer()->stop();
+            }
+            if (worker_->io() != nullptr) {
+                worker_->io()->close_transport(worker_->io()->user_ctx);
+            }
+        },
+        Qt::QueuedConnection);
+
     workerThread_.quit();
-    workerThread_.wait();
-    g_progress_adapter = nullptr;
+    if (!workerThread_.wait(3000)) {
+        workerThread_.terminate();
+        workerThread_.wait();
+    }
 }
 
 void ConformanceAdapter::openAdapter(const QString& adapterPath,
@@ -149,6 +199,46 @@ void ConformanceAdapter::openAdapter(const QString& adapterPath,
         Qt::QueuedConnection);
 }
 
+void ConformanceAdapter::prepareIoSession(const QString& adapterPath,
+                                          const QString& peerMac) {
+    QMetaObject::invokeMethod(
+        worker_,
+        [this, adapterPath, peerMac]() {
+            const QString path =
+                adapterPath.isEmpty() ? adapterPath_ : adapterPath;
+            uint8_t mac[6]{};
+
+            if (path.isEmpty() || worker_->io() == nullptr) {
+                emit ioSessionReady(false, QStringLiteral("Select a NIC first"));
+                return;
+            }
+            if (peerMac.isEmpty() ||
+                !leap_controller_peer_parse_mac(peerMac.toUtf8().constData(), mac)) {
+                emit ioSessionReady(false, QStringLiteral("Set a valid peer MAC"));
+                return;
+            }
+            if (worker_->io()->open_transport(
+                    worker_->io()->user_ctx, path.toUtf8().constData(),
+                    nullptr) != 0) {
+                emit ioSessionReady(false, QStringLiteral("Adapter open failed"));
+                return;
+            }
+            worker_->setPeerMac(mac, 1);
+            adapterPath_ = path;
+
+            if (leap_conformance_win_prepare_io_session(worker_->ctx()) != 0) {
+                emit ioSessionReady(
+                    false,
+                    QStringLiteral("Bootstrap failed — check device on bench NIC"));
+                return;
+            }
+
+            emit logLine(QStringLiteral("I/O session: [Ok] OP (ready for soak)"));
+            emit ioSessionReady(true, QStringLiteral("Connected (OP)"));
+        },
+        Qt::QueuedConnection);
+}
+
 void ConformanceAdapter::closeAdapter() {
     QMetaObject::invokeMethod(
         worker_,
@@ -169,9 +259,10 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
                                      const QString& peerMac,
                                      unsigned cyclicSeconds,
                                      unsigned cyclicPeriodMs) {
+    const quint64 token = ++runToken_;
     QMetaObject::invokeMethod(
         worker_,
-        [this, scenarioId, stepFilter, adapterPath, adapterLabel, peerMac,
+        [this, token, scenarioId, stepFilter, adapterPath, adapterLabel, peerMac,
          cyclicSeconds, cyclicPeriodMs]() {
             LeapConformanceRunConfig config{};
             LeapConformanceRunResult result{};
@@ -191,6 +282,8 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
             lastNicName_ = adapterLabel;
             lastCyclicSeconds_ = cyclicSeconds;
             lastCyclicPeriodMs_ = cyclicPeriodMs;
+            conformanceRunActive_ = true;
+            workerRunBusy_ = true;
 
             if (!peerMac.isEmpty() &&
                 leap_controller_peer_parse_mac(storeUtf8(peerMac), mac)) {
@@ -222,6 +315,7 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
             const LeapConformanceStatus status =
                 leap_conformance_run_steps(&config, &result);
             leap_conformance_win_set_progress(worker_->ctx(), nullptr, nullptr);
+            const bool cancelled = status == LEAP_CONF_CANCELLED;
             const bool pass =
                 status == LEAP_CONF_OK && result.summary.failed == 0u;
 
@@ -230,28 +324,41 @@ void ConformanceAdapter::runScenario(const QString& scenarioId,
             }
 
             QStringList tableRows;
-            for (size_t i = 0; i < result.step_count; ++i) {
-                const auto& step = result.steps[i];
-                const QString status =
-                    QString::fromUtf8(leap_conformance_step_status_text(step.status));
-                const QString phase = QString::fromUtf8(step.phase);
-                const QString name = QString::fromUtf8(step.name);
-                const QString detail = QString::fromUtf8(step.detail);
-                emit logLine(QStringLiteral("[%1] %2 — %3").arg(status, name, detail));
-                tableRows.append(
-                    phase + QLatin1Char('\t') + name + QLatin1Char('\t') + status +
-                    QLatin1Char('\t') + detail);
+            if (!cancelled) {
+                for (size_t i = 0; i < result.step_count; ++i) {
+                    const auto& step = result.steps[i];
+                    const QString stepStatus =
+                        QString::fromUtf8(leap_conformance_step_status_text(step.status));
+                    const QString phase = QString::fromUtf8(step.phase);
+                    const QString name = QString::fromUtf8(step.name);
+                    const QString detail = QString::fromUtf8(step.detail);
+                    emit logLine(
+                        QStringLiteral("[%1] %2 — %3").arg(stepStatus, name, detail));
+                    tableRows.append(
+                        phase + QLatin1Char('\t') + name + QLatin1Char('\t') + stepStatus +
+                        QLatin1Char('\t') + detail);
+                }
             }
-            emit conformanceRows(tableRows);
+            emit conformanceRows(tableRows, token);
 
             lastResult_ = result;
-            hasLastResult_ = result.step_count > 0u;
+            hasLastResult_ = result.step_count > 0u && !cancelled;
 
-            emit runFinished(
-                pass,
-                QStringLiteral("Passed %1 Failed %2")
-                    .arg(result.summary.passed)
-                    .arg(result.summary.failed));
+            conformanceRunActive_ = false;
+            workerRunBusy_ = false;
+
+            const QString summary =
+                cancelled ? QStringLiteral("Cancelled")
+                          : QStringLiteral("Passed %1 Failed %2")
+                                .arg(result.summary.passed)
+                                .arg(result.summary.failed);
+
+            if (cancelled && worker_->io() != nullptr) {
+                worker_->io()->close_transport(worker_->io()->user_ctx);
+                emit logLine(QStringLiteral("Run cancelled — transport reset"));
+            }
+
+            emit runFinished(pass, summary, token);
         },
         Qt::QueuedConnection);
 }
@@ -335,6 +442,13 @@ void ConformanceAdapter::exportReport(const QString& path,
 }
 
 void ConformanceAdapter::cancelRun() {
+    conformanceRunActive_ = false;
+    if (worker_ == nullptr) {
+        return;
+    }
+    if (worker_->ctx() != nullptr) {
+        leap_conformance_win_set_progress(worker_->ctx(), nullptr, nullptr);
+    }
     if (worker_->io() != nullptr) {
         leap_conformance_cancel(worker_->io());
     }

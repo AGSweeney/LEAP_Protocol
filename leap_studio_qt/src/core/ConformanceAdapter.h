@@ -39,14 +39,22 @@ public slots:
     void startMonitor(unsigned intervalMs);
     void stopMonitor();
     void refreshSnapshot();
+    void prepareIoSession(const QString& adapterPath, const QString& peerMac);
+    void shutdown();
+
+    bool conformanceRunInProgress() const { return conformanceRunActive_; }
+    bool workerRunBusy() const { return workerRunBusy_; }
+    quint64 lastRunToken() const { return runToken_; }
 
 signals:
     void logLine(const QString& line);
-    void runFinished(bool pass, const QString& summary);
+    void runFinished(bool pass, const QString& summary, quint64 runToken);
     void progressUpdated(const QString& stepName, unsigned percent);
     void metricsUpdated(const LeapConformanceMetrics& metrics);
+    void soakMetricsUpdated(const LeapConformanceMetrics& metrics);
+    void ioSessionReady(bool ok, const QString& detail);
     void discoveryPeers(const QVector<DiscoveryPeerRow>& peers);
-    void conformanceRows(const QStringList& rows);
+    void conformanceRows(const QStringList& rows, quint64 runToken);
     void exportFinished(bool ok, const QString& path, const QString& detail);
 
 private:
@@ -63,4 +71,8 @@ private:
     QString lastNicName_;
     unsigned lastCyclicSeconds_ = 0u;
     unsigned lastCyclicPeriodMs_ = 100u;
+    bool conformanceRunActive_ = false;
+    bool workerRunBusy_ = false;
+    bool shutdownDone_ = false;
+    quint64 runToken_ = 0;
 };

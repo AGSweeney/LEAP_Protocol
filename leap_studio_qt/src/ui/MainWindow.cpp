@@ -2,6 +2,7 @@
 
 extern "C" {
 #include "leap/conformance/leap_conformance_metrics.h"
+#include "leap/conformance/leap_conformance_scenario.h"
 #include "leap/leap_log.h"
 #include "leap/leap_raw_winpcap.h"
 }
@@ -59,9 +60,30 @@ QPushButton* makeButton(const QString& text, QWidget* parent) {
 
 }  // namespace
 
+bool MainWindow::shouldAcceptRunLog(const QString& line) {
+    if (shuttingDown_ || line.isEmpty()) {
+        return false;
+    }
+    if (suppressRunLogs_) {
+        return false;
+    }
+    if (line.contains(QStringLiteral("PD EXCHANGE wait:")) ||
+        line.contains(QStringLiteral("PD EXCHANGE error reply"))) {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (now - logBurstWindowMs_ > 500) {
+            logBurstWindowMs_ = now;
+            logBurstCount_ = 0;
+        }
+        if (++logBurstCount_ > 8) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void MainWindow::leapLogSink(void* ctx, int is_error, const char* line) {
     auto* window = static_cast<MainWindow*>(ctx);
-    if (window == nullptr || line == nullptr) {
+    if (window == nullptr || line == nullptr || window->shuttingDown_) {
         return;
     }
 
@@ -71,6 +93,9 @@ void MainWindow::leapLogSink(void* ctx, int is_error, const char* line) {
     }
     if (is_error != 0) {
         text = QStringLiteral("[stderr] ") + text;
+    }
+    if (!window->shouldAcceptRunLog(text)) {
+        return;
     }
 
     QMetaObject::invokeMethod(
@@ -90,6 +115,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     adapter_ = new ConformanceAdapter(this);
     connect(adapter_, &ConformanceAdapter::logLine, this,
             [this](const QString& line) {
+                if (!shouldAcceptRunLog(line)) {
+                    return;
+                }
                 appendLog(line);
                 if (connectionStatus_ != nullptr &&
                     line.startsWith(QStringLiteral("Adapter: [Ok]"))) {
@@ -104,6 +132,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             &MainWindow::onProgressUpdated);
     connect(adapter_, &ConformanceAdapter::runFinished, this,
             &MainWindow::onRunFinished);
+    connect(adapter_, &ConformanceAdapter::ioSessionReady, this,
+            &MainWindow::onIoSessionReady);
     connect(adapter_, &ConformanceAdapter::exportFinished, this,
             [this](bool ok, const QString& path, const QString& detail) {
                 appendLog(QStringLiteral("Export %1: %2 — %3")
@@ -114,33 +144,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             });
     connect(adapter_, &ConformanceAdapter::metricsUpdated, this,
             [this](const LeapConformanceMetrics& metrics) {
-                if (metricsTable_ != nullptr) {
-                    metricsTable_->setRowCount(8);
-                    const auto set = [this](int row, const QString& key,
-                                            const QString& val) {
-                        metricsTable_->setItem(row, 0, new QTableWidgetItem(key));
-                        metricsTable_->setItem(row, 1, new QTableWidgetItem(val));
-                    };
-                    set(0, QStringLiteral("pd_ok"),
-                        QString::number(metrics.pd.pd_sent_ok));
-                    set(1, QStringLiteral("pd_fail"),
-                        QString::number(metrics.pd.pd_sent_fail));
-                    set(2, QStringLiteral("heartbeats"),
-                        QString::number(metrics.pd.heartbeats_sent));
-                    set(3, QStringLiteral("cycles"),
-                        QString::number(metrics.pd.cycles_completed));
-                    set(4, QStringLiteral("link_up"),
-                        metrics.link.link_up ? QStringLiteral("yes")
-                                             : QStringLiteral("no"));
-                    set(5, QStringLiteral("iface_up"),
-                        metrics.link.interface_up ? QStringLiteral("yes")
-                                                  : QStringLiteral("no"));
-                    set(6, QStringLiteral("stack_phase"),
-                        QString::number(metrics.stack_phase));
-                    set(7, QStringLiteral("rx_frames"),
-                        QString::number(metrics.transport.rx_frames_ok));
+                if (ioBenchRunToken_ == 0 && conformanceRunToken_ == 0 &&
+                    !monitorLiveActive_ && !diagnosticsLiveActive_ &&
+                    !diagnosticsSnapshotPending_) {
+                    return;
                 }
-                populateDiagnosticsTable(metrics);
+                updateMonitorMetricsTable(metrics);
+                if (diagnosticsLiveActive_ || diagnosticsSnapshotPending_) {
+                    populateDiagnosticsTable(metrics);
+                }
+                if (diagnosticsSnapshotPending_) {
+                    diagnosticsSnapshotPending_ = false;
+                }
+            });
+    connect(adapter_, &ConformanceAdapter::soakMetricsUpdated, this,
+            [this](const LeapConformanceMetrics& metrics) {
+                if (!ioBenchRunActive_ || ioBenchRunToken_ == 0) {
+                    return;
+                }
+                updateIoBenchMetrics(metrics);
             });
 
     lastSeenTimer_ = new QTimer(this);
@@ -153,6 +175,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     applySavedTheme();
     if (diagnosticsLatencyChart_ != nullptr) {
         diagnosticsLatencyChart_->refreshTheme();
+    }
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->refreshTheme();
     }
     refreshAdapterList();
     setStatusText(QStringLiteral("Ready"));
@@ -169,16 +194,19 @@ void MainWindow::buildUi() {
     auto* connectionPage = new QWidget(mainTabs_);
     auto* discoveryPage = new QWidget(mainTabs_);
     auto* conformancePage = new QWidget(mainTabs_);
+    auto* ioPerformancePage = new QWidget(mainTabs_);
     auto* monitorPage = new QWidget(mainTabs_);
     auto* diagnosticsPage = new QWidget(mainTabs_);
     buildConnectionTab(connectionPage);
     buildDiscoveryTab(discoveryPage);
     buildConformanceTab(conformancePage);
+    buildIoPerformanceTab(ioPerformancePage);
     buildMonitorTab(monitorPage);
     buildDiagnosticsTab(diagnosticsPage);
     mainTabs_->addTab(connectionPage, QStringLiteral("Connection"));
     mainTabs_->addTab(discoveryPage, QStringLiteral("Discovery"));
     mainTabs_->addTab(conformancePage, QStringLiteral("Conformance"));
+    mainTabs_->addTab(ioPerformancePage, QStringLiteral("I/O Performance"));
     mainTabs_->addTab(monitorPage, QStringLiteral("Monitor"));
     mainTabs_->addTab(diagnosticsPage, QStringLiteral("Diagnostics"));
     auto* logGroup = new QGroupBox(QStringLiteral("Activity log"), central);
@@ -365,6 +393,103 @@ void MainWindow::buildConformanceTab(QWidget* page) {
     layout->addWidget(resultsTable_, 1);
 }
 
+void MainWindow::buildIoPerformanceTab(QWidget* page) {
+    auto* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(8, 8, 8, 8);
+    layout->setSpacing(8);
+
+    ioBenchSummary_ = new QLabel(
+        QStringLiteral("Sustained PD EXCHANGE bench — wire RTT and exchange reliability."),
+        page);
+    ioBenchSummary_->setWordWrap(true);
+    layout->addWidget(ioBenchSummary_);
+
+    auto* runRow = new QHBoxLayout();
+    auto* connectBtn = makeButton(QStringLiteral("Connect device"), page);
+    connect(connectBtn, &QPushButton::clicked, this, &MainWindow::onPrepareIoSession);
+    runRow->addWidget(connectBtn);
+    auto* runBtn = makeButton(QStringLiteral("Run I/O bench"), page);
+    connect(runBtn, &QPushButton::clicked, this, &MainWindow::onRunIoBench);
+    runRow->addWidget(runBtn);
+    auto* stopBtn = makeButton(QStringLiteral("Stop"), page);
+    connect(stopBtn, &QPushButton::clicked, this, &MainWindow::onStop);
+    runRow->addWidget(stopBtn);
+    runRow->addStretch();
+    ioSessionStatus_ = new QLabel(QStringLiteral("Session: not connected"), page);
+    runRow->addWidget(ioSessionStatus_);
+    layout->addLayout(runRow);
+
+    auto* tuning = new QHBoxLayout();
+    tuning->addWidget(new QLabel(QStringLiteral("Soak duration (s):"), page));
+    ioBenchSoakSecondsSpin_ = new QSpinBox(page);
+    ioBenchSoakSecondsSpin_->setRange(1, 3600);
+    ioBenchSoakSecondsSpin_->setValue(300);
+    tuning->addWidget(ioBenchSoakSecondsSpin_);
+    tuning->addWidget(new QLabel(QStringLiteral("PD cycle period (ms):"), page));
+    ioBenchCycleMsSpin_ = new QSpinBox(page);
+    ioBenchCycleMsSpin_->setRange(0, 2000);
+    ioBenchCycleMsSpin_->setSingleStep(5);
+    ioBenchCycleMsSpin_->setSpecialValueText(QStringLiteral("freerun"));
+    ioBenchCycleMsSpin_->setValue(5);
+    ioBenchCycleMsSpin_->setSuffix(QStringLiteral(" ms"));
+    tuning->addWidget(ioBenchCycleMsSpin_);
+    tuning->addStretch();
+    layout->addLayout(tuning);
+
+    ioBenchProgress_ = new QProgressBar(page);
+    ioBenchProgress_->setRange(0, 100);
+    ioBenchProgress_->setValue(0);
+    layout->addWidget(ioBenchProgress_);
+
+    ioBenchSloLabel_ = new QLabel(QStringLiteral("SLO: —"), page);
+    ioBenchSloLabel_->setWordWrap(true);
+    layout->addWidget(ioBenchSloLabel_);
+
+    constexpr int kIoMetricRows = 18;
+    ioBenchStatsTable_ = new QTableWidget(kIoMetricRows, 2, page);
+    ioBenchStatsTable_->setHorizontalHeaderLabels(
+        {QStringLiteral("Metric"), QStringLiteral("Value")});
+    ioBenchStatsTable_->verticalHeader()->setVisible(false);
+    ioBenchStatsTable_->horizontalHeader()->setStretchLastSection(true);
+    ioBenchStatsTable_->setAlternatingRowColors(true);
+    ioBenchStatsTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ioBenchStatsTable_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ioBenchStatsTable_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    ioBenchStatsTable_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    ioPerformanceChart_ = new DiagnosticsLatencyChart(page);
+    ioPerformanceChart_->setChartMode(DiagnosticsLatencyChart::ChartMode::WireRtt);
+    ioPerformanceChart_->setLiveUpdatesEnabled(true);
+    ioPerformanceChart_->setMinimumWidth(520);
+    ioPerformanceChart_->setMinimumHeight(420);
+    ioPerformanceChart_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    auto* metricsPanel = new QGroupBox(QStringLiteral("I/O soak metrics"), page);
+    metricsPanel->setObjectName(QStringLiteral("IoSoakMetricsPanel"));
+    metricsPanel->setMinimumWidth(320);
+    metricsPanel->setMaximumWidth(420);
+    auto* metricsLayout = new QVBoxLayout(metricsPanel);
+    metricsLayout->setContentsMargins(8, 12, 8, 8);
+    metricsLayout->addWidget(ioBenchStatsTable_);
+
+    auto* chartPanel = new QGroupBox(QStringLiteral("Wire RTT (soak only)"), page);
+    chartPanel->setObjectName(QStringLiteral("WireRttPanel"));
+    auto* chartLayout = new QVBoxLayout(chartPanel);
+    chartLayout->setContentsMargins(8, 12, 8, 8);
+    chartLayout->addWidget(ioPerformanceChart_);
+
+    auto* splitter = new QSplitter(Qt::Horizontal, page);
+    splitter->setObjectName(QStringLiteral("IoPerformanceSplitter"));
+    splitter->addWidget(metricsPanel);
+    splitter->addWidget(chartPanel);
+    splitter->setStretchFactor(0, 0);
+    splitter->setStretchFactor(1, 1);
+    splitter->setChildrenCollapsible(false);
+    splitter->setHandleWidth(6);
+    splitter->setSizes({360, 780});
+    layout->addWidget(splitter, 1);
+}
+
 void MainWindow::buildMonitorTab(QWidget* page) {
     auto* layout = new QVBoxLayout(page);
 
@@ -448,6 +573,9 @@ void MainWindow::buildDiagnosticsTab(QWidget* page) {
     deviceStatusLayout->addStretch();
 
     diagnosticsLatencyChart_ = new DiagnosticsLatencyChart(page);
+    diagnosticsLatencyChart_->setChartMode(
+        DiagnosticsLatencyChart::ChartMode::ReplyLatency);
+    diagnosticsLatencyChart_->setLiveUpdatesEnabled(false);
 
     auto* chartPanel = new QGroupBox(QStringLiteral("Latency Analysis"), page);
     chartPanel->setObjectName(QStringLiteral("LatencyAnalysisPanel"));
@@ -467,7 +595,9 @@ void MainWindow::buildDiagnosticsTab(QWidget* page) {
     layout->addWidget(splitter, 1);
 
     LeapConformanceMetrics empty{};
+    diagnosticsSnapshotPending_ = true;
     populateDiagnosticsTable(empty);
+    diagnosticsSnapshotPending_ = false;
 }
 
 void MainWindow::applySavedTheme() {
@@ -507,6 +637,9 @@ void MainWindow::setThemeDark() {
     if (diagnosticsLatencyChart_ != nullptr) {
         diagnosticsLatencyChart_->refreshTheme();
     }
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->refreshTheme();
+    }
 }
 
 void MainWindow::setThemeLight() {
@@ -519,34 +652,97 @@ void MainWindow::setThemeLight() {
     if (diagnosticsLatencyChart_ != nullptr) {
         diagnosticsLatencyChart_->refreshTheme();
     }
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->refreshTheme();
+    }
+}
+
+int MainWindow::tabIndexByLabel(const QString& label) const {
+    if (mainTabs_ == nullptr) {
+        return -1;
+    }
+    for (int i = 0; i < mainTabs_->count(); ++i) {
+        if (mainTabs_->tabText(i) == label) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void MainWindow::onRunIoBench() {
+    adapter_->cancelRun();
+    ioBenchRunToken_ = 0;
+    conformanceRunToken_ = 0;
+    suppressRunLogs_ = false;
+    stopPending_ = false;
+    setIoBenchRunActive(false);
+
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->clearTrend();
+    }
+    resetDiagnosticsTrafficRates();
+    ioLastExchangeReplies_ = 0u;
+    ioLastExchangeMs_ = 0;
+    if (ioBenchProgress_ != nullptr) {
+        ioBenchProgress_->setValue(0);
+    }
+    if (ioBenchSummary_ != nullptr) {
+        ioBenchSummary_->setText(QStringLiteral("Starting I/O soak…"));
+    }
+    if (ioBenchSloLabel_ != nullptr) {
+        ioBenchSloLabel_->setText(QStringLiteral("SLO: — (waiting for soak)"));
+    }
+    showTab(tabIndexByLabel(QStringLiteral("I/O Performance")));
+    adapter_->openAdapter(selectedAdapterPath());
+    const unsigned soakSec =
+        ioBenchSoakSecondsSpin_ != nullptr ? ioBenchSoakSecondsSpin_->value() : 300u;
+    const unsigned cycleMs =
+        ioBenchCycleMsSpin_ != nullptr ? ioBenchCycleMsSpin_->value() : 5u;
+    adapter_->runScenario(
+        QStringLiteral("io_exchange_bench"),
+        {},
+        selectedAdapterPath(),
+        selectedAdapterLabel(),
+        peerMacEdit_->text(),
+        soakSec,
+        cycleMs);
+    ioBenchRunToken_ = adapter_->lastRunToken();
+    setIoBenchRunActive(true);
+}
+
+void MainWindow::onPrepareIoSession() {
+    if (ioSessionStatus_ != nullptr) {
+        ioSessionStatus_->setText(QStringLiteral("Session: connecting…"));
+    }
+    adapter_->prepareIoSession(selectedAdapterPath(), peerMacEdit_->text());
+}
+
+void MainWindow::onIoSessionReady(bool ok, const QString& detail) {
+    if (ioSessionStatus_ == nullptr) {
+        return;
+    }
+    ioSessionStatus_->setText(
+        ok ? QStringLiteral("Session: %1").arg(detail)
+           : QStringLiteral("Session: %1").arg(detail));
 }
 
 void MainWindow::runAutoBenchDemo(unsigned cyclicSeconds) {
+    Q_UNUSED(cyclicSeconds);
     refreshAdapterList();
-    if (diagnosticsLatencyChart_ != nullptr) {
-        diagnosticsLatencyChart_->clearTrend();
+    if (ioBenchSoakSecondsSpin_ != nullptr) {
+        ioBenchSoakSecondsSpin_->setValue(10);
     }
-    resetDiagnosticsTrafficRates();
-    showTab(4);
-    setStatusText(QStringLiteral("Auto-bench: opening adapter…"));
-    adapter_->openAdapter(selectedAdapterPath());
-    QTimer::singleShot(
-        800,
-        this,
-        [this, cyclicSeconds]() {
-            setStatusText(QStringLiteral("Auto-bench: running conformance — watch Diagnostics"));
-            adapter_->runScenario(
-                selectedScenarioId(),
-                {},
-                selectedAdapterPath(),
-                selectedAdapterLabel(),
-                peerMacEdit_->text(),
-                cyclicSeconds,
-                100u);
-        });
+    onRunIoBench();
 }
 
 void MainWindow::onRunAll() {
+    adapter_->cancelRun();
+    ioBenchRunToken_ = 0;
+    conformanceRunToken_ = 0;
+    suppressRunLogs_ = false;
+    stopPending_ = false;
+    setIoBenchRunActive(false);
+
     showTab(2);
     runProgress_->setValue(0);
     resultsTable_->setRowCount(0);
@@ -558,6 +754,7 @@ void MainWindow::onRunAll() {
     adapter_->runScenario(selectedScenarioId(), {},
                           selectedAdapterPath(), selectedAdapterLabel(),
                           peerMacEdit_->text(), 2u, cycPer);
+    conformanceRunToken_ = adapter_->lastRunToken();
 }
 
 void MainWindow::onRunSelected() {
@@ -567,6 +764,14 @@ void MainWindow::onRunSelected() {
             steps.append(cb->text());
         }
     }
+
+    adapter_->cancelRun();
+    ioBenchRunToken_ = 0;
+    conformanceRunToken_ = 0;
+    suppressRunLogs_ = false;
+    stopPending_ = false;
+    setIoBenchRunActive(false);
+
     showTab(2);
     runProgress_->setValue(0);
     resultsTable_->setRowCount(0);
@@ -574,30 +779,109 @@ void MainWindow::onRunSelected() {
     adapter_->runScenario(selectedScenarioId(), steps,
                           selectedAdapterPath(), selectedAdapterLabel(),
                           peerMacEdit_->text(), 2u, cycPer);
+    conformanceRunToken_ = adapter_->lastRunToken();
 }
 
-void MainWindow::onStop() { adapter_->cancelRun(); }
+void MainWindow::onStop() {
+    adapter_->cancelRun();
+    suppressRunLogs_ = true;
+    stopPending_ = true;
+    logBurstCount_ = 0;
+
+    if (ioBenchRunActive_) {
+        ioBenchRunToken_ = 0;
+        setIoBenchRunActive(false);
+        if (ioBenchProgress_ != nullptr) {
+            ioBenchProgress_->setValue(0);
+        }
+        if (ioBenchSummary_ != nullptr) {
+            ioBenchSummary_->setText(QStringLiteral("Stopping…"));
+        }
+        setStatusText(QStringLiteral("Stopping I/O soak…"));
+        return;
+    }
+
+    if (conformanceRunToken_ != 0) {
+        conformanceRunToken_ = 0;
+        if (runProgress_ != nullptr) {
+            runProgress_->setValue(0);
+        }
+        if (runSummary_ != nullptr) {
+            runSummary_->setText(QStringLiteral("Stopping…"));
+        }
+        setStatusText(QStringLiteral("Stopping conformance run…"));
+    }
+}
 
 void MainWindow::onProgressUpdated(const QString& stepName, unsigned percent) {
-    if (runProgress_ != nullptr) {
+    if (conformanceRunToken_ != 0 && runProgress_ != nullptr) {
         runProgress_->setValue(static_cast<int>(percent));
     }
-    if (!stepName.isEmpty()) {
+    if (ioBenchRunActive_ && ioBenchProgress_ != nullptr) {
+        ioBenchProgress_->setValue(static_cast<int>(percent));
+    }
+    if (isIoBenchStepName(stepName)) {
+        if (!ioBenchRunActive_) {
+            return;
+        }
+        setStatusText(QStringLiteral("I/O soak: %1 (%2%)").arg(stepName).arg(percent));
+        showTab(tabIndexByLabel(QStringLiteral("I/O Performance")));
+    } else if (!stepName.isEmpty() && conformanceRunToken_ != 0) {
         setStatusText(QStringLiteral("Running: %1 (%2%)").arg(stepName).arg(percent));
     }
 }
 
-void MainWindow::onRunFinished(bool pass, const QString& summary) {
-    if (runProgress_ != nullptr) {
-        runProgress_->setValue(100);
-    }
-    if (runSummary_ != nullptr) {
-        runSummary_->setText(
-            QStringLiteral("%1 — %2")
-                .arg(pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"), summary));
+void MainWindow::onRunFinished(bool pass, const QString& summary, quint64 runToken) {
+    const bool wasIoBench =
+        runToken != 0 && runToken == ioBenchRunToken_;
+    const bool wasConformance =
+        runToken != 0 && runToken == conformanceRunToken_;
+
+    if (!wasIoBench && !wasConformance) {
+        if (stopPending_ && adapter_ != nullptr && !adapter_->workerRunBusy()) {
+            stopPending_ = false;
+            suppressRunLogs_ = false;
+            if (ioBenchSummary_ != nullptr &&
+                ioBenchSummary_->text() == QStringLiteral("Stopping…")) {
+                ioBenchSummary_->setText(QStringLiteral("Stopped"));
+            }
+            if (runSummary_ != nullptr &&
+                runSummary_->text() == QStringLiteral("Stopping…")) {
+                runSummary_->setText(QStringLiteral("Stopped"));
+            }
+            setStatusText(QStringLiteral("Run stopped"));
+        }
+        return;
     }
 
-    if (peerMacEdit_ != nullptr) {
+    if (wasConformance && runProgress_ != nullptr) {
+        runProgress_->setValue(100);
+    }
+    if (wasIoBench && ioBenchProgress_ != nullptr) {
+        ioBenchProgress_->setValue(100);
+    }
+    const bool cancelled = summary == QStringLiteral("Cancelled");
+    const QString outcome =
+        cancelled ? QStringLiteral("STOPPED")
+                  : (pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+    if (wasConformance && runSummary_ != nullptr) {
+        runSummary_->setText(QStringLiteral("%1 — %2").arg(outcome, summary));
+    }
+    if (wasIoBench && ioBenchSummary_ != nullptr) {
+        ioBenchSummary_->setText(QStringLiteral("%1 — %2").arg(outcome, summary));
+    }
+
+    if (wasIoBench) {
+        ioBenchRunToken_ = 0;
+        setIoBenchRunActive(false);
+    }
+    if (wasConformance) {
+        conformanceRunToken_ = 0;
+    }
+    suppressRunLogs_ = false;
+    stopPending_ = false;
+
+    if (wasConformance && !cancelled && peerMacEdit_ != nullptr) {
         const QString key =
             leap::studio::discovery::normalizeMacKey(peerMacEdit_->text());
         if (!key.isEmpty()) {
@@ -609,9 +893,9 @@ void MainWindow::onRunFinished(bool pass, const QString& summary) {
     }
 
     setStatusText(summary);
-    showTab(2);
+    showTab(wasIoBench ? tabIndexByLabel(QStringLiteral("I/O Performance")) : 2);
 
-    if (pass) {
+    if (pass && wasConformance) {
         adapter_->refreshSnapshot();
     }
 }
@@ -737,8 +1021,11 @@ void MainWindow::onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers) {
     setStatusText(QStringLiteral("Discovery: %1 peer(s)").arg(peers.size()));
 }
 
-void MainWindow::onConformanceRows(const QStringList& rows) {
-    if (resultsTable_ == nullptr) {
+void MainWindow::onConformanceRows(const QStringList& rows, quint64 runToken) {
+    const bool applies =
+        runToken != 0 &&
+        (runToken == conformanceRunToken_ || runToken == ioBenchRunToken_);
+    if (!applies || resultsTable_ == nullptr) {
         return;
     }
     resultsTable_->setRowCount(rows.size());
@@ -880,17 +1167,29 @@ void MainWindow::onLocate() {
 }
 
 void MainWindow::onStartMonitor() {
+    if (ioBenchRunActive_) {
+        return;
+    }
     adapter_->openAdapter(selectedAdapterPath());
+    monitorLiveActive_ = true;
     adapter_->startMonitor(250);
-    showTab(3);
+    showTab(tabIndexByLabel(QStringLiteral("Monitor")));
 }
 
-void MainWindow::onStopMonitor() { adapter_->stopMonitor(); }
+void MainWindow::onStopMonitor() {
+    monitorLiveActive_ = false;
+    if (!diagnosticsLiveActive_) {
+        adapter_->stopMonitor();
+    }
+}
 
 void MainWindow::onRefreshSnapshot() {
+    if (ioBenchRunActive_) {
+        return;
+    }
     adapter_->openAdapter(selectedAdapterPath());
     adapter_->refreshSnapshot();
-    showTab(3);
+    showTab(tabIndexByLabel(QStringLiteral("Monitor")));
 }
 
 void MainWindow::resetDiagnosticsTrafficRates() {
@@ -899,8 +1198,219 @@ void MainWindow::resetDiagnosticsTrafficRates() {
     diagLastMetricsMs_ = 0;
 }
 
+bool MainWindow::isIoBenchStepName(const QString& stepName) const {
+    return stepName.contains(QStringLiteral("I/O bench"), Qt::CaseInsensitive) ||
+           stepName.contains(QStringLiteral("PD EXCHANGE soak"), Qt::CaseInsensitive);
+}
+
+void MainWindow::setIoBenchRunActive(bool active) {
+    if (ioBenchRunActive_ == active) {
+        return;
+    }
+
+    ioBenchRunActive_ = active;
+    if (active) {
+        diagnosticsLiveActive_ = false;
+        monitorLiveActive_ = false;
+        adapter_->stopMonitor();
+        if (diagnosticsLatencyChart_ != nullptr) {
+            diagnosticsLatencyChart_->setLiveUpdatesEnabled(false);
+        }
+        if (ioPerformanceChart_ != nullptr) {
+            ioPerformanceChart_->setLiveUpdatesEnabled(true);
+        }
+        return;
+    }
+
+    if (diagnosticsLatencyChart_ != nullptr) {
+        diagnosticsLatencyChart_->setLiveUpdatesEnabled(diagnosticsLiveActive_);
+    }
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->setLiveUpdatesEnabled(false);
+    }
+}
+
+void MainWindow::updateMonitorMetricsTable(const LeapConformanceMetrics& metrics) {
+    if (metricsTable_ == nullptr) {
+        return;
+    }
+
+    metricsTable_->setRowCount(8);
+    const auto set = [this](int row, const QString& key, const QString& val) {
+        metricsTable_->setItem(row, 0, new QTableWidgetItem(key));
+        metricsTable_->setItem(row, 1, new QTableWidgetItem(val));
+    };
+    set(0, QStringLiteral("pd_ok"), QString::number(metrics.pd.pd_sent_ok));
+    set(1, QStringLiteral("pd_fail"), QString::number(metrics.pd.pd_sent_fail));
+    set(2, QStringLiteral("heartbeats"), QString::number(metrics.pd.heartbeats_sent));
+    set(3, QStringLiteral("cycles"), QString::number(metrics.pd.cycles_completed));
+    set(4, QStringLiteral("link_up"),
+        metrics.link.link_up ? QStringLiteral("yes") : QStringLiteral("no"));
+    set(5, QStringLiteral("iface_up"),
+        metrics.link.interface_up ? QStringLiteral("yes") : QStringLiteral("no"));
+    set(6, QStringLiteral("stack_phase"), QString::number(metrics.stack_phase));
+    set(7, QStringLiteral("rx_frames"), QString::number(metrics.transport.rx_frames_ok));
+}
+
+void MainWindow::updateIoBenchMetrics(const LeapConformanceMetrics& metrics) {
+    if (!ioBenchRunActive_) {
+        return;
+    }
+    populateIoPerformanceStats(metrics);
+}
+
+void MainWindow::populateIoPerformanceStats(const LeapConformanceMetrics& metrics) {
+    if (ioBenchStatsTable_ == nullptr) {
+        return;
+    }
+
+    const auto set = [this](int row, const QString& key, const QString& val) {
+        auto* keyItem = ioBenchStatsTable_->item(row, 0);
+        if (keyItem == nullptr) {
+            keyItem = new QTableWidgetItem();
+            ioBenchStatsTable_->setItem(row, 0, keyItem);
+        }
+        keyItem->setText(key);
+        auto* valItem = ioBenchStatsTable_->item(row, 1);
+        if (valItem == nullptr) {
+            valItem = new QTableWidgetItem();
+            ioBenchStatsTable_->setItem(row, 1, valItem);
+        }
+        valItem->setText(val);
+    };
+
+    uint64_t avgRtt = 0u;
+    uint32_t minTrendRtt = 0u;
+    if (metrics.pd.network_rtt_samples > 0u) {
+        avgRtt = metrics.pd.total_network_rtt_us / metrics.pd.network_rtt_samples;
+    }
+    if (metrics.network_rtt_trend.count > 0u) {
+        minTrendRtt = UINT32_MAX;
+        for (uint32_t i = 0u; i < metrics.network_rtt_trend.count; ++i) {
+            minTrendRtt = qMin(minTrendRtt, metrics.network_rtt_trend.samples[i]);
+        }
+        if (minTrendRtt == UINT32_MAX) {
+            minTrendRtt = 0u;
+        }
+    }
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    double liveExchPerSec = 0.0;
+    if (ioLastExchangeMs_ > 0) {
+        const double deltaSec =
+            static_cast<double>(nowMs - ioLastExchangeMs_) / 1000.0;
+        if (deltaSec >= 0.05) {
+            const qint64 replyDelta =
+                static_cast<qint64>(metrics.pd.exchange_replies) -
+                static_cast<qint64>(ioLastExchangeReplies_);
+            if (replyDelta >= 0) {
+                liveExchPerSec = static_cast<double>(replyDelta) / deltaSec;
+            }
+        }
+    }
+    ioLastExchangeReplies_ = metrics.pd.exchange_replies;
+    ioLastExchangeMs_ = nowMs;
+
+    double soakExchPerSec = 0.0;
+    if (ioBenchSoakSecondsSpin_ != nullptr && ioBenchSoakSecondsSpin_->value() > 0 &&
+        metrics.pd.exchange_replies > 0u) {
+        soakExchPerSec = static_cast<double>(metrics.pd.exchange_replies) /
+                         static_cast<double>(ioBenchSoakSecondsSpin_->value());
+    }
+
+    const auto rttText = [&](uint64_t us) -> QString {
+        return metrics.pd.network_rtt_samples > 0u
+                   ? QStringLiteral("%1 µs").arg(us)
+                   : QStringLiteral("—");
+    };
+    const auto workText = [&](uint64_t us) -> QString {
+        return us > 0u ? QStringLiteral("%1 µs").arg(us) : QStringLiteral("—");
+    };
+
+    set(0, QStringLiteral("wire_rtt_last"), rttText(metrics.pd.last_network_rtt_us));
+    set(1, QStringLiteral("wire_rtt_avg"), rttText(avgRtt));
+    set(2, QStringLiteral("wire_rtt_min"),
+        minTrendRtt > 0u ? QStringLiteral("%1 µs").arg(minTrendRtt)
+                         : QStringLiteral("—"));
+    set(3, QStringLiteral("wire_rtt_max"), rttText(metrics.pd.max_network_rtt_us));
+    set(4, QStringLiteral("wire_rtt_samples"),
+        QString::number(metrics.pd.network_rtt_samples));
+    set(5, QStringLiteral("cycle_work_last"),
+        workText(metrics.pd.last_cycle_work_us));
+    set(6, QStringLiteral("cycle_work_max"),
+        workText(metrics.pd.max_cycle_work_us));
+    set(7, QStringLiteral("exchange_replies"),
+        QString::number(metrics.pd.exchange_replies));
+    set(8, QStringLiteral("cycles_completed"),
+        QString::number(metrics.pd.cycles_completed));
+    set(9, QStringLiteral("exchanges_per_sec"),
+        liveExchPerSec > 0.0 ? QString::number(liveExchPerSec, 'f', 1)
+                             : QStringLiteral("—"));
+    set(10, QStringLiteral("exchanges_per_cycle"),
+        soakExchPerSec > 0.0 ? QString::number(soakExchPerSec, 'f', 1)
+                             : QStringLiteral("—"));
+    set(11, QStringLiteral("recv_timeouts"),
+        QString::number(metrics.pd.recv_timeouts));
+    set(12, QStringLiteral("reply_rejects"),
+        QString::number(metrics.pd.reply_rejects));
+    set(13, QStringLiteral("lost_frames"),
+        QString::number(metrics.pd.lost_frames));
+    set(14, QStringLiteral("last_digital_input"),
+        QStringLiteral("0x%1")
+            .arg(metrics.pd.last_digital_inputs, 4, 16, QChar('0')));
+    set(15, QStringLiteral("pd_sent_fail"),
+        QString::number(metrics.pd.pd_sent_fail));
+    set(16, QStringLiteral("device_reply_last"),
+        metrics.has_cycle_timing != 0 && metrics.timing.last_reply_latency_us > 0u
+            ? QStringLiteral("%1 µs").arg(metrics.timing.last_reply_latency_us)
+            : QStringLiteral("—"));
+    set(17, QStringLiteral("device_reply_worst"),
+        metrics.has_cycle_timing != 0 && metrics.timing.max_reply_latency_us > 0u
+            ? QStringLiteral("%1 µs").arg(metrics.timing.max_reply_latency_us)
+            : QStringLiteral("—"));
+
+    if (ioBenchSloLabel_ != nullptr) {
+        const bool rttPass =
+            metrics.pd.network_rtt_samples > 0u &&
+            metrics.pd.max_network_rtt_us <= LEAP_CONF_IO_BENCH_MAX_RTT_US;
+        const bool timeoutPass = metrics.pd.recv_timeouts == 0u;
+        const bool replyPass =
+            metrics.pd.exchange_replies > 0u &&
+            metrics.pd.exchange_replies == metrics.pd.cycles_completed;
+        const bool soakPass = metrics.pd.pd_sent_fail == 0u;
+        const auto mark = [](bool pass) -> QString {
+            return pass ? QStringLiteral("PASS") : QStringLiteral("FAIL");
+        };
+        ioBenchSloLabel_->setText(
+            QStringLiteral(
+                "SLO Wire RTT max %1 / %2 µs [%3] | "
+                "Timeouts %4 [%5] | "
+                "Exchanges %6/%7 rejects=%8 [%9] | "
+                "PD fail %10 [%11]")
+                .arg(metrics.pd.max_network_rtt_us)
+                .arg(LEAP_CONF_IO_BENCH_MAX_RTT_US)
+                .arg(mark(rttPass))
+                .arg(metrics.pd.recv_timeouts)
+                .arg(mark(timeoutPass))
+                .arg(metrics.pd.exchange_replies)
+                .arg(metrics.pd.cycles_completed)
+                .arg(metrics.pd.reply_rejects)
+                .arg(mark(replyPass))
+                .arg(metrics.pd.pd_sent_fail)
+                .arg(mark(soakPass)));
+    }
+
+    if (ioPerformanceChart_ != nullptr) {
+        ioPerformanceChart_->applyMetrics(metrics);
+    }
+
+    if (ioBenchSummary_ != nullptr && ioBenchRunActive_) {
+        ioBenchSummary_->setText(QStringLiteral("Soak in progress…"));
+    }
+}
+
 void MainWindow::populateDiagnosticsTable(const LeapConformanceMetrics& metrics) {
-    if (diagnosticsTable_ == nullptr) {
+    if (diagnosticsTable_ == nullptr || ioBenchRunActive_) {
         return;
     }
 
@@ -1012,24 +1522,46 @@ void MainWindow::populateDiagnosticsTable(const LeapConformanceMetrics& metrics)
         }
     }
 
-    if (diagnosticsLatencyChart_ != nullptr) {
+    if (diagnosticsLatencyChart_ != nullptr &&
+        (diagnosticsLiveActive_ || diagnosticsSnapshotPending_) &&
+        !ioBenchRunActive_) {
         diagnosticsLatencyChart_->applyMetrics(metrics);
     }
 }
 
 void MainWindow::onStartDiagnostics() {
+    if (ioBenchRunActive_) {
+        return;
+    }
     resetDiagnosticsTrafficRates();
     adapter_->openAdapter(selectedAdapterPath());
+    diagnosticsLiveActive_ = true;
+    monitorLiveActive_ = true;
     adapter_->startMonitor(500);
-    showTab(4);
+    if (diagnosticsLatencyChart_ != nullptr) {
+        diagnosticsLatencyChart_->setLiveUpdatesEnabled(true);
+    }
+    showTab(tabIndexByLabel(QStringLiteral("Diagnostics")));
 }
 
-void MainWindow::onStopDiagnostics() { adapter_->stopMonitor(); }
+void MainWindow::onStopDiagnostics() {
+    diagnosticsLiveActive_ = false;
+    if (!monitorLiveActive_) {
+        adapter_->stopMonitor();
+    }
+    if (diagnosticsLatencyChart_ != nullptr) {
+        diagnosticsLatencyChart_->setLiveUpdatesEnabled(false);
+    }
+}
 
 void MainWindow::onRefreshDiagnostics() {
+    if (ioBenchRunActive_) {
+        return;
+    }
     adapter_->openAdapter(selectedAdapterPath());
+    diagnosticsSnapshotPending_ = true;
     adapter_->refreshSnapshot();
-    showTab(4);
+    showTab(tabIndexByLabel(QStringLiteral("Diagnostics")));
 }
 
 void MainWindow::onExportReport() {
@@ -1047,9 +1579,38 @@ void MainWindow::onExportReport() {
     }
 }
 
+void MainWindow::shutdownForExit() {
+    if (shuttingDown_) {
+        return;
+    }
+    shuttingDown_ = true;
+
+    if (lastSeenTimer_ != nullptr) {
+        lastSeenTimer_->stop();
+    }
+
+    diagnosticsLiveActive_ = false;
+    monitorLiveActive_ = false;
+    ioBenchRunActive_ = false;
+    ioBenchRunToken_ = 0;
+    conformanceRunToken_ = 0;
+    suppressRunLogs_ = true;
+    stopPending_ = false;
+
+    leap_log_set_sink(nullptr, nullptr);
+
+    if (adapter_ != nullptr) {
+        adapter_->blockSignals(true);
+        adapter_->shutdown();
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent* event) {
     saveMainSplitter();
+    shutdownForExit();
+    event->accept();
     QMainWindow::closeEvent(event);
+    QApplication::quit();
 }
 
 void MainWindow::saveMainSplitter() {
