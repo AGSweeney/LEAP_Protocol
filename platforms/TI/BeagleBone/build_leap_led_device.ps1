@@ -56,9 +56,11 @@ $SourceDir = Join-Path $PSScriptRoot "leap_led_device"
 $OutDir = Join-Path $PSScriptRoot "out\leap_led_device"
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
+$LeapCore = Join-Path $RepoRoot "leap_core"
+
 $IncludeFlags = @(
     "-I$SourceDir",
-    "-I$(Join-Path $RepoRoot 'inc')",
+    "-I$(Join-Path $LeapCore 'inc')",
     "-I$(Join-Path $StarterWareRoot 'include')",
     "-I$(Join-Path $StarterWareRoot 'include\hw')",
     "-I$(Join-Path $StarterWareRoot 'include\armv7a\am335x')"
@@ -74,8 +76,11 @@ $CommonFlags = @(
     "-fno-stack-protector",
     "-Wall",
     "-Wextra",
-    "-Os"
+    "-Os",
+    "-DNDEBUG"
 ) + $IncludeFlags
+
+# Optional: append -DLEAP_DEVICE_HOST_TRACE_FORCE for full UART trace (boot MAC, states, PD outputs).
 
 $Sources = @(
     (Join-Path $PSScriptRoot "boot\start.S"),
@@ -85,16 +90,16 @@ $Sources = @(
     (Join-Path $SourceDir "bbb_exc.c"),
     (Join-Path $SourceDir "bbb_cpsw_raw.c"),
     (Join-Path $SourceDir "main.c"),
-    (Join-Path $RepoRoot "src\crc\leap_crc.c"),
-    (Join-Path $RepoRoot "src\frame\leap_frame.c"),
-    (Join-Path $RepoRoot "src\services\disc\leap_disc_device.c"),
-    (Join-Path $RepoRoot "src\services\dir\leap_dir_device.c"),
-    (Join-Path $RepoRoot "src\services\mgmt\leap_mgmt_device.c"),
-    (Join-Path $RepoRoot "src\services\mgmt\leap_mgmt_process.c"),
-    (Join-Path $RepoRoot "src\services\pd\leap_pd_device.c"),
-    (Join-Path $RepoRoot "src\services\pd\leap_pd_common.c"),
-    (Join-Path $RepoRoot "src\services\diag\leap_diag_device.c"),
-    (Join-Path $RepoRoot "src\leap_device_stack.c")
+    (Join-Path $LeapCore "src\crc\leap_crc.c"),
+    (Join-Path $LeapCore "src\frame\leap_frame.c"),
+    (Join-Path $LeapCore "src\services\disc\leap_disc_device.c"),
+    (Join-Path $LeapCore "src\services\dir\leap_dir_device.c"),
+    (Join-Path $LeapCore "src\services\mgmt\leap_mgmt_device.c"),
+    (Join-Path $LeapCore "src\services\mgmt\leap_mgmt_process.c"),
+    (Join-Path $LeapCore "src\services\pd\leap_pd_device.c"),
+    (Join-Path $LeapCore "src\services\pd\leap_pd_common.c"),
+    (Join-Path $LeapCore "src\services\diag\leap_diag_device.c"),
+    (Join-Path $LeapCore "src\leap_device_stack.c")
 )
 
 $Objects = @()

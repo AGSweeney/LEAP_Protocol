@@ -407,8 +407,8 @@ void MainWindow::buildDiagnosticsTab(QWidget* page) {
     actions->addStretch();
     layout->addLayout(actions);
 
-    constexpr int kDiagSectionCount = 3;
-    constexpr int kDiagFieldCount = 17;
+    constexpr int kDiagSectionCount = 4;
+    constexpr int kDiagFieldCount = 22;
     constexpr int kDiagSectionRowHeight = 22;
     constexpr int kDiagRowHeight = 24;
     constexpr int kDiagRowCount = kDiagSectionCount + kDiagFieldCount;

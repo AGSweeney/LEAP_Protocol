@@ -9,6 +9,7 @@
 #include <QPainterPath>
 #include <QPalette>
 #include <QtMath>
+#include <algorithm>
 
 namespace {
 
@@ -37,6 +38,21 @@ QColor latencyStatColor(int micros) {
 
 constexpr int kHistBinEdges[] = {0, 100, 200, 300, 400, 500, 1000};
 constexpr int kHistBinCount = 6;
+
+int percentileFromSamples(const QVector<int>& samples, unsigned permille) {
+    if (samples.isEmpty() || permille == 0u || permille > 1000u) {
+        return 0;
+    }
+
+    QVector<int> sorted = samples;
+    std::sort(sorted.begin(), sorted.end());
+    const uint64_t rank =
+        (static_cast<uint64_t>(sorted.size()) * static_cast<uint64_t>(permille) +
+         999u) /
+        1000u;
+    const int index = static_cast<int>(rank == 0u ? 0u : rank - 1u);
+    return sorted.at(qBound(0, index, sorted.size() - 1));
+}
 
 constexpr int kThresholdsUs[] = {250, 750, 1000};
 constexpr int kHistogramAxisLabelsUs[] = {0, 100, 200, 300, 400, 500, 1000};
@@ -82,6 +98,7 @@ void DiagnosticsLatencyChart::refreshTheme() {
 
 void DiagnosticsLatencyChart::clearTrend() {
     samples_.clear();
+    trendTitle_ = QStringLiteral("Reply Latency Trend");
     baseExchange_ = 0u;
     staleFrames_ = 0u;
     duplicateFrames_ = 0u;
@@ -92,17 +109,25 @@ void DiagnosticsLatencyChart::applyMetrics(const LeapConformanceMetrics& metrics
     staleFrames_ = metrics.stale_frames;
     duplicateFrames_ = metrics.duplicate_frames;
 
-    if (metrics.reply_latency_trend.count == 0u && !samples_.isEmpty()) {
+    const bool useWireRtt =
+        metrics.network_rtt_trend.count > 0u &&
+        metrics.network_rtt_trend.count >= metrics.reply_latency_trend.count;
+    const LeapConformanceLatencyTrend& trend =
+        useWireRtt ? metrics.network_rtt_trend : metrics.reply_latency_trend;
+
+    trendTitle_ = useWireRtt ? QStringLiteral("Wire RTT (soak)")
+                             : QStringLiteral("Reply Latency Trend");
+
+    if (trend.count == 0u && !samples_.isEmpty()) {
         update();
         return;
     }
 
-    samples_.resize(static_cast<int>(metrics.reply_latency_trend.count));
-    for (uint32_t i = 0u; i < metrics.reply_latency_trend.count; i++) {
-        samples_[static_cast<int>(i)] =
-            static_cast<int>(metrics.reply_latency_trend.samples[i]);
+    samples_.resize(static_cast<int>(trend.count));
+    for (uint32_t i = 0u; i < trend.count; i++) {
+        samples_[static_cast<int>(i)] = static_cast<int>(trend.samples[i]);
     }
-    baseExchange_ = metrics.reply_latency_trend.base_exchange;
+    baseExchange_ = trend.base_exchange;
     update();
 }
 
@@ -131,6 +156,8 @@ DiagnosticsLatencyChart::LatencyStats DiagnosticsLatencyChart::computeStats() co
         variance += delta * delta;
     }
     stats.stdUs = qSqrt(variance / stats.count);
+    stats.p99Us = percentileFromSamples(samples_, 990u);
+    stats.p999Us = percentileFromSamples(samples_, 999u);
     return stats;
 }
 
@@ -317,21 +344,21 @@ void DiagnosticsLatencyChart::paintStatCards(QPainter& painter, const QRect& are
          true,
          false,
          0},
-        {QStringLiteral("Min (\u00b5s)"),
-         hasData ? QString::number(stats.minUs) : noData,
-         true,
+        {QStringLiteral("P99 (\u00b5s)"),
+         hasData ? QString::number(stats.p99Us) : noData,
          false,
-         0},
+         true,
+         stats.p99Us},
+        {QStringLiteral("P99.9 (\u00b5s)"),
+         hasData ? QString::number(stats.p999Us) : noData,
+         false,
+         true,
+         stats.p999Us},
         {QStringLiteral("Max (\u00b5s)"),
          hasData ? QString::number(stats.maxUs) : noData,
          true,
          true,
          stats.maxUs},
-        {QStringLiteral("Std (\u00b5s)"),
-         hasData ? QString::number(qRound(stats.stdUs)) : noData,
-         false,
-         true,
-         static_cast<int>(qRound(stats.stdUs))},
     };
 
     const QVector<int> spark = sparklineSamples(kSparklinePoints);
@@ -389,7 +416,7 @@ void DiagnosticsLatencyChart::paintLineChart(QPainter& painter, const QRect& plo
     painter.setFont(titleFont);
     painter.setPen(axisText);
     painter.drawText(plot.adjusted(0, -20, 0, 0), Qt::AlignLeft | Qt::AlignVCenter,
-                     QStringLiteral("Reply Latency Trend"));
+                     trendTitle_);
 
     painter.fillRect(plot, plotBackground_);
 

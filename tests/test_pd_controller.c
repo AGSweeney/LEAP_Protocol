@@ -278,6 +278,8 @@ TEST(test_pd_controller_network_rtt_percentile)
     stats.network_rtt_hist[2] = 2u;
     ASSERT_TRUE(
         leap_pd_stats_network_rtt_percentile_us(&stats, 99u) == 2000u);
+    ASSERT_TRUE(
+        leap_pd_stats_network_rtt_percentile_permille_us(&stats, 999u) == 2000u);
 
     memset(&stats, 0, sizeof(stats));
     stats.network_rtt_samples = 274214u;

@@ -46,7 +46,7 @@ Use the plain **`.bin`**, not `*_ti.bin` / `app` (TI header is for ROM `MLO` onl
 
 | LED | Meaning |
 |-----|---------|
-| USR0 | Locate/identify blink (5 s on DISC IDENTIFY) |
+| USR0 | Locate blink (`DISC LOCATE_DEVICE` or `DISC IDENTIFY`) |
 | USR1 | Connected (owner active) |
 | USR2 | Operational state (`LEAP_STATE_OP`) |
 | USR3 | Safe/fault (safe state entered or link down) |
@@ -79,7 +79,10 @@ All DI pins are configured as GPIO inputs with internal pull-up.
 | 6 | `P9_29` | `gpio3_15` |
 | 7 | `P9_31` | `gpio3_14` |
 
-UART prints `MAC` for `leap_win_discover` / `leap_win_hub` `--peer-mac`.
+UART (J1, 115200) is **warnings and errors only** during conformance (`LEAP WRN:` / `LEAP ERR:`).
+Boot banner, MAC, state trace, and `out=0x` PD logs are suppressed unless you rebuild with
+`-DLEAP_DEVICE_HOST_TRACE_FORCE` in `build_leap_led_device.ps1` `$CommonFlags`.
+Use `leap_win_discover` on the wire to learn the device MAC when trace is off.
 
 ## Install/update LEAP on eMMC (U-Boot + UMS)
 

@@ -15,6 +15,7 @@
 
 #include "leap/leap_log.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #if defined(__linux__)
@@ -261,9 +262,9 @@ static void leap_pd_ctrl_update_network_rtt(
     }
 }
 
-uint32_t leap_pd_stats_network_rtt_percentile_us(
+uint32_t leap_pd_stats_network_rtt_percentile_permille_us(
     const LeapPdControllerStats* stats,
-    unsigned                     percentile)
+    unsigned                     permille)
 {
     static const uint32_t k_upper_us[LEAP_PD_NETWORK_RTT_HIST_BUCKETS] = {
         500u, 1000u, 2000u, 3000u, 5000u, 10000u, UINT32_MAX
@@ -273,14 +274,14 @@ uint32_t leap_pd_stats_network_rtt_percentile_us(
     uint64_t cumulative;
     unsigned i;
 
-    if (stats == NULL || percentile == 0u || percentile > 100u ||
+    if (stats == NULL || permille == 0u || permille > 1000u ||
         stats->network_rtt_samples == 0u)
     {
         return 0u;
     }
 
     total = stats->network_rtt_samples;
-    rank  = (total * (uint64_t)percentile + 99u) / 100u;
+    rank  = (total * (uint64_t)permille + 999u) / 1000u;
     if (rank == 0u)
     {
         rank = 1u;
@@ -297,6 +298,76 @@ uint32_t leap_pd_stats_network_rtt_percentile_us(
     }
 
     return UINT32_MAX;
+}
+
+uint32_t leap_pd_stats_network_rtt_percentile_us(
+    const LeapPdControllerStats* stats,
+    unsigned                     percentile)
+{
+    if (percentile == 0u || percentile > 100u)
+    {
+        return 0u;
+    }
+
+    return leap_pd_stats_network_rtt_percentile_permille_us(
+        stats,
+        percentile * 10u);
+}
+
+static int leap_pd_uint32_compare_asc(const void* a, const void* b)
+{
+    const uint32_t lhs = *(const uint32_t*)a;
+    const uint32_t rhs = *(const uint32_t*)b;
+
+    if (lhs < rhs)
+    {
+        return -1;
+    }
+    if (lhs > rhs)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+uint32_t leap_pd_latency_history_percentile_permille_us(
+    const LeapPdLatencyHistory* history,
+    unsigned                    permille)
+{
+    uint32_t scratch[LEAP_PD_LATENCY_HISTORY_MAX];
+    uint32_t count = 0u;
+    uint32_t base_exchange = 0u;
+    uint64_t rank;
+
+    if (history == NULL || permille == 0u || permille > 1000u ||
+        history->total_samples == 0u)
+    {
+        return 0u;
+    }
+
+    leap_pd_latency_history_export(
+        history,
+        scratch,
+        LEAP_PD_LATENCY_HISTORY_MAX,
+        &count,
+        &base_exchange);
+    (void)base_exchange;
+
+    if (count == 0u)
+    {
+        return 0u;
+    }
+
+    qsort(scratch, (size_t)count, sizeof(scratch[0]), leap_pd_uint32_compare_asc);
+
+    rank = ((uint64_t)count * (uint64_t)permille + 999u) / 1000u;
+    if (rank == 0u)
+    {
+        rank = 1u;
+    }
+
+    return scratch[(size_t)rank - 1u];
 }
 
 static void leap_pd_ctrl_update_queue_wait(
@@ -905,10 +976,14 @@ void leap_pd_controller_log_stats(
     if (ctx->stats.network_rtt_samples > 0u)
     {
         leap_log_printf(
-            "  network_rtt(last/avg/max)=%llu/%llu/%llu us "
+            "  network_rtt(last/avg/p99/p99.9/max)=%llu/%llu/%u/%u/%llu us "
             "(send to wire reply)\n",
             (unsigned long long)ctx->stats.last_network_rtt_us,
             (unsigned long long)avg_rtt,
+            (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
+                &ctx->stats, 990u),
+            (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
+                &ctx->stats, 999u),
             (unsigned long long)ctx->stats.max_network_rtt_us);
         leap_log_printf(
             "  queue_wait(last/avg/max)=%llu/%llu/%llu us "

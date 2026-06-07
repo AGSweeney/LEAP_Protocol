@@ -679,11 +679,14 @@ static LeapConformanceStatus leap_conf_run_one(
             (void)snprintf(
                 detail,
                 sizeof(detail),
-                "last/avg/p99/max=%llu/%llu/%u/%llu us "
+                "last/avg/p99/p99.9/max=%llu/%llu/%u/%u/%llu us "
                 "(p99 limit %u us, max ceiling %u us)",
                 (unsigned long long)stats.last_network_rtt_us,
                 (unsigned long long)avg_rtt_us,
-                (unsigned)leap_pd_stats_network_rtt_percentile_us(&stats, 99u),
+                (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
+                    &stats, 990u),
+                (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
+                    &stats, 999u),
                 (unsigned long long)stats.max_network_rtt_us,
                 (unsigned)leap_conf_io_bench_p99_rtt_us(0u),
                 (unsigned)leap_conf_io_bench_max_rtt_us(0u));
@@ -693,9 +696,13 @@ static LeapConformanceStatus leap_conf_run_one(
             (void)snprintf(
                 detail,
                 sizeof(detail),
-                "last/avg/max=%llu/%llu/%llu us (limit %u us)",
+                "last/avg/p99/p99.9/max=%llu/%llu/%u/%u/%llu us (limit %u us)",
                 (unsigned long long)stats.last_network_rtt_us,
                 (unsigned long long)avg_rtt_us,
+                (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
+                    &stats, 990u),
+                (unsigned)leap_pd_stats_network_rtt_percentile_permille_us(
+                    &stats, 999u),
                 (unsigned long long)stats.max_network_rtt_us,
                 (unsigned)leap_conf_io_bench_max_rtt_us(
                     config->cyclic_period_ms));

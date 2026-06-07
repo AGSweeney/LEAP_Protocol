@@ -244,9 +244,17 @@ void leap_pd_latency_history_export(
     uint32_t*                   out_count,
     uint32_t*                   out_base_exchange);
 
+uint32_t leap_pd_stats_network_rtt_percentile_permille_us(
+    const LeapPdControllerStats* stats,
+    unsigned                     permille);
+
 uint32_t leap_pd_stats_network_rtt_percentile_us(
     const LeapPdControllerStats* stats,
     unsigned                     percentile);
+
+uint32_t leap_pd_latency_history_percentile_permille_us(
+    const LeapPdLatencyHistory* history,
+    unsigned                    permille);
 
 #ifdef __cplusplus
 }

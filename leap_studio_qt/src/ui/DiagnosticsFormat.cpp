@@ -10,7 +10,7 @@
 extern "C" {
 
 #include "leap/leap_controller_stack.h"
-
+#include "leap/leap_pd_controller.h"
 #include "leap/leap_protocol.h"
 
 }
@@ -151,6 +151,14 @@ TrendLatencyStats trendLatencyStats(const LeapConformanceMetrics& metrics) {
 
     stats.avgUs = sum / metrics.reply_latency_trend.count;
     return stats;
+}
+
+QString wireRttValue(uint64_t micros, bool hasSamples) {
+    if (!hasSamples) {
+        return QStringLiteral("—");
+    }
+
+    return QStringLiteral("%1 µs").arg(micros);
 }
 
 QString bestReplyLatencyValue(const LeapConformanceMetrics& metrics) {
@@ -456,6 +464,20 @@ void populateDiagnosticsRows(const LeapConformanceMetrics& metrics,
 
     const int frameSource = metrics.frames_from_device;
 
+    const bool hasWireRtt = metrics.pd.network_rtt_samples > 0u;
+    const uint64_t wireRttAvg =
+        hasWireRtt
+            ? (metrics.pd.total_network_rtt_us / metrics.pd.network_rtt_samples)
+            : 0u;
+    const uint32_t wireRttP99 =
+        hasWireRtt
+            ? leap_pd_stats_network_rtt_percentile_permille_us(&metrics.pd, 990u)
+            : 0u;
+    const uint32_t wireRttP999 =
+        hasWireRtt
+            ? leap_pd_stats_network_rtt_percentile_permille_us(&metrics.pd, 999u)
+            : 0u;
+
 
 
     *rows << sectionRow(QStringLiteral("Connection"))
@@ -482,7 +504,16 @@ void populateDiagnosticsRows(const LeapConformanceMetrics& metrics,
           << fieldRow(QStringLiteral("Worst Cycle"), worstCycle)
           << fieldRow(QStringLiteral("Best Latency"), bestReplyLatency)
           << fieldRow(QStringLiteral("Last Latency"), lastReplyLatency)
-          << fieldRow(QStringLiteral("Worst Latency"), worstReplyLatency);
+          << fieldRow(QStringLiteral("Worst Latency"), worstReplyLatency)
+          << sectionRow(QStringLiteral("Wire RTT"))
+          << fieldRow(QStringLiteral("Last"),
+                       wireRttValue(metrics.pd.last_network_rtt_us, hasWireRtt))
+          << fieldRow(QStringLiteral("Avg"), wireRttValue(wireRttAvg, hasWireRtt))
+          << fieldRow(QStringLiteral("P99"), wireRttValue(wireRttP99, hasWireRtt))
+          << fieldRow(QStringLiteral("P99.9"),
+                       wireRttValue(wireRttP999, hasWireRtt))
+          << fieldRow(QStringLiteral("Max"),
+                       wireRttValue(metrics.pd.max_network_rtt_us, hasWireRtt));
 }
 
 

@@ -9,6 +9,8 @@
 #define BBB_LEAP_DO_COUNT 8u
 #define BBB_LEAP_DI_COUNT 8u
 #define BBB_LEAP_PROFILE_ID LEAP_PROFILE_DIGITAL_IO_8X8
+#define BBB_LEAP_PRODUCT_CODE      0x0335A335u
+#define BBB_LEAP_FIRMWARE_REVISION 1u
 
 void bbb_wdt_disable_all(void);
 void bbb_uart_putc(uint8_t ch);

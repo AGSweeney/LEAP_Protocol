@@ -56,6 +56,21 @@ static volatile CpdmaDesc* g_tx_desc;
 static uint8_t             g_rx_frame[1600] __attribute__((aligned(64)));
 static uint8_t             g_tx_frame[1600] __attribute__((aligned(64)));
 
+#define BBB_RX_QUEUE_SLOTS 8u
+
+typedef struct BbbRxQueueSlot
+{
+    uint8_t  src_mac[6];
+    uint16_t length;
+    uint8_t  payload[BBB_CPSW_MAX_PAYLOAD];
+} BbbRxQueueSlot;
+
+static BbbRxQueueSlot g_rx_queue[BBB_RX_QUEUE_SLOTS];
+static unsigned       g_rx_queue_head;
+static unsigned       g_rx_queue_tail;
+static unsigned       g_rx_queue_count;
+static uint32_t       g_rx_queue_drops;
+
 static void bbb_dma_cache_clean(const void* addr, size_t length)
 {
     unsigned int start = (unsigned int)addr;
@@ -410,6 +425,10 @@ int bbb_cpsw_raw_init(BbbCpswRaw* net)
     }
 
     memset(net, 0, sizeof(*net));
+    g_rx_queue_head  = 0u;
+    g_rx_queue_tail  = 0u;
+    g_rx_queue_count = 0u;
+    g_rx_queue_drops = 0u;
 
     CPSWClkEnable();
     CPSWPinMuxSetup();
@@ -445,6 +464,25 @@ int bbb_cpsw_raw_init(BbbCpswRaw* net)
     CPSWStatisticsEnable(SOC_CPSW_SS_REGS);
     cpsw_init_dma();
 
+    return 0;
+}
+
+static int bbb_cpsw_wait_tx_done(BbbCpswRaw* net)
+{
+    volatile uint32_t spins = 2000000u;
+
+    while ((g_tx_desc->flags_pktlen & CPDMA_DESC_OWNER) != 0u) {
+        if (net != 0) {
+            bbb_cpsw_raw_poll_rx(net);
+        }
+        if (spins-- == 0u) {
+            return -1;
+        }
+        __asm__ volatile("nop");
+    }
+
+    CPSWCPDMATxCPWrite(SOC_CPSW_CPDMA_REGS, 0u, (uint32_t)g_tx_desc);
+    CPSWCPDMAEndOfIntVectorWrite(SOC_CPSW_CPDMA_REGS, CPSW_EOI_TX_PULSE);
     return 0;
 }
 
@@ -491,15 +529,87 @@ int bbb_cpsw_raw_send(
 
     CPSWCPDMATxHdrDescPtrWrite(SOC_CPSW_CPDMA_REGS, (uint32_t)g_tx_desc, 0u);
 
-    /*
-     * Do not read or write CPPI descriptor words after submit — DMA may own
-     * them and touching them faults on this MPU. Next send overwrites the TX
-     * descriptor from scratch.
-     */
-    bbb_delay(200000u);
+    if (bbb_cpsw_wait_tx_done(net) != 0) {
+        return -1;
+    }
 
-    CPSWCPDMAEndOfIntVectorWrite(SOC_CPSW_CPDMA_REGS, CPSW_EOI_TX_PULSE);
+    return 0;
+}
 
+static void bbb_rx_queue_drop_oldest(void)
+{
+    if (g_rx_queue_count == 0u) {
+        return;
+    }
+
+    g_rx_queue_head = (g_rx_queue_head + 1u) % BBB_RX_QUEUE_SLOTS;
+    g_rx_queue_count--;
+    g_rx_queue_drops++;
+}
+
+void bbb_cpsw_raw_poll_rx(BbbCpswRaw* net)
+{
+    for (;;) {
+        BbbRxQueueSlot* slot;
+        size_t            rx_len = 0u;
+
+        if (g_rx_queue_count >= BBB_RX_QUEUE_SLOTS) {
+            bbb_rx_queue_drop_oldest();
+        }
+
+        slot = &g_rx_queue[g_rx_queue_tail];
+        if (bbb_cpsw_raw_recv(
+                net,
+                slot->src_mac,
+                slot->payload,
+                sizeof(slot->payload),
+                &rx_len) != 0) {
+            break;
+        }
+
+        slot->length = (uint16_t)rx_len;
+        g_rx_queue_tail = (g_rx_queue_tail + 1u) % BBB_RX_QUEUE_SLOTS;
+        g_rx_queue_count++;
+    }
+}
+
+uint32_t bbb_cpsw_raw_rx_queue_drops(void)
+{
+    return g_rx_queue_drops;
+}
+
+int bbb_cpsw_raw_dequeue(
+    BbbCpswRaw* net,
+    uint8_t*    src_mac,
+    uint8_t*    payload,
+    size_t      payload_capacity,
+    size_t*     payload_length)
+{
+    BbbRxQueueSlot* slot;
+
+    if (net == 0 || src_mac == 0 || payload == 0 || payload_length == 0) {
+        return -1;
+    }
+
+    bbb_cpsw_raw_poll_rx(net);
+
+    if (g_rx_queue_count == 0u) {
+        return 1;
+    }
+
+    slot = &g_rx_queue[g_rx_queue_head];
+    if ((size_t)slot->length > payload_capacity) {
+        g_rx_queue_head = (g_rx_queue_head + 1u) % BBB_RX_QUEUE_SLOTS;
+        g_rx_queue_count--;
+        return -1;
+    }
+
+    memcpy(src_mac, slot->src_mac, 6u);
+    memcpy(payload, slot->payload, slot->length);
+    *payload_length = slot->length;
+
+    g_rx_queue_head = (g_rx_queue_head + 1u) % BBB_RX_QUEUE_SLOTS;
+    g_rx_queue_count--;
     return 0;
 }
 

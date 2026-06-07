@@ -26,6 +26,8 @@ private:
         int lastUs = 0;
         int minUs = 0;
         int maxUs = 0;
+        int p99Us = 0;
+        int p999Us = 0;
         double avgUs = 0.0;
         double stdUs = 0.0;
     };
@@ -57,6 +59,7 @@ private:
     qreal mapY(int latencyUs, qreal yMax, const QRect& plot) const;
 
     QVector<int> samples_;
+    QString trendTitle_ = QStringLiteral("Reply Latency Trend");
     uint32_t baseExchange_ = 0u;
     uint64_t staleFrames_ = 0u;
     uint64_t duplicateFrames_ = 0u;

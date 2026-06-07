@@ -27,5 +27,13 @@ int bbb_cpsw_raw_recv(
 void bbb_cpsw_raw_debug_status(void);
 void bbb_cpsw_raw_print_phy_bsr(void);
 void bbb_cpsw_raw_note_peer(const uint8_t* mac);
+void bbb_cpsw_raw_poll_rx(BbbCpswRaw* net);
+int bbb_cpsw_raw_dequeue(
+    BbbCpswRaw* net,
+    uint8_t*    src_mac,
+    uint8_t*    payload,
+    size_t      payload_capacity,
+    size_t*     payload_length);
+uint32_t bbb_cpsw_raw_rx_queue_drops(void);
 
 #endif

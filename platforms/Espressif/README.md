@@ -9,7 +9,7 @@ use repo-root CMake — [docs/BUILD.md](../../docs/BUILD.md).
 | GL-C-618WL (Gledopto ESP32 + LAN8720) | [GL-C-618WL/](GL-C-618WL/) | scaffold — ESP-IDF LEAP device |
 | KC868-A16 (Kincony ESP32 + LAN8720) | [Kincony/KC868-A16/](Kincony/KC868-A16/) | scaffold — ESP-IDF LEAP device |
 | ESP32 | [ESP32/](ESP32/) | placeholder |
-| ESP32-P4 | [ESP32-P4/](ESP32-P4/) | placeholder |
+| ESP32-P4 (Waveshare ESP32-P4-WIFI6-POE-ETH) | [ESP32-P4/](ESP32-P4/) | scaffold — ESP-IDF LEAP device |
 
 ## GL-C-618WL quick start
 
@@ -34,3 +34,15 @@ idf.py -p COM3 flash monitor
 
 See [Kincony/KC868-A16/README.md](Kincony/KC868-A16/README.md) for hardware
 pinout and PD I/O mapping.
+
+## ESP32-P4 quick start
+
+```bash
+cd platforms/Espressif/ESP32-P4
+idf.py set-target esp32p4
+idf.py build
+idf.py -p COM3 flash monitor
+```
+
+See [ESP32-P4/README.md](ESP32-P4/README.md) for Waveshare pinout, PD I/O
+mapping, and locate LED (GPIO38).
