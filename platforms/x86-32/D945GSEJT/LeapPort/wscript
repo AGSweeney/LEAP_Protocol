@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+# RTEMS waf build for LEAP D945GSEJT device port.
+#
+# Requires RTEMS 6.x waf module on PYTHONPATH (from RTEMS Source Builder install).
+# Example:
+#   export RTEMS_TOOLS=/opt/rtems/6/bin
+#   export RTEMS_BSPS=/opt/rtems/6/i386-rtems6
+#   ./waf configure --rtems-bsp=pc386/pc386 --rtems-version=6
+#   ./waf
+
+import os
+
+LEAP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+LEAP_CORE = os.path.join(LEAP_ROOT, 'leap_core')
+
+LEAP_CORE_SOURCES = [
+    os.path.join(LEAP_CORE, 'src/crc/leap_crc.c'),
+    os.path.join(LEAP_CORE, 'src/frame/leap_frame.c'),
+    os.path.join(LEAP_CORE, 'src/services/disc/leap_disc_device.c'),
+    os.path.join(LEAP_CORE, 'src/services/dir/leap_dir_device.c'),
+    os.path.join(LEAP_CORE, 'src/services/mgmt/leap_mgmt_device.c'),
+    os.path.join(LEAP_CORE, 'src/services/mgmt/leap_mgmt_process.c'),
+    os.path.join(LEAP_CORE, 'src/services/pd/leap_pd_device.c'),
+    os.path.join(LEAP_CORE, 'src/services/pd/leap_pd_common.c'),
+    os.path.join(LEAP_CORE, 'src/services/diag/leap_diag_device.c'),
+    os.path.join(LEAP_CORE, 'src/leap_device_stack.c'),
+    os.path.join(LEAP_CORE, 'src/leap_log.c'),
+    os.path.join(LEAP_CORE, 'src/leap_build_info.c'),
+]
+
+PORT_SOURCES = [
+    'src/init.c',
+    'src/leap_transport.c',
+    'src/leap_board.c',
+    'src/leap_time.c',
+]
+
+
+def init(ctx):
+    ctx.load('rtems')
+
+
+def options(opt):
+    opt.load('compiler_c')
+    opt.load('rtems')
+
+
+def configure(conf):
+    conf.load('compiler_c')
+    conf.load('rtems')
+
+
+def build(bld):
+    bld.load('rtems')
+
+    bld.rtems_program(
+        target='leap_d945gsejt',
+        c=PORT_SOURCES + LEAP_CORE_SOURCES,
+        includes=[
+            'src',
+            'generated',
+            os.path.join(LEAP_CORE, 'inc'),
+        ],
+        use='bsd',
+        cflags=['-Wall', '-Wextra', '-O2'],
+        features=['c', 'cprogram'],
+    )

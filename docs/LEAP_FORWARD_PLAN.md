@@ -44,13 +44,13 @@ This file lists only remaining and deferred work.
 
 ## Open work
 
-### Near term (7–10 days) — core lock-down
+### Near term — core lock-down
 
 | Item | Notes |
 | --- | --- |
 | Manual wire smoke | Run `tools/ci/wire_smoke_*.sh` (Linux) and `wire_smoke_win.ps1` (Windows) on native hosts before platform forks |
 
-### Medium term (3–4 weeks) — integration and release prep
+### Medium term — integration and release prep
 
 | Item | Status | Notes |
 | --- | --- | --- |

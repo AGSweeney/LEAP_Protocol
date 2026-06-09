@@ -185,6 +185,7 @@ trees. Pair devices on the wire with `leap_linux_controller` or `leap_win_contro
 | Texas Instruments | BeagleBone (AM335x), LP-AM243 | [platforms/TI/README.md](platforms/TI/README.md) |
 | Espressif | GL-C-618WL, KC868-A16 (ESP-IDF) | [platforms/Espressif/README.md](platforms/Espressif/README.md) |
 | NetBurner | MOD54415LC (active port) | [platforms/NetBurner/README.md](platforms/NetBurner/README.md) |
+| x86-32 / RTEMS | D945GSEJT — LeapOS bootable device (active port) | [platforms/x86-32/README.md](platforms/x86-32/README.md) |
 
 ### ClearCore quick start
 

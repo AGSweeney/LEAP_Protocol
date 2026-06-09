@@ -9,7 +9,7 @@ commands below.
 | `build/` | Linux / macOS GCC or Clang | `cmake -S . -B build` |
 | `build-win/` | Windows MSVC (multi-config) | `.\build.ps1` or `cmake -B build-win` |
 | `build-wsl/` | WSL Linux (optional local) | `cmake -S . -B build-wsl` |
-| `build-wsl-ci/` | WSL CI / agent scratch | ad hoc; safe to delete |
+| `build-wsl-ci/` | WSL CI / build scratch | ad hoc; safe to delete |
 
 ## Clean workspace
 
