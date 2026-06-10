@@ -24,8 +24,9 @@ Plan **rtems-libbsd** + Realtek driver investigation, or a **PCI Intel NIC** for
 
 ## Boot media
 
-User flashes **`leapos-rtems-poc.img`** (preferred) or **`leapos-rtems-poc.iso`**
-with **balenaEtcher** or `dd` to CF.
+User flashes **`leapos-device.img`** or **`leapos-gateway.img`** (preferred for CF)
+or the matching **`.iso`** with **balenaEtcher** or `dd`.
+Each image contains one product only.
 This is appropriate — GRUB and RTEMS BSP messages appear on hardware, confirming
 the image was written correctly.
 

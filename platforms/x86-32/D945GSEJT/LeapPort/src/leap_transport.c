@@ -253,6 +253,32 @@ leap_rtems_transport_init(
 	return 0;
 }
 
+int
+leap_rtems_transport_init_auto(LeapRtemsTransport *transport, uint16_t ethertype)
+{
+	static const char *const candidates[] = { "re0", "em0", "em1", NULL };
+	size_t i;
+
+	for (i = 0; candidates[i] != NULL; ++i)
+	{
+		printf(LEAP_TS_FMT LEAP_ANSI_INFO "LEAP transport: trying %s" LEAP_ANSI_RESET "\n",
+		    leap_rtems_uptime_str(), candidates[i]);
+		fflush(stdout);
+
+		if (leap_rtems_transport_init(transport, candidates[i], ethertype) == 0)
+		{
+			return 0;
+		}
+
+		leap_rtems_transport_close(transport);
+	}
+
+	printf(LEAP_TS_FMT LEAP_ANSI_ERR "LEAP transport: no usable interface (tried re0, em0, em1)" LEAP_ANSI_RESET "\n",
+	    leap_rtems_uptime_str());
+	fflush(stdout);
+	return -1;
+}
+
 void
 leap_rtems_transport_close(LeapRtemsTransport *transport)
 {

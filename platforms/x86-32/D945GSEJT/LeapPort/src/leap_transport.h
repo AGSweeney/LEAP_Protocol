@@ -26,6 +26,7 @@ typedef struct LeapRtemsTransport
 } LeapRtemsTransport;
 
 int  leap_rtems_transport_init(LeapRtemsTransport* transport, const char* ifname, uint16_t ethertype);
+int  leap_rtems_transport_init_auto(LeapRtemsTransport* transport, uint16_t ethertype);
 void leap_rtems_transport_close(LeapRtemsTransport* transport);
 
 /*

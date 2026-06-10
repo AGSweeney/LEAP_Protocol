@@ -1,9 +1,10 @@
 # WSL build tree lives outside repo at ~/rtems — nothing to ignore there.
 
 # Generated boot artifacts (rebuild with rtems-build/*.sh)
-rtems-image/leapos-rtems-poc.iso
-rtems-image/leapos-rtems-poc.img
-rtems-image/staging/
+rtems-image/leapos-device.img
+rtems-image/leapos-gateway.img
+rtems-image/staging-device/
+rtems-image/staging-gateway/
 
 # Editor / OS
 .DS_Store

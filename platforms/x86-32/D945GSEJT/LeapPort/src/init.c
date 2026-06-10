@@ -163,8 +163,13 @@ Init(rtems_task_argument ignored)
 	pd_io.io_status = &g_board_io.io_status;
 	leap_device_stack_bind_pd_io(&stack, &pd_io);
 
+#if LEAP_RTEMS_IFNAME_AUTO
+	if (leap_rtems_transport_init_auto(
+		&g_transport, LEAP_RTEMS_ETHERTYPE) != 0)
+#else
 	if (leap_rtems_transport_init(
 		&g_transport, LEAP_RTEMS_IFNAME, LEAP_RTEMS_ETHERTYPE) != 0)
+#endif
 	{
 		printf(LEAP_TS_FMT LEAP_ANSI_ERR "E LEAP transport init failed" LEAP_ANSI_RESET "\n",
 		    leap_rtems_uptime_str());

@@ -10,8 +10,8 @@ sibling [LeapPort/](../LeapPort/) tree.
 1. Install WSL2 Ubuntu and apt dependencies → [docs/BUILD.md](docs/BUILD.md)
 2. One-time RTEMS toolchain: `bash rtems-build/setup-rtems-tree.sh` then `bash rtems-build/rsb-build.sh`
 3. **Run-once image (no reboot loop):** `bash rtems-build/build-runonce.sh`
-4. Build boot media: `bash rtems-build/build-net.sh` (LEAP device + ISO) or `build-all.sh`
-5. Flash **`rtems-image/leapos-rtems-poc.iso`** to CF/USB
+4. Build boot media: `bash rtems-build/build-all.sh iso-device` (Device) or `iso-gateway` (Gateway)
+5. Flash **`rtems-image/leapos-device.iso`** or **`leapos-gateway.iso`** to CF/USB
 6. Boot with **serial COM1 @ 115200 8N1** — default GRUB entry is the LEAP device on serial
 
 From Windows PowerShell:
@@ -31,28 +31,34 @@ powershell -ExecutionPolicy Bypass -File platforms/x86-32/D945GSEJT/LeapOS/rtems
 
 ```
 rtems-image/
-  leapos-rtems-poc.img   # Raw MBR+FAT32 — preferred for CF-via-IDE
-  leapos-rtems-poc.iso   # Hybrid ISO — USB / Etcher DD
-  leap-port.exe          # LEAP device ELF (default boot payload)
-  net-probe.exe          # Network bring-up probe ELF
-  README.txt             # Flash / boot instructions
+  leapos-device.img    # LeapOS-Device CF/IDE image
+  leapos-device.iso    # LeapOS-Device USB ISO
+  leapos-gateway.img   # LeapOS-Gateway CF/IDE image
+  leapos-gateway.iso   # LeapOS-Gateway USB ISO
+  leap-port.exe        # Device ELF
+  leap-eip-gateway.exe # Gateway ELF
+  net-probe.exe        # Network probe ELF (not on boot images)
+  README.txt           # Flash / boot instructions
 ```
 
 ## Build scripts
 
 ```
 rtems-build/
-  build-all.sh           # Full pipeline (leap-port + ISO + CF .img)
+  build-all.sh           # Full pipeline (both products + ISOs + CF images)
   build-all.ps1          # Windows → WSL wrapper
   build-net.sh           # LEAP device ISO (leap-port + run-once)
-  build-leap-port.sh     # leap-port.exe (LEAP device app)
-  make-boot-image.sh     # ISO only
-  make-cf-image.sh       # CF/IDE raw disk image
+  build-leap-port.sh     # leap-port.exe (LeapOS-Device)
+  build-leap-eip-gateway.sh # leap-eip-gateway.exe (LeapOS-Gateway)
+  make-device-iso.sh     # leapos-device.iso
+  make-gateway-iso.sh    # leapos-gateway.iso
+  make-cf-image.sh       # leapos-device.img or leapos-gateway.img
   setup-rtems-tree.sh    # Download RTEMS 6.2 sources
   rsb-build.sh           # Toolchain + pc386 BSP (one-time, long)
   check-deps.sh          # Verify host packages
   env.sh                 # Shared path variables
-  grub/leapos-grub.cfg   # Serial-first GRUB menu
+  grub/leapos-device-grub.cfg
+  grub/leapos-gateway-grub.cfg
 ```
 
 RTEMS toolchain and sources live under `~/rtems/` in WSL (not committed).

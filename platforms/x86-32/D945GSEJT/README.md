@@ -52,7 +52,8 @@ Build a bootable CF/IDE or USB image before LeapPort is integrated:
 ```bash
 cd platforms/x86-32/D945GSEJT/LeapOS/rtems-build
 bash build-all.sh
-# → rtems-image/leapos-rtems-poc.img (CF) + leapos-rtems-poc.iso (USB)
+# → rtems-image/leapos-device.img + leapos-device.iso (Device)
+# → rtems-image/leapos-gateway.img + leapos-gateway.iso (Gateway)
 ```
 
 Full instructions: [LeapOS/docs/BUILD.md](LeapOS/docs/BUILD.md).

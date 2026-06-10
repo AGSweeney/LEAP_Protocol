@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LeapOS-Gateway</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58c4ff;
+      --ok: #238636;
+      --warn: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    main { max-width: 1080px; margin: 0 auto; padding: 1.5rem; }
+    h1 { color: var(--accent); margin: 0 0 .25rem; }
+    h2 { margin: 1.75rem 0 .75rem; font-size: 1.1rem; }
+    p.muted { color: var(--muted); margin-top: 0; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+    button, .btn {
+      background: var(--ok);
+      color: #fff;
+      border: 0;
+      padding: .55rem 1rem;
+      cursor: pointer;
+      border-radius: 6px;
+      font: inherit;
+    }
+    button.secondary { background: #21262d; border: 1px solid var(--border); }
+    button.warn { background: #8957e5; }
+    button:hover { filter: brightness(1.08); }
+    button.small { padding: .25rem .55rem; font-size: .85rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .25rem; }
+    input, select {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .45rem .55rem;
+      font: inherit;
+    }
+    input[type=checkbox] { width: auto; margin-right: .4rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
+    th, td { border: 1px solid var(--border); padding: .5rem; text-align: left; vertical-align: middle; }
+    th { background: var(--panel); }
+    pre {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow: auto;
+      font-size: .85rem;
+    }
+    #msg {
+      min-height: 1.25rem;
+      margin: .75rem 0;
+      color: var(--accent);
+    }
+    #msg.error { color: #f85149; }
+    .row-inline { display: flex; align-items: center; gap: .5rem; margin-top: .5rem; }
+    .hint { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
+    code { background: #21262d; padding: .1rem .35rem; border-radius: 4px; }
+    .bits { font-family: ui-monospace, monospace; letter-spacing: .08em; }
+    .bit {
+      display: inline-block;
+      width: 1.1rem;
+      text-align: center;
+      margin-right: .15rem;
+      border-radius: 3px;
+      background: #21262d;
+      color: #8b949e;
+    }
+    .bit.on { background: #238636; color: #fff; }
+    .io-ok { color: #3fb950; }
+    .io-bad { color: #f85149; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>LeapOS-Gateway</h1>
+  <p class="muted">Configuration UI v2 - discover LEAP devices, map assemblies, save config.</p>
+
+  <div class="toolbar">
+    <button id="scan">Scan LEAP</button>
+    <button class="secondary" id="connect_leap">Connect LEAP</button>
+    <button class="secondary" id="reload">Reload config</button>
+    <button class="secondary" id="status">Refresh status</button>
+    <button id="save">Apply to runtime</button>
+    <button class="warn" id="persist">Save to disk</button>
+  </div>
+  <div id="msg"></div>
+
+  <h2>Network</h2>
+  <div class="card grid">
+    <div>
+      <label for="ipv4">IPv4 address</label>
+      <input id="ipv4" type="text" placeholder="192.168.1.2">
+    </div>
+    <div>
+      <label for="mask">Subnet mask</label>
+      <input id="mask" type="text" placeholder="255.255.255.0">
+    </div>
+    <div>
+      <label for="cyclic_ms">LEAP cyclic period (ms)</label>
+      <input id="cyclic_ms" type="number" min="10" max="1000" step="1">
+    </div>
+    <div>
+      <label for="ifname">Interface</label>
+      <input id="ifname" type="text" placeholder="re0">
+    </div>
+  </div>
+  <p class="hint">IP changes take effect after reboot. <strong>Save to disk</strong> requires boot from the CF/IDE image (<code>leapos-gateway.img</code>), not the ISO alone.</p>
+
+  <h2>EtherNet/IP assemblies (PLC connection)</h2>
+  <div class="card">
+    <p>Use these in Studio 5000 / RSLinx exclusive-owner connection:</p>
+    <ul>
+      <li>Input assembly <code>100</code> (32 bytes) - gateway -&gt; PLC</li>
+      <li>Output assembly <code>150</code> (32 bytes) - PLC -&gt; gateway</li>
+      <li>Config assembly <code>151</code> (10 bytes)</li>
+    </ul>
+  </div>
+
+  <h2>LEAP peer mapping</h2>
+  <div class="card grid">
+    <div>
+      <label for="map_mac">Peer MAC</label>
+      <input id="map_mac" type="text" placeholder="aa:bb:cc:dd:ee:ff">
+    </div>
+    <div>
+      <label for="map_profile">Profile ID</label>
+      <input id="map_profile" type="text" placeholder="0x00010001">
+    </div>
+    <div>
+      <label for="map_input_byte">Input byte (E/IP asm 100)</label>
+      <input id="map_input_byte" type="number" min="0" max="31">
+    </div>
+    <div>
+      <label for="map_output_byte">Output byte (E/IP asm 150)</label>
+      <input id="map_output_byte" type="number" min="0" max="31">
+    </div>
+    <div>
+      <label for="map_status_byte">Status byte (E/IP asm 100)</label>
+      <input id="map_status_byte" type="number" min="0" max="31">
+    </div>
+    <div>
+      <label for="map_width">Digital width (bits)</label>
+      <input id="map_width" type="number" min="1" max="16" value="8">
+    </div>
+  </div>
+  <div class="row-inline">
+    <label><input id="map_enabled" type="checkbox"> Enable this mapping</label>
+  </div>
+  <p class="hint">Pick a discovered peer with <strong>Map</strong>, enable mapping, then <strong>Apply</strong>. Use <strong>Connect LEAP</strong> to bootstrap ownership (DISC -&gt; MGMT -&gt; OP) on demand. Use <strong>Save to disk</strong> so the mapping survives reboot.</p>
+
+  <h2>Live I/O monitor</h2>
+  <div class="row-inline">
+    <label><input id="io_auto" type="checkbox" checked> Auto-refresh (500 ms)</label>
+    <button class="secondary small" id="io_refresh">Refresh I/O</button>
+    <span id="io_session" class="muted"></span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Peer</th><th>Comm</th>
+        <th>LEAP inputs<br><span class="muted">device -&gt; gateway</span></th>
+        <th>LEAP outputs<br><span class="muted">gateway -&gt; device</span></th>
+        <th>E/IP in byte<br><span class="muted">asm 100 -&gt; PLC</span></th>
+        <th>E/IP out byte<br><span class="muted">asm 150 &lt;- PLC</span></th>
+      </tr>
+    </thead>
+    <tbody id="io_rows"><tr><td colspan="6" class="muted">Waiting for data...</td></tr></tbody>
+  </table>
+  <p class="hint">Updates when the gateway owns the LEAP session (phase <code>OP</code>) and cyclic PD is running. LEAP inputs are digital inputs read from the device; LEAP outputs are driven from the E/IP output assembly.</p>
+
+  <h2>Discovered peers</h2>
+  <table>
+    <thead>
+      <tr><th>MAC</th><th>Profile</th><th>State</th><th>Owner</th><th></th></tr>
+    </thead>
+    <tbody id="peers"></tbody>
+  </table>
+
+  <h2>Status</h2>
+  <pre id="stat">Loading...</pre>
+
+  <h2>Raw config preview</h2>
+  <pre id="config_preview"></pre>
+</main>
+<script>
+const LEAP_STATES = {
+  '0x0000': 'BOOT', '0x0001': 'INIT', '0x0002': 'CONFIGURED',
+  '0x0003': 'SAFE', '0x0004': 'OP', '0x0005': 'FAULT'
+};
+
+const defaults = {
+  ipv4: '192.168.1.2',
+  mask: '255.255.255.0',
+  cyclic_ms: 50,
+  ifname: 're0',
+  map_mac: '',
+  map_profile: '0x00010001',
+  map_input_byte: 0,
+  map_output_byte: 2,
+  map_status_byte: 4,
+  map_width: 8,
+  map_enabled: false
+};
+
+function $(id) { return document.getElementById(id); }
+
+function showMsg(text, isError) {
+  const el = $('msg');
+  el.textContent = text;
+  el.className = isError ? 'error' : '';
+}
+
+function parseConfigText(text) {
+  const cfg = {
+    network: { ipv4: defaults.ipv4, mask: defaults.mask, ifname: defaults.ifname },
+    cyclic_ms: defaults.cyclic_ms,
+    mapping: {
+      enabled: defaults.map_enabled,
+      mac: defaults.map_mac,
+      profile: defaults.map_profile,
+      input_byte: defaults.map_input_byte,
+      output_byte: defaults.map_output_byte,
+      status_byte: defaults.map_status_byte,
+      width: defaults.map_width
+    }
+  };
+  let active = null;
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq < 0) continue;
+    const key = line.slice(0, eq).trim();
+    const value = line.slice(eq + 1).trim();
+
+    switch (key) {
+      case 'network.ipv4': cfg.network.ipv4 = value; break;
+      case 'network.mask': cfg.network.mask = value; break;
+      case 'network.ifname': cfg.network.ifname = value; break;
+      case 'cyclic_ms': cfg.cyclic_ms = Number(value) || defaults.cyclic_ms; break;
+      case 'mapping.begin': active = Number(value); break;
+      case 'mapping.enabled': if (active === 0) cfg.mapping.enabled = value === '1' || value === 'true'; break;
+      case 'mapping.mac': if (active === 0) cfg.mapping.mac = value.toLowerCase(); break;
+      case 'mapping.profile': if (active === 0) cfg.mapping.profile = value; break;
+      case 'mapping.input.byte': if (active === 0) cfg.mapping.input_byte = Number(value); break;
+      case 'mapping.output.byte': if (active === 0) cfg.mapping.output_byte = Number(value); break;
+      case 'mapping.status.byte': if (active === 0) cfg.mapping.status_byte = Number(value); break;
+      case 'mapping.input.width':
+      case 'mapping.output.width':
+        if (active === 0) cfg.mapping.width = Number(value);
+        break;
+      default: break;
+    }
+  }
+  return cfg;
+}
+
+function buildConfigText() {
+  const mac = $('map_mac').value.trim().toLowerCase();
+  const profile = $('map_profile').value.trim() || '0x00010001';
+  const enabled = $('map_enabled').checked ? 1 : 0;
+  const width = Number($('map_width').value) || 8;
+
+  return [
+    '# LeapOS-Gateway configuration',
+    'network.mode=single',
+    `network.ifname=${$('ifname').value.trim() || 're0'}`,
+    `network.ipv4=${$('ipv4').value.trim()}`,
+    `network.mask=${$('mask').value.trim()}`,
+    'network.dhcp=0',
+    `cyclic_ms=${Number($('cyclic_ms').value) || 50}`,
+    'mapping.begin=0',
+    `mapping.enabled=${enabled}`,
+    `mapping.mac=${mac || '00:00:00:00:00:00'}`,
+    `mapping.profile=${profile}`,
+    `mapping.input.byte=${Number($('map_input_byte').value) || 0}`,
+    `mapping.input.bit=0`,
+    `mapping.input.width=${width}`,
+    `mapping.output.byte=${Number($('map_output_byte').value) || 2}`,
+    `mapping.output.bit=0`,
+    `mapping.output.width=${width}`,
+    `mapping.status.byte=${Number($('map_status_byte').value) || 4}`
+  ].join('\n') + '\n';
+}
+
+function applyConfigToForm(cfg) {
+  $('ipv4').value = cfg.network.ipv4;
+  $('mask').value = cfg.network.mask;
+  $('ifname').value = cfg.network.ifname;
+  $('cyclic_ms').value = cfg.cyclic_ms;
+  $('map_mac').value = cfg.mapping.mac;
+  $('map_profile').value = cfg.mapping.profile;
+  $('map_input_byte').value = cfg.mapping.input_byte;
+  $('map_output_byte').value = cfg.mapping.output_byte;
+  $('map_status_byte').value = cfg.mapping.status_byte;
+  $('map_width').value = cfg.mapping.width;
+  $('map_enabled').checked = cfg.mapping.enabled;
+  $('config_preview').textContent = buildConfigText();
+}
+
+async function loadConfig() {
+  const r = await fetch('/api/v1/config');
+  if (!r.ok) throw new Error('Failed to load config');
+  const text = await r.text();
+  applyConfigToForm(parseConfigText(text));
+}
+
+function fmtBits(value, width) {
+  let out = '';
+  const w = Math.min(Math.max(width || 8, 1), 16);
+  for (let bit = w - 1; bit >= 0; bit--) {
+    const on = (value >> bit) & 1;
+    out += `<span class="bit ${on ? 'on' : 'off'}">${on}</span>`;
+  }
+  return out;
+}
+
+function fmtHexByte(v) {
+  return '0x' + (v & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+}
+
+async function loadIo() {
+  const r = await fetch('/api/v1/io');
+  if (!r.ok) throw new Error('I/O read failed');
+  const data = await r.json();
+  const tbody = $('io_rows');
+  const session = $('io_session');
+
+  session.textContent =
+    `Session: ${data.leap_phase}${data.session_active ? ' (owner)' : ''}` +
+    (data.leap_comm_ok ? '' : ' - no PD comm');
+
+  const rows = (data.mappings || []).filter(m => m.enabled);
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="muted">No enabled mappings</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+  rows.forEach(m => {
+    const tr = document.createElement('tr');
+    const comm = m.comm_ok
+      ? '<span class="io-ok">OK</span>'
+      : '<span class="io-bad">-</span>';
+    tr.innerHTML = `
+      <td>${m.mac}</td>
+      <td>${comm}</td>
+      <td><div>${fmtHexByte(m.leap_inputs)}</div><div class="bits">${fmtBits(m.leap_inputs, m.input_width_bits)}</div></td>
+      <td><div>${fmtHexByte(m.leap_outputs)}</div><div class="bits">${fmtBits(m.leap_outputs, m.output_width_bits)}</div></td>
+      <td>${fmtHexByte(m.eip_input_byte)} <span class="bits">${fmtBits(m.eip_input_byte, m.input_width_bits)}</span></td>
+      <td>${fmtHexByte(m.eip_output_byte)} <span class="bits">${fmtBits(m.eip_output_byte, m.output_width_bits)}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+let ioTimer = null;
+function startIoPoll() {
+  if (ioTimer) clearInterval(ioTimer);
+  if (!$('io_auto').checked) return;
+  ioTimer = setInterval(() => loadIo().catch(() => {}), 500);
+}
+
+$('io_refresh').onclick = () => loadIo().catch(e => showMsg(e.message, true));
+$('io_auto').onchange = startIoPoll;
+
+async function loadStatus() {
+  const r = await fetch('/api/v1/status');
+  const data = await r.json();
+  $('stat').textContent = JSON.stringify(data, null, 2);
+  if (data.storage_ready === false) {
+    showMsg('Config volume not mounted - Apply works in RAM; Save to disk needs CF/IDE boot (not read-only ISO).', true);
+  } else if (data.leap_session_active) {
+    showMsg(`LEAP owner session active (${data.leap_phase})`);
+  } else if (data.leap_phase && data.leap_phase !== 'IDLE') {
+    showMsg(`LEAP session state: ${data.leap_phase}`);
+  }
+}
+
+async function loadPeers() {
+  const r = await fetch('/api/v1/leap/peers');
+  const data = await r.json();
+  const tbody = $('peers');
+  tbody.innerHTML = '';
+  (data.peers || []).forEach(p => {
+    const tr = document.createElement('tr');
+    const stateLabel = LEAP_STATES[p.state] ? `${LEAP_STATES[p.state]} (${p.state})` : p.state;
+    tr.innerHTML = `
+      <td>${p.mac}</td>
+      <td>${p.profile}</td>
+      <td>${stateLabel}</td>
+      <td>${p.owner}</td>
+      <td><button class="small btn map-peer" data-mac="${p.mac}" data-profile="${p.profile}">Map</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.map-peer').forEach(btn => {
+    btn.onclick = () => {
+      $('map_mac').value = btn.dataset.mac;
+      $('map_profile').value = btn.dataset.profile;
+      $('map_enabled').checked = true;
+      $('config_preview').textContent = buildConfigText();
+      showMsg(`Mapped peer ${btn.dataset.mac}`);
+    };
+  });
+}
+
+async function applyConfig() {
+  const body = buildConfigText();
+  $('config_preview').textContent = body;
+  const r = await fetch('/api/v1/config', { method: 'PUT', body });
+  const text = await r.text();
+  if (!r.ok) throw new Error(text || 'Apply failed');
+  showMsg('Configuration applied. Click Connect LEAP when ready. IP changes still need reboot.');
+}
+
+async function connectLeap() {
+  const r = await fetch('/api/v1/leap/connect', { method: 'POST' });
+  const text = await r.text();
+  if (!r.ok) throw new Error(text || 'Connect failed');
+  showMsg('LEAP connect requested.');
+  await loadStatus();
+}
+
+async function persistConfig() {
+  await applyConfig();
+  const r = await fetch('/api/v1/config/apply', { method: 'POST' });
+  const text = await r.text();
+  if (!r.ok) throw new Error(text || 'Save failed');
+  showMsg('Configuration saved to disk.');
+}
+
+function wirePreviewUpdates() {
+  ['ipv4','mask','ifname','cyclic_ms','map_mac','map_profile','map_input_byte',
+   'map_output_byte','map_status_byte','map_width','map_enabled'].forEach(id => {
+    $(id).addEventListener('input', () => {
+      $('config_preview').textContent = buildConfigText();
+    });
+    $(id).addEventListener('change', () => {
+      $('config_preview').textContent = buildConfigText();
+    });
+  });
+}
+
+$('scan').onclick = async () => {
+  showMsg('Scanning LEAP network...');
+  await fetch('/api/v1/leap/discover?scan_ms=1000', { method: 'POST' });
+  await new Promise(r => setTimeout(r, 1200));
+  await loadPeers();
+  showMsg('Scan complete.');
+};
+
+$('connect_leap').onclick = async () => {
+  try {
+    await connectLeap();
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+};
+
+$('reload').onclick = async () => {
+  try {
+    await loadConfig();
+    showMsg('Configuration loaded.');
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+};
+
+$('status').onclick = () => loadStatus().catch(e => showMsg(e.message, true));
+
+$('save').onclick = async () => {
+  try {
+    await applyConfig();
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+};
+
+$('persist').onclick = async () => {
+  try {
+    await persistConfig();
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+};
+
+wirePreviewUpdates();
+loadConfig().catch(() => applyConfigToForm({ network: defaults, cyclic_ms: defaults.cyclic_ms, mapping: {
+  enabled: defaults.map_enabled, mac: defaults.map_mac, profile: defaults.map_profile,
+  input_byte: defaults.map_input_byte, output_byte: defaults.map_output_byte,
+  status_byte: defaults.map_status_byte, width: defaults.map_width
+}}));
+loadStatus();
+loadPeers();
+loadIo().catch(() => {});
+startIoPoll();
+</script>
+</body>
+</html>

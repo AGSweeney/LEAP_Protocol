@@ -17,8 +17,8 @@ bash "$SCRIPT_DIR/rebuild-bsp-runonce.sh"
 
 export LEAP_FORCE_RECONFIGURE=1
 bash "$SCRIPT_DIR/build-leap-port.sh"
-bash "$SCRIPT_DIR/make-boot-image.sh"
+bash "$SCRIPT_DIR/make-device-iso.sh"
 
 echo ""
-echo "LEAP discovery ISO (leap-port default, run-once halt):"
-ls -lh "$LEAPOS_IMAGE_DIR/leapos-rtems-poc.iso" "$LEAP_PORT_EXE"
+echo "LEAP device ISO (leap-port default, run-once halt):"
+ls -lh "$LEAPOS_DEVICE_ISO" "$LEAP_PORT_EXE"

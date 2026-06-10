@@ -37,6 +37,7 @@ void leap_run_win_time_tests(void);
 void leap_run_log_tests(void);
 void leap_run_negative_frame_tests(void);
 void leap_run_conformance_engine_tests(void);
+void leap_run_eip_bridge_tests(void);
 
 int main(void)
 {
@@ -66,6 +67,7 @@ int main(void)
     leap_run_device_stack_tests();
     leap_run_negative_frame_tests();
     leap_run_conformance_engine_tests();
+    leap_run_eip_bridge_tests();
     leap_run_comms_loss_tests();
     leap_run_raw_linux_stats_tests();
     leap_run_win_time_tests();

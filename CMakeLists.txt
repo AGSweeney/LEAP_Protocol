@@ -60,6 +60,7 @@ add_executable(leap_tests
   tests/test_util.c
   tests/test_negative_frames.c
   tests/test_conformance_engine.c
+  tests/test_eip_bridge.c
   tests/leap_test_frame.c
 )
 

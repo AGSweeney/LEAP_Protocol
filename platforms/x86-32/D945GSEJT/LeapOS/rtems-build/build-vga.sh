@@ -14,8 +14,8 @@ done
 source "$SCRIPT_DIR/env.sh"
 
 bash "$SCRIPT_DIR/check-deps.sh"
-bash "$SCRIPT_DIR/make-boot-image.sh"
+bash "$SCRIPT_DIR/make-device-iso.sh"
 
 echo ""
-echo "VGA LeapOS ISO (boot with --video=off --console=/dev/vgacons):"
-ls -lh "$LEAPOS_IMAGE_DIR/leapos-rtems-poc.iso"
+echo "VGA LeapOS-Device ISO (boot with --video=off --console=/dev/vgacons):"
+ls -lh "$LEAPOS_DEVICE_ISO"

@@ -34,6 +34,8 @@ add_library(leap_core STATIC
   src/conformance/leap_conformance_export.c
   src/conformance/leap_conformance_raw_io.c
   src/conformance/leap_commissioning.c
+  src/bridge/leap_eip_bridge.c
+  src/bridge/leap_gateway_config.c
 )
 
 if(WIN32)

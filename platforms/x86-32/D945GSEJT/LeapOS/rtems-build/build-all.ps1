@@ -19,5 +19,5 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $ImageDir = Join-Path $LeapOsRoot "rtems-image"
 Write-Host ""
 Write-Host "Artifacts:"
-Get-ChildItem -Path $ImageDir -Include "leapos-rtems-poc.iso","leapos-rtems-poc.img","net-probe.exe" -ErrorAction SilentlyContinue |
+Get-ChildItem -Path $ImageDir -Include "leapos-device.iso","leapos-device.img","leapos-gateway.iso","leapos-gateway.img","leap-port.exe","leap-eip-gateway.exe","net-probe.exe" -ErrorAction SilentlyContinue |
     ForEach-Object { Write-Host "  $($_.FullName) ($([math]::Round($_.Length/1MB, 2)) MB)" }

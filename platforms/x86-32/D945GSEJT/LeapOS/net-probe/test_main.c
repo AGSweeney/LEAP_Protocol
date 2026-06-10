@@ -1,5 +1,5 @@
 /**
- * LeapOS net-probe — libbsd bring-up and re0 (onboard RTL8111D/DL) probe.
+ * LeapOS net-probe — libbsd bring-up (re0 Realtek, em0/em1 Intel GbE).
  */
 
 #include <rtems.h>
@@ -369,29 +369,29 @@ probe_interface(const char *ifname)
 static void
 probe_interfaces(void)
 {
-	static const char *candidates[] = { "re0", NULL };
+	static const char *candidates[] = { "re0", "em0", "em1", NULL };
 	int i;
 	int any_up = 0;
 
-	printf("Probing: re0 (onboard RTL8111D/DL)\n\n");
+	printf("Probing: re0 (Realtek), em0/em1 (Intel GbE)\n\n");
 	list_ifaces();
 
 	for (i = 0; candidates[i] != NULL; ++i) {
 		printf("\n--- try %s ---\n", candidates[i]);
 		if (probe_interface(candidates[i])) {
 			any_up = 1;
-			break;
+		} else {
+			printf("%s not usable\n", candidates[i]);
 		}
-		printf("%s not usable\n", candidates[i]);
 	}
 
 	printf("\n");
 	list_ifaces();
 
 	if (!any_up) {
-		printf("FAIL: no interface came up — check cable / onboard LAN in BIOS\n");
+		printf("FAIL: no interface came up — check cable / NIC in BIOS\n");
 	} else {
-		printf("Onboard RTL8111D/DL networking is working on re0.\n");
+		printf("At least one NIC is UP RUNNING (re0 and/or em0/em1).\n");
 		printf("(ifconfig/netstat CLI may still exit non-zero on pc386 — ignore if UP RUNNING above.)\n");
 	}
 }

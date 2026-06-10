@@ -12,9 +12,21 @@
 
 #include "leap/leap_protocol.h"
 
-/* Onboard RTL8111D/DL via libbsd re(4) → re0. */
+/*
+ * LEAP raw-L2 interface selection.
+ *
+ * libbsd already includes re(4) and em(4); PCI drivers attach at boot. leap-port
+ * picks the first name below that exists and can be brought UP (D945GSEJT → re0,
+ * Pike2 / Intel GbE → em0 or em1).
+ *
+ * Override at build time with -DLEAP_RTEMS_IFNAME=\"em0\" to force one port.
+ */
 #ifndef LEAP_RTEMS_IFNAME
 #define LEAP_RTEMS_IFNAME "re0"
+#endif
+
+#ifndef LEAP_RTEMS_IFNAME_AUTO
+#define LEAP_RTEMS_IFNAME_AUTO 1
 #endif
 
 /* LEAP development EtherType (matches leap_protocol.h). */

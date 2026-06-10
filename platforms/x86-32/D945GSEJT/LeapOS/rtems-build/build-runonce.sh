@@ -16,8 +16,7 @@ bash "$SCRIPT_DIR/rebuild-bsp-runonce.sh"
 
 export LEAP_FORCE_RECONFIGURE=1
 bash "$SCRIPT_DIR/build-net-probe.sh"
-bash "$SCRIPT_DIR/make-boot-image.sh"
 
 echo ""
-echo "Run-once ISO (net-probe exits and board halts — no GRUB reboot loop):"
-ls -lh "$LEAPOS_IMAGE_DIR/leapos-rtems-poc.iso"
+echo "Run-once net-probe ELF (QEMU / manual GRUB — not bundled in boot ISOs):"
+ls -lh "$NET_PROBE_EXE"
