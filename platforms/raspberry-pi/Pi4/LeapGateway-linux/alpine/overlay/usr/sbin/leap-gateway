@@ -1,0 +1,45 @@
+#!/bin/sh
+# LeapOS-Gateway placeholder daemon (Alpine Pi4) — network bring-up + status loop.
+# Full LEAP/EIP/Web stack will replace this binary in a later build.
+set -eu
+
+CONFIG=/cf/config.txt
+[ "${1:-}" = "--config" ] && CONFIG="${2:-/cf/config.txt}"
+
+kv() {
+	awk -F= -v k="$1" '$1==k {gsub(/\r$/, "", $2); print $2; exit}' "$CONFIG" 2>/dev/null || true
+}
+
+IF="$(kv network.ifname)"
+[ -n "$IF" ] || IF=eth0
+IP="$(kv network.ipv4)"
+MASK="$(kv network.mask)"
+DHCP="$(kv network.dhcp)"
+
+echo "=== LeapOS-Gateway (Alpine Pi4) ==="
+echo "config: $CONFIG"
+echo "if: $IF ip: ${IP:-unset} mask: ${MASK:-unset} dhcp: ${DHCP:-0}"
+
+if [ "$DHCP" = "1" ]; then
+	echo "dhcp=1 requested but dhcpcd not installed; set static network.ipv4 in config"
+else
+	if [ -n "$IP" ] && [ -n "$MASK" ]; then
+		PFX=24
+		case "$MASK" in
+		255.255.255.0)   PFX=24 ;;
+		255.255.255.128) PFX=25 ;;
+		255.255.255.192) PFX=26 ;;
+		255.255.0.0)     PFX=16 ;;
+		255.0.0.0)       PFX=8 ;;
+		esac
+		ip link set "$IF" up 2>/dev/null || true
+		ip addr flush dev "$IF" 2>/dev/null || true
+		ip addr add "$IP/$PFX" dev "$IF" 2>/dev/null || true
+		echo "Web UI (stub): http://${IP}:8080/  — full gateway stack pending"
+	fi
+fi
+
+while true; do
+	sleep 300
+	echo "$(date -Iseconds 2>/dev/null || date): leap-gateway stub alive on $IF"
+done

@@ -49,7 +49,14 @@ mapping.mac=aa:bb:cc:dd:ee:ff
 mapping.input.byte=0
 mapping.output.byte=2
 mapping.status.byte=4
+mapping.begin=1
+mapping.mac=11:22:33:44:55:66
+mapping.input.byte=8
+mapping.output.byte=10
+mapping.status.byte=12
 ```
+
+Up to **16** mapping slots (`mapping.begin=0` … `15`). **Connect LEAP** bootstraps every enabled slot to OP and runs cyclic PD for each peer (round-robin per gateway tick). Each slot has its own E/IP byte offsets in the assembly image.
 
 ## REST API
 

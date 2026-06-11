@@ -9,6 +9,7 @@
 #define LEAP_GATEWAY_STORAGE_H
 
 int  leap_gateway_storage_init(void);
+int  leap_gateway_storage_retry_after_pci(void);
 int  leap_gateway_storage_ready(void);
 const char* leap_gateway_storage_mount_point(void);
 

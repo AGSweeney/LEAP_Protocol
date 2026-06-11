@@ -1,0 +1,5 @@
+# LeapOS-Gateway Pi4 — VideoCore firmware (merged with Alpine base at pack time)
+arm_64bit=1
+kernel=kernel8.img
+enable_uart=1
+disable_overscan=1

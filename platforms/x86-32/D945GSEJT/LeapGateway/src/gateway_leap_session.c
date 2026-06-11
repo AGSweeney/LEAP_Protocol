@@ -1,423 +1,1651 @@
 /*
+
  * gateway_leap_session.c — Bootstrap and maintain LEAP owner sessions.
+
  *
+
  * LEAP bootstrap and cyclic PD run in a dedicated RTEMS task so blocking
+
  * L2 I/O never stalls the init-task poll loop (HTTP + EtherNet/IP).
+
  *
+
+ * Each enabled mapping slot (0 .. mapping_count-1) maps to a session-hub
+
+ * slot with independent MGMT/PD state so multiple peers run concurrently.
+
+ *
+
  * Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
+
  * SPDX-License-Identifier: MIT
+
  */
+
+
 
 #include "gateway_leap_session.h"
 
+
+
 #include "gateway_config.h"
+
 #include "gateway_global.h"
+
 #include "gateway_pd_io.h"
+
 #include "leap_time.h"
 
+
+
 #include "leap/leap_controller_peer.h"
+
+#define LEAP_GATEWAY_BOOTSTRAP_PROBE_MS 1500
+
+#include "leap/leap_controller_session_hub.h"
+
 #include "leap/leap_eip_bridge.h"
+
 #include "leap/leap_pd_controller.h"
+
 #include "leap/leap_protocol.h"
 
+
+
+#include "leap_transport.h"
+
+#if defined(__rtems__)
 #include <rtems.h>
+#else
+#include <pthread.h>
+#include <unistd.h>
+#endif
+
 #include <stdio.h>
+
 #include <string.h>
 
+
+
+#if defined(__rtems__)
+
 #define LEAP_GATEWAY_SESSION_TASK_STACK (64u * 1024u)
+
 #define LEAP_GATEWAY_SESSION_TASK_PRIO  250u
 
-static rtems_id g_leap_session_task = RTEMS_INVALID_ID;
-static volatile int g_leap_session_stop = 0;
+static rtems_id         g_leap_session_task = RTEMS_INVALID_ID;
+
+#else
+
+static pthread_t        g_leap_session_thread;
+
+static int              g_leap_session_thread_started = 0;
+
+#endif
+
+static volatile int     g_leap_session_stop = 0;
+
+static void
+gateway_session_sleep_ms(unsigned ms)
+{
+#if defined(__rtems__)
+    rtems_task_wake_after(RTEMS_MILLISECONDS_TO_TICKS(ms));
+#else
+    usleep(ms * 1000u);
+#endif
+}
+
+
 
 static int
+
 mapping_mac_is_zero(const uint8_t mac[6])
+
 {
+
     static const uint8_t k_zero[6] = { 0u, 0u, 0u, 0u, 0u, 0u };
 
+
+
     return (memcmp(mac, k_zero, 6) == 0) ? 1 : 0;
+
 }
+
+
 
 static int
-gateway_find_enabled_mapping(
-    const LeapGatewayRuntime* gw,
-    unsigned*                 mapping_index_out,
-    uint8_t                   peer_mac_out[6],
-    uint32_t*                 profile_id_out)
+
+mapping_slot_enabled(const LeapGatewayRuntime* gw, unsigned slot)
+
 {
-    unsigned i;
 
-    if (gw == NULL || mapping_index_out == NULL || peer_mac_out == NULL)
+    const LeapEipBridgeMapping* map;
+
+
+
+    if (gw == NULL || slot >= gw->config.bridge.mapping_count)
+
     {
+
         return 0;
+
     }
 
-    for (i = 0u; i < gw->config.bridge.mapping_count; ++i)
-    {
-        const LeapEipBridgeMapping* map = &gw->config.bridge.mappings[i];
 
-        if (!map->enabled || mapping_mac_is_zero(map->leap_mac))
-        {
-            continue;
-        }
 
-        *mapping_index_out = i;
-        memcpy(peer_mac_out, map->leap_mac, 6);
-        if (profile_id_out != NULL)
-        {
-            *profile_id_out = map->profile_id;
-        }
-        return 1;
-    }
+    map = &gw->config.bridge.mappings[slot];
 
-    return 0;
+    return (map->enabled && !mapping_mac_is_zero(map->leap_mac)) ? 1 : 0;
+
 }
 
+
+
 static void
+
 gateway_build_hello_from_entry(
+
     const LeapControllerPeerEntry* entry,
+
     uint32_t                       profile_id,
+
     LeapHelloReply*                hello_out)
+
 {
+
     uint32_t profile = profile_id;
 
+
+
     if (profile == 0u)
+
     {
+
         profile = LEAP_PROFILE_DIGITAL_IO_8X8;
+
     }
+
+
 
     memset(hello_out, 0, sizeof(*hello_out));
+
     if (entry == NULL)
+
     {
+
         hello_out->current_state      = (uint16_t)LEAP_STATE_CONFIGURED;
+
         hello_out->active_profile_id  = profile;
+
         hello_out->default_profile_id = profile;
+
         return;
+
     }
+
+
 
     hello_out->current_state      = entry->device_state;
+
     hello_out->active_profile_id  = entry->active_profile_id;
+
     hello_out->default_profile_id = entry->default_profile_id;
+
     memcpy(hello_out->active_owner_mac, entry->active_owner_mac, 6);
+
 }
 
-static void
-gateway_sync_stack_config(
-    LeapGatewayRuntime* gw,
-    const uint8_t       peer_mac[6],
-    uint32_t            profile_id)
-{
-    LeapControllerStackConfig* cfg;
 
-    if (gw == NULL || peer_mac == NULL)
+
+static int
+
+gateway_mac_is_zero(const uint8_t mac[6])
+
+{
+
+    static const uint8_t zero[6] = { 0u, 0u, 0u, 0u, 0u, 0u };
+
+
+
+    return memcmp(mac, zero, 6) == 0;
+
+}
+
+
+
+static const char*
+
+gateway_stack_phase_name(LeapControllerStackPhase phase)
+
+{
+
+    switch (phase)
+
     {
-        return;
+
+    case LEAP_CTRL_STACK_IDLE:
+
+        return "IDLE";
+
+    case LEAP_CTRL_STACK_DISCOVERING:
+
+        return "DISCOVERING";
+
+    case LEAP_CTRL_STACK_SELECT_PROFILE:
+
+        return "SELECT_PROFILE";
+
+    case LEAP_CTRL_STACK_OPEN_SESSION:
+
+        return "OPEN_SESSION";
+
+    case LEAP_CTRL_STACK_SET_STATE:
+
+        return "SET_STATE";
+
+    case LEAP_CTRL_STACK_OP:
+
+        return "OP";
+
+    case LEAP_CTRL_STACK_FAULT:
+
+        return "FAULT";
+
+    default:
+
+        return "UNKNOWN";
+
     }
 
-    cfg = &gw->controller.config;
-    memcpy(cfg->mgmt.controller_mac, gw->transport.local_mac, 6);
-    memcpy(cfg->target_peer_mac, peer_mac, 6);
-    cfg->single_peer_auto_select = 0;
-    cfg->bootstrap_lease_us      = 5000000u;
-    cfg->bootstrap_watchdog_us     = 500000u;
-    cfg->recv_timeout_ms           = 500;
-    cfg->pd.cycle_period_ms        = gw->config.cyclic_ms;
-    cfg->pd.use_exchange           = 1;
-    cfg->default_profile_id =
-        (profile_id != 0u) ? profile_id : LEAP_PROFILE_DIGITAL_IO_8X8;
 }
 
-static void
-gateway_sync_bridge_from_pd(
-    unsigned            mapping_index,
-    LeapPdControllerIo* pd_io,
-    int                 comm_ok)
+
+
+static const char*
+
+gateway_stack_status_name(LeapControllerStackStatus status)
+
 {
+
+    switch (status)
+
+    {
+
+    case LEAP_CTRL_STACK_OK:
+
+        return "OK";
+
+    case LEAP_CTRL_STACK_INVALID_ARG:
+
+        return "INVALID_ARG";
+
+    case LEAP_CTRL_STACK_IO_MISSING:
+
+        return "IO_MISSING";
+
+    case LEAP_CTRL_STACK_SEND_FAILED:
+
+        return "SEND_FAILED";
+
+    case LEAP_CTRL_STACK_RECV_TIMEOUT:
+
+        return "RECV_TIMEOUT";
+
+    case LEAP_CTRL_STACK_UNEXPECTED_REPLY:
+
+        return "UNEXPECTED_REPLY";
+
+    case LEAP_CTRL_STACK_MGMT_ERROR:
+
+        return "MGMT_ERROR";
+
+    case LEAP_CTRL_STACK_DIR_ERROR:
+
+        return "DIR_ERROR";
+
+    case LEAP_CTRL_STACK_DISC_ERROR:
+
+        return "DISC_ERROR";
+
+    case LEAP_CTRL_STACK_ABORTED:
+
+        return "ABORTED";
+
+    default:
+
+        return "ERROR";
+
+    }
+
+}
+
+
+
+static void
+
+gateway_drain_leap_rx(LeapRtemsTransport* transport)
+
+{
+
+    uint8_t scratch[256];
+
+    uint8_t src_mac[6];
+
+    size_t  payload_len;
+
+
+
+    if (transport == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    while (leap_rtems_transport_recv(
+
+               transport,
+
+               src_mac,
+
+               scratch,
+
+               sizeof(scratch),
+
+               &payload_len,
+
+               0) == 0)
+
+    {
+
+        /* drop stale DISC/MGMT/PD frames before bootstrap */
+
+    }
+
+}
+
+
+
+static void
+
+gateway_sync_hub_config(LeapGatewayRuntime* gw)
+
+{
+
+    LeapControllerStackConfig* def;
+
+
+
+    if (gw == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    def = &gw->session_hub.config.default_peer;
+
+    memcpy(def->mgmt.controller_mac, gw->transport.local_mac, 6);
+
+    def->bootstrap_lease_us        = 5000000u;
+
+    def->bootstrap_watchdog_us     = 500000u;
+
+    def->recv_timeout_ms           = 5000;
+
+    def->pd.cycle_period_ms        = gw->config.cyclic_ms;
+
+    def->pd.use_exchange           = 1;
+
+    def->pd.use_fixed_outputs      = 1;
+
+    def->pd.fixed_digital_outputs  = 0u;
+
+    def->single_peer_auto_select   = 0;
+
+    if (def->default_profile_id == 0u)
+
+    {
+
+        def->default_profile_id = LEAP_PROFILE_DIGITAL_IO_8X8;
+
+    }
+
+}
+
+
+
+static void
+
+gateway_sync_bridge_from_pd(
+
+    unsigned            mapping_index,
+
+    LeapPdControllerIo* pd_io,
+
+    int                 comm_ok)
+
+{
+
+    LeapControllerStack*       stack;
+
     const LeapPdControllerStats* stats;
+
     uint16_t                     outputs = 0u;
 
-    if (g_gateway.bridge.outputs_dirty)
+
+
+    stack = leap_controller_session_hub_stack(&g_gateway.session_hub, (int)mapping_index);
+
+    if (stack == NULL)
+
     {
-        (void)leap_eip_bridge_peer_outputs(
-            &g_gateway.bridge,
-            mapping_index,
-            &outputs);
-        (void)leap_controller_stack_pd_single_write(
-            &g_gateway.controller,
-            pd_io,
-            outputs);
-        g_gateway.bridge.outputs_dirty = 0;
+
+        return;
+
     }
 
-    stats = leap_pd_controller_stats(&g_gateway.controller.pd);
+
+
+    stats = leap_pd_controller_stats(&stack->pd);
+
+    (void)leap_eip_bridge_peer_outputs(&g_gateway.bridge, mapping_index, &outputs);
+
     leap_eip_bridge_update_peer_io(
+
         &g_gateway.bridge,
+
         mapping_index,
+
         stats != NULL ? stats->last_digital_inputs : 0u,
+
         outputs,
+
         LEAP_DIO_STATUS_OK,
+
         comm_ok);
+
+
+
+    (void)pd_io;
+
 }
+
+
 
 static void
-gateway_run_pending_discover(void)
+
+gateway_sync_pd_outputs_from_bridge(LeapGatewayRuntime* gw, unsigned mapping_index)
+
 {
-    int scan_ms;
 
-    scan_ms = g_gateway.discover_pending_ms;
-    if (scan_ms <= 0)
-    {
-        return;
-    }
+    LeapControllerStack* stack;
 
-    g_gateway.discover_pending_ms = 0;
-    (void)leap_controller_peer_table_discover(
-        &g_gateway.peer_table,
-        &g_gateway.controller_io,
-        scan_ms);
-}
+    uint16_t             outputs = 0u;
 
-int
-leap_gateway_leap_session_active(const LeapGatewayRuntime* gw)
-{
+
+
     if (gw == NULL)
-    {
-        return 0;
-    }
 
-    return (gw->leap_session.active != 0 &&
-            leap_controller_stack_get_phase(&gw->controller) == LEAP_CTRL_STACK_OP)
-               ? 1
-               : 0;
-}
-
-void
-leap_gateway_leap_session_disconnect(LeapGatewayRuntime* gw)
-{
-    if (gw == NULL)
     {
+
         return;
+
     }
 
-    if (gw->controller.peer_bound != 0 ||
-        leap_controller_stack_get_phase(&gw->controller) != LEAP_CTRL_STACK_IDLE)
-    {
-        (void)leap_controller_stack_release(&gw->controller, &gw->controller_io);
-    }
 
-    gw->leap_session.active          = 0;
-    gw->leap_session.mapping_index   = -1;
-    gw->leap_session.connect_pending = 0;
-    gw->leap_session.last_status     = LEAP_CTRL_STACK_OK;
-    gw->leap_session.retry_ticks     = 0u;
-    memset(gw->leap_session.peer_mac, 0, sizeof(gw->leap_session.peer_mac));
-}
 
-void
-leap_gateway_leap_session_request_connect(LeapGatewayRuntime* gw)
-{
-    if (gw == NULL)
+    stack = leap_controller_session_hub_stack(&gw->session_hub, (int)mapping_index);
+
+    if (stack == NULL)
+
     {
+
         return;
+
     }
 
-    gw->leap_session.connect_pending = 1;
-    gw->leap_session.retry_ticks     = 0u;
+
+
+    if (leap_eip_bridge_peer_outputs(&gw->bridge, mapping_index, &outputs) != 0)
+
+    {
+
+        return;
+
+    }
+
+
+
+    stack->pd.config.use_fixed_outputs     = 1;
+
+    stack->pd.config.fixed_digital_outputs = outputs;
+
 }
 
-int
-leap_gateway_leap_session_connect(LeapGatewayRuntime* gw)
+
+
+static void
+
+gateway_push_dirty_outputs(LeapGatewayRuntime* gw, const LeapPdControllerIo* pd_io)
+
 {
-    unsigned                  mapping_index;
-    uint8_t                   peer_mac[6];
-    uint32_t                  profile_id = 0u;
-    LeapHelloReply            hello;
+
+    unsigned i;
+
+
+
+    if (gw == NULL || !gw->bridge.outputs_dirty)
+
+    {
+
+        return;
+
+    }
+
+
+
+    for (i = 0u; i < gw->config.bridge.mapping_count; ++i)
+
+    {
+
+        LeapControllerStack* stack;
+
+        uint16_t             outputs = 0u;
+
+
+
+        if (!mapping_slot_enabled(gw, i))
+
+        {
+
+            continue;
+
+        }
+
+
+
+        if (leap_controller_session_hub_is_op(&gw->session_hub, (int)i) == 0)
+
+        {
+
+            continue;
+
+        }
+
+
+
+        stack = leap_controller_session_hub_stack(&gw->session_hub, (int)i);
+
+        if (stack == NULL)
+
+        {
+
+            continue;
+
+        }
+
+
+
+        if (leap_eip_bridge_peer_outputs(&gw->bridge, i, &outputs) != 0)
+
+        {
+
+            continue;
+
+        }
+
+
+
+        gateway_sync_pd_outputs_from_bridge(gw, i);
+
+        (void)leap_controller_stack_pd_single_write(stack, pd_io, outputs);
+
+    }
+
+
+
+    gw->bridge.outputs_dirty = 0;
+
+}
+
+
+
+static LeapControllerStackStatus
+
+gateway_bootstrap_mapping_slot(
+
+    LeapGatewayRuntime*          gw,
+
+    unsigned                     mapping_index,
+
+    const LeapEipBridgeMapping*  map)
+
+{
+
+    LeapHelloReply                 hello;
+
     const LeapControllerPeerEntry* entry;
-    LeapControllerStackStatus status;
-    int                       peer_index;
 
-    if (gw == NULL)
+    LeapControllerStackStatus      status;
+
+    int                            peer_index;
+
+    uint32_t                       profile_id;
+
+
+
+    if (gw == NULL || map == NULL || mapping_index >= LEAP_EIP_BRIDGE_MAX_MAPPINGS)
+
     {
-        return 0;
+
+        return LEAP_CTRL_STACK_INVALID_ARG;
+
     }
 
-    if (!gateway_find_enabled_mapping(
-            gw,
-            &mapping_index,
-            peer_mac,
-            &profile_id))
+
+
+    if (leap_controller_session_hub_is_op(&gw->session_hub, (int)mapping_index) != 0 &&
+
+        gw->session_hub.slots[mapping_index].in_use != 0 &&
+
+        memcmp(gw->session_hub.slots[mapping_index].peer_mac, map->leap_mac, 6) == 0)
+
     {
-        leap_gateway_leap_session_disconnect(gw);
-        return 0;
+
+        return LEAP_CTRL_STACK_OK;
+
     }
 
-    if (leap_gateway_leap_session_active(gw) &&
-        memcmp(gw->leap_session.peer_mac, peer_mac, 6) == 0 &&
-        gw->leap_session.mapping_index == (int)mapping_index)
+
+
+    if (gw->session_hub.slots[mapping_index].in_use != 0)
+
     {
-        return 1;
+
+        (void)leap_controller_session_hub_release(
+
+            &gw->session_hub,
+
+            (int)mapping_index,
+
+            &gw->controller_io);
+
     }
 
-    if (gw->leap_session.active != 0 ||
-        gw->controller.peer_bound != 0 ||
-        leap_controller_stack_get_phase(&gw->controller) != LEAP_CTRL_STACK_IDLE)
+
+
+    profile_id = map->profile_id;
+
+    if (profile_id == 0u)
+
     {
-        leap_gateway_leap_session_disconnect(gw);
+
+        profile_id = LEAP_PROFILE_DIGITAL_IO_8X8;
+
     }
 
-    gateway_sync_stack_config(gw, peer_mac, profile_id);
 
-    (void)leap_controller_peer_table_probe_peer(
-        &gw->peer_table,
-        &gw->controller_io,
-        peer_mac,
-        LEAP_CTRL_PEER_PROBE_TIMEOUT_MS);
 
-    entry = NULL;
-    peer_index = leap_controller_peer_table_find(&gw->peer_table, peer_mac);
-    if (peer_index >= 0)
+    gateway_sync_hub_config(gw);
+
+    gw->session_hub.config.default_peer.default_profile_id = profile_id;
+
+    memcpy(gw->session_hub.config.default_peer.target_peer_mac, map->leap_mac, 6);
+
+
+
     {
-        entry = leap_controller_peer_table_get(
+
+        LeapControllerPeerStatus probe_status;
+
+        int                      use_live_bootstrap = 0;
+
+
+
+        peer_index = leap_controller_peer_table_find(&gw->peer_table, map->leap_mac);
+
+        if (peer_index >= 0)
+
+        {
+
+            gw->peer_table.peers[peer_index].reachable = 0;
+
+        }
+
+
+
+        probe_status = leap_controller_peer_table_probe_peer(
+
             &gw->peer_table,
-            (unsigned)peer_index);
+
+            &gw->controller_io,
+
+            map->leap_mac,
+
+            LEAP_GATEWAY_BOOTSTRAP_PROBE_MS);
+
+
+
+        entry = NULL;
+
+        peer_index = leap_controller_peer_table_find(&gw->peer_table, map->leap_mac);
+
+        if (probe_status != LEAP_CTRL_PEER_OK ||
+
+            peer_index < 0)
+
+        {
+
+            use_live_bootstrap = 1;
+
+        }
+
+        else
+
+        {
+
+            entry = leap_controller_peer_table_get(
+
+                &gw->peer_table,
+
+                (unsigned)peer_index);
+
+            if (entry == NULL || entry->reachable == 0)
+
+            {
+
+                use_live_bootstrap = 1;
+
+            }
+
+        }
+
+
+
+        if (use_live_bootstrap)
+
+        {
+
+            printf(
+
+                LEAP_TS_FMT LEAP_ANSI_WARN
+
+                "Gateway: mapping %u live DISC bootstrap for %02x:%02x:%02x:%02x:%02x:%02x"
+
+                LEAP_ANSI_RESET "\n",
+
+                leap_rtems_uptime_str(),
+
+                mapping_index,
+
+                map->leap_mac[0],
+
+                map->leap_mac[1],
+
+                map->leap_mac[2],
+
+                map->leap_mac[3],
+
+                map->leap_mac[4],
+
+                map->leap_mac[5]);
+
+
+
+            status = leap_controller_session_hub_bootstrap_peer_live_at_slot(
+
+                &gw->session_hub,
+
+                &gw->controller_io,
+
+                map->leap_mac,
+
+                (int)mapping_index);
+
+        }
+
+        else
+
+        {
+
+            gateway_build_hello_from_entry(entry, profile_id, &hello);
+
+
+
+            status = leap_controller_session_hub_bootstrap_peer_at_slot(
+
+                &gw->session_hub,
+
+                &gw->controller_io,
+
+                map->leap_mac,
+
+                &hello,
+
+                (int)mapping_index);
+
+        }
+
     }
 
-    gateway_build_hello_from_entry(entry, profile_id, &hello);
 
-    status = leap_controller_stack_bootstrap_peer(
-        &gw->controller,
-        &gw->controller_io,
-        peer_mac,
-        &hello);
-    gw->leap_session.last_status = status;
 
     if (status != LEAP_CTRL_STACK_OK ||
-        leap_controller_stack_get_phase(&gw->controller) != LEAP_CTRL_STACK_OP)
+
+        leap_controller_session_hub_is_op(&gw->session_hub, (int)mapping_index) == 0)
+
     {
-        gw->leap_session.active        = 0;
-        gw->leap_session.mapping_index = -1;
+
+        LeapControllerStack*     failed_stack;
+        LeapControllerStackPhase phase = LEAP_CTRL_STACK_IDLE;
+
+        failed_stack = leap_controller_session_hub_stack(
+            &gw->session_hub,
+            (int)mapping_index);
+        if (failed_stack != NULL)
+        {
+            phase = leap_controller_stack_get_phase(failed_stack);
+        }
+
         printf(
+
             LEAP_TS_FMT LEAP_ANSI_WARN
-            "Gateway: LEAP bootstrap failed for mapped peer (status=%d phase=%u)" LEAP_ANSI_RESET "\n",
+
+            "Gateway: LEAP bootstrap failed mapping %u (%s, phase=%s)" LEAP_ANSI_RESET "\n",
+
             leap_rtems_uptime_str(),
-            (int)status,
-            (unsigned)leap_controller_stack_get_phase(&gw->controller));
-        return 0;
+
+            mapping_index,
+
+            gateway_stack_status_name(status),
+
+            gateway_stack_phase_name(phase));
+
+        if (entry != NULL)
+
+        {
+
+            if (gateway_mac_is_zero(entry->active_owner_mac))
+
+            {
+
+                printf(
+
+                    LEAP_TS_FMT "  peer HELLO: state=0x%04X profile=0x%08X owner=none"
+
+                    LEAP_ANSI_RESET "\n",
+
+                    leap_rtems_uptime_str(),
+
+                    (unsigned)entry->device_state,
+
+                    (unsigned)entry->active_profile_id);
+
+            }
+
+            else
+
+            {
+
+                printf(
+
+                    LEAP_TS_FMT
+
+                    "  peer HELLO: state=0x%04X profile=0x%08X owner=%02x:%02x:%02x:%02x:%02x:%02x"
+
+                    LEAP_ANSI_RESET "\n",
+
+                    leap_rtems_uptime_str(),
+
+                    (unsigned)entry->device_state,
+
+                    (unsigned)entry->active_profile_id,
+
+                    entry->active_owner_mac[0],
+
+                    entry->active_owner_mac[1],
+
+                    entry->active_owner_mac[2],
+
+                    entry->active_owner_mac[3],
+
+                    entry->active_owner_mac[4],
+
+                    entry->active_owner_mac[5]);
+
+            }
+
+        }
+
     }
 
-    memcpy(gw->leap_session.peer_mac, peer_mac, 6);
-    gw->leap_session.mapping_index = (int)mapping_index;
-    gw->leap_session.active        = 1;
-    gw->leap_session.retry_ticks   = 0u;
-    printf(
-        LEAP_TS_FMT LEAP_ANSI_OK
-        "Gateway: LEAP owner session OP with mapped peer" LEAP_ANSI_RESET "\n",
-        leap_rtems_uptime_str());
-    return 1;
+
+
+    return status;
+
 }
 
+
+
 static void
-leap_gateway_leap_session_task(rtems_task_argument ignored)
+
+gateway_release_unused_mapping_slots(LeapGatewayRuntime* gw)
+
 {
+
+    unsigned slot;
+
+
+
+    if (gw == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    for (slot = 0u; slot < LEAP_CTRL_MAX_PEERS; ++slot)
+
+    {
+
+        if (gw->session_hub.slots[slot].in_use == 0)
+
+        {
+
+            continue;
+
+        }
+
+
+
+        if (!mapping_slot_enabled(gw, slot))
+
+        {
+
+            (void)leap_controller_session_hub_release(
+
+                &gw->session_hub,
+
+                (int)slot,
+
+                &gw->controller_io);
+
+        }
+
+    }
+
+}
+
+
+
+static void
+
+gateway_run_pending_discover(void)
+
+{
+
+    int scan_ms;
+
+
+
+    scan_ms = g_gateway.discover_pending_ms;
+
+    if (scan_ms <= 0)
+
+    {
+
+        return;
+
+    }
+
+
+
+    g_gateway.discover_pending_ms = 0;
+
+    (void)leap_controller_peer_table_discover(
+
+        &g_gateway.peer_table,
+
+        &g_gateway.controller_io,
+
+        scan_ms);
+
+    printf(
+
+        LEAP_TS_FMT LEAP_ANSI_INFO
+
+        "Gateway: LEAP discover finished (%u peer(s))" LEAP_ANSI_RESET "\n",
+
+        leap_rtems_uptime_str(),
+
+        g_gateway.peer_table.count);
+
+}
+
+
+
+int
+
+leap_gateway_leap_session_active(const LeapGatewayRuntime* gw)
+
+{
+
+    if (gw == NULL)
+
+    {
+
+        return 0;
+
+    }
+
+
+
+    return (leap_controller_session_hub_count_op_peers(&gw->session_hub) > 0u) ? 1 : 0;
+
+}
+
+
+
+void
+
+leap_gateway_leap_session_disconnect(LeapGatewayRuntime* gw)
+
+{
+
+    if (gw == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    leap_controller_session_hub_release_all(&gw->session_hub, &gw->controller_io);
+
+    gw->leap_session.op_peer_count   = 0u;
+
+    gw->leap_session.connect_pending = 0;
+
+    gw->leap_session.last_status     = LEAP_CTRL_STACK_OK;
+
+    gw->leap_session.retry_ticks     = 0u;
+
+    gw->bridge.leap_comm_ok          = 0;
+
+}
+
+
+
+void
+
+leap_gateway_leap_session_request_connect(LeapGatewayRuntime* gw)
+
+{
+
+    if (gw == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    gw->leap_session.connect_pending = 1;
+
+    gw->leap_session.retry_ticks     = 0u;
+
+}
+
+
+
+void
+
+leap_gateway_leap_session_request_auto_connect(LeapGatewayRuntime* gw)
+
+{
+
+    unsigned i;
+
+
+
+    if (gw == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    for (i = 0u; i < gw->config.bridge.mapping_count; ++i)
+
+    {
+
+        if (mapping_slot_enabled(gw, i))
+
+        {
+
+            leap_gateway_leap_session_request_connect(gw);
+
+            return;
+
+        }
+
+    }
+
+}
+
+
+
+int
+
+leap_gateway_leap_session_connect(LeapGatewayRuntime* gw)
+
+{
+
+    unsigned                     i;
+
+    unsigned                     op_count = 0u;
+
+    LeapControllerStackStatus    last_status = LEAP_CTRL_STACK_OK;
+
+    int                          any_enabled = 0;
+
+
+
+    if (gw == NULL)
+
+    {
+
+        return 0;
+
+    }
+
+
+
+    gateway_drain_leap_rx(&gw->transport);
+
+    gateway_release_unused_mapping_slots(gw);
+
+
+
+    for (i = 0u; i < gw->config.bridge.mapping_count; ++i)
+
+    {
+
+        const LeapEipBridgeMapping* map = &gw->config.bridge.mappings[i];
+
+        LeapControllerStackStatus   status;
+
+
+
+        if (!mapping_slot_enabled(gw, i))
+
+        {
+
+            continue;
+
+        }
+
+
+
+        any_enabled = 1;
+
+        status = gateway_bootstrap_mapping_slot(gw, i, map);
+
+        last_status = status;
+
+
+
+        if (status == LEAP_CTRL_STACK_OK &&
+
+            leap_controller_session_hub_is_op(&gw->session_hub, (int)i) != 0)
+
+        {
+
+            gateway_sync_pd_outputs_from_bridge(gw, i);
+
+            op_count++;
+
+        }
+
+    }
+
+
+
+    gw->leap_session.last_status   = last_status;
+
+    gw->leap_session.op_peer_count = op_count;
+
+
+
+    if (op_count > 0u)
+
+    {
+
+        printf(
+
+            LEAP_TS_FMT LEAP_ANSI_OK
+
+            "Gateway: LEAP owner session OP with %u mapped peer(s)" LEAP_ANSI_RESET "\n",
+
+            leap_rtems_uptime_str(),
+
+            op_count);
+
+        return 1;
+
+    }
+
+
+
+    if (any_enabled)
+
+    {
+
+        gw->bridge.leap_comm_ok = 0;
+
+    }
+
+    else
+
+    {
+
+        leap_gateway_leap_session_disconnect(gw);
+
+    }
+
+
+
+    return 0;
+
+}
+
+
+
+static void
+
+gateway_leap_session_loop(void)
+
+{
+
     LeapPdControllerIo pd_io;
 
-    (void)ignored;
+
 
     leap_gateway_pd_io_init(&pd_io, &g_gateway.transport);
 
+
+
     for (;;)
+
     {
-        rtems_interval delay_ticks;
+
+        unsigned       delay_ms;
+
+        unsigned       i;
+
+        int            any_comm_ok = 0;
+
+
 
         if (g_leap_session_stop != 0)
+
         {
+
             break;
+
         }
+
+
 
         gateway_run_pending_discover();
 
+
+
         if (g_gateway.leap_session.connect_pending != 0)
+
         {
+
             g_gateway.leap_session.connect_pending = 0;
+
             (void)leap_gateway_leap_session_connect(&g_gateway);
+
         }
+
+
+
+        gateway_push_dirty_outputs(&g_gateway, &pd_io);
+
+
 
         if (leap_gateway_leap_session_active(&g_gateway))
+
         {
-            LeapPdControllerStatus pd_status;
-            unsigned               mapping_index;
 
-            mapping_index = (unsigned)g_gateway.leap_session.mapping_index;
+            for (i = 0u; i < g_gateway.config.bridge.mapping_count; ++i)
 
-            pd_status = leap_pd_controller_run_one_cycle(
-                &g_gateway.controller.pd,
-                &g_gateway.controller.mgmt,
-                &pd_io,
-                g_gateway.leap_session.peer_mac,
-                (volatile int*)&g_leap_session_stop,
-                0);
+            {
 
-            gateway_sync_bridge_from_pd(
-                mapping_index,
-                &pd_io,
-                pd_status == LEAP_PD_CTRL_OK);
+                LeapPdControllerStatus       pd_status;
 
-            delay_ticks =
-                RTEMS_MILLISECONDS_TO_TICKS(g_gateway.config.cyclic_ms);
+                LeapControllerStack*         stack;
+
+                const LeapPdControllerStats* stats_before;
+
+                uint64_t                     replies_before;
+
+
+
+                if (!mapping_slot_enabled(&g_gateway, i))
+
+                {
+
+                    continue;
+
+                }
+
+
+
+                if (leap_controller_session_hub_is_op(&g_gateway.session_hub, (int)i) == 0)
+
+                {
+
+                    continue;
+
+                }
+
+
+
+                stack = leap_controller_session_hub_stack(&g_gateway.session_hub, (int)i);
+
+                stats_before = (stack != NULL) ? leap_pd_controller_stats(&stack->pd) : NULL;
+
+                replies_before = (stats_before != NULL) ? stats_before->exchange_replies : 0u;
+
+
+
+                gateway_sync_pd_outputs_from_bridge(&g_gateway, i);
+
+
+
+                pd_status = leap_controller_session_hub_run_one_cycle(
+
+                    &g_gateway.session_hub,
+
+                    (int)i,
+
+                    &pd_io,
+
+                    (volatile int*)&g_leap_session_stop);
+
+
+
+                {
+
+                    const LeapPdControllerStats* stats_after;
+
+                    uint64_t                     replies_after;
+
+                    int                          got_exchange_reply;
+
+
+
+                    stats_after = (stack != NULL) ? leap_pd_controller_stats(&stack->pd) : NULL;
+
+                    replies_after = (stats_after != NULL) ? stats_after->exchange_replies : replies_before;
+
+                    got_exchange_reply =
+
+                        (pd_status == LEAP_PD_CTRL_OK) && (replies_after > replies_before);
+
+
+
+                    gateway_sync_bridge_from_pd(
+
+                        i,
+
+                        &pd_io,
+
+                        got_exchange_reply);
+
+
+
+                    if (got_exchange_reply)
+
+                    {
+
+                        any_comm_ok = 1;
+
+                    }
+
+                }
+
+            }
+
+
+
+            g_gateway.bridge.leap_comm_ok = any_comm_ok;
+
+
+
+            g_gateway.leap_session.op_peer_count =
+
+                leap_controller_session_hub_count_op_peers(&g_gateway.session_hub);
+
+
+
+            delay_ms = g_gateway.config.cyclic_ms;
+
         }
+
         else
+
         {
-            delay_ticks = RTEMS_MILLISECONDS_TO_TICKS(50);
+
+            delay_ms = 50u;
+
         }
 
-        rtems_task_wake_after(delay_ticks);
+
+
+        gateway_session_sleep_ms(delay_ms);
+
     }
+
+}
+
+#if defined(__rtems__)
+
+static void
+
+leap_gateway_leap_session_task(rtems_task_argument ignored)
+
+{
+
+    (void)ignored;
+
+    gateway_leap_session_loop();
 
     rtems_task_exit();
+
 }
+
+#else
+
+static void*
+
+leap_gateway_leap_session_thread(void* arg)
+
+{
+
+    (void)arg;
+
+    gateway_leap_session_loop();
+
+    return NULL;
+
+}
+
+#endif
+
+
 
 int
+
 leap_gateway_leap_session_start_task(void)
+
 {
-    rtems_status_code sc;
 
-    if (g_leap_session_task != RTEMS_INVALID_ID)
+#if !defined(__rtems__)
+
+    if (g_leap_session_thread_started)
+
     {
+
         return 0;
+
     }
 
-    sc = rtems_task_create(
-        rtems_build_name('L', 'E', 'A', 'P'),
-        LEAP_GATEWAY_SESSION_TASK_PRIO,
-        LEAP_GATEWAY_SESSION_TASK_STACK,
-        RTEMS_DEFAULT_MODES,
-        RTEMS_DEFAULT_ATTRIBUTES,
-        &g_leap_session_task);
-    if (sc != RTEMS_SUCCESSFUL)
+
+
+    if (pthread_create(
+
+            &g_leap_session_thread,
+
+            NULL,
+
+            leap_gateway_leap_session_thread,
+
+            NULL) != 0)
+
     {
+
         printf(
+
             LEAP_TS_FMT LEAP_ANSI_ERR
-            "Gateway: LEAP session task create failed: %s" LEAP_ANSI_RESET "\n",
-            leap_rtems_uptime_str(),
-            rtems_status_text(sc));
+
+            "Gateway: LEAP session thread create failed" LEAP_ANSI_RESET "\n",
+
+            leap_rtems_uptime_str());
+
         return -1;
+
     }
 
-    sc = rtems_task_start(g_leap_session_task, leap_gateway_leap_session_task, 0);
-    if (sc != RTEMS_SUCCESSFUL)
-    {
-        printf(
-            LEAP_TS_FMT LEAP_ANSI_ERR
-            "Gateway: LEAP session task start failed: %s" LEAP_ANSI_RESET "\n",
-            leap_rtems_uptime_str(),
-            rtems_status_text(sc));
-        (void)rtems_task_delete(g_leap_session_task);
-        g_leap_session_task = RTEMS_INVALID_ID;
-        return -1;
-    }
+
+
+    g_leap_session_thread_started = 1;
 
     printf(
+
         LEAP_TS_FMT LEAP_ANSI_OK "Gateway: LEAP session task started" LEAP_ANSI_RESET "\n",
+
         leap_rtems_uptime_str());
+
     return 0;
+
+#else
+
+    rtems_status_code sc;
+
+
+
+    if (g_leap_session_task != RTEMS_INVALID_ID)
+
+    {
+
+        return 0;
+
+    }
+
+
+
+    sc = rtems_task_create(
+
+        rtems_build_name('L', 'E', 'A', 'P'),
+
+        LEAP_GATEWAY_SESSION_TASK_PRIO,
+
+        LEAP_GATEWAY_SESSION_TASK_STACK,
+
+        RTEMS_DEFAULT_MODES,
+
+        RTEMS_DEFAULT_ATTRIBUTES,
+
+        &g_leap_session_task);
+
+    if (sc != RTEMS_SUCCESSFUL)
+
+    {
+
+        printf(
+
+            LEAP_TS_FMT LEAP_ANSI_ERR
+
+            "Gateway: LEAP session task create failed: %s" LEAP_ANSI_RESET "\n",
+
+            leap_rtems_uptime_str(),
+
+            rtems_status_text(sc));
+
+        return -1;
+
+    }
+
+
+
+    sc = rtems_task_start(g_leap_session_task, leap_gateway_leap_session_task, 0);
+
+    if (sc != RTEMS_SUCCESSFUL)
+
+    {
+
+        printf(
+
+            LEAP_TS_FMT LEAP_ANSI_ERR
+
+            "Gateway: LEAP session task start failed: %s" LEAP_ANSI_RESET "\n",
+
+            leap_rtems_uptime_str(),
+
+            rtems_status_text(sc));
+
+        (void)rtems_task_delete(g_leap_session_task);
+
+        g_leap_session_task = RTEMS_INVALID_ID;
+
+        return -1;
+
+    }
+
+
+
+    printf(
+
+        LEAP_TS_FMT LEAP_ANSI_OK "Gateway: LEAP session task started" LEAP_ANSI_RESET "\n",
+
+        leap_rtems_uptime_str());
+
+    return 0;
+
+#endif /* __rtems__ */
+
 }
+
+

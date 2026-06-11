@@ -135,6 +135,7 @@ leap_eip_bridge_set_config(
     }
     memset(state->input_assembly, 0, sizeof(state->input_assembly));
     memset(state->output_assembly, 0, sizeof(state->output_assembly));
+    memset(state->peer_io, 0, sizeof(state->peer_io));
     state->outputs_dirty = 0;
 }
 
@@ -255,7 +256,10 @@ leap_eip_bridge_update_peer_io(
     state->peer_io[mapping_index].digital_outputs = digital_outputs;
     state->peer_io[mapping_index].io_status = io_status;
     state->peer_io[mapping_index].comm_ok = comm_ok;
-    state->leap_comm_ok = comm_ok;
+    if (comm_ok)
+    {
+        state->leap_comm_ok = 1;
+    }
 }
 
 int
@@ -264,12 +268,24 @@ leap_eip_bridge_peer_outputs(
     unsigned                  mapping_index,
     uint16_t*                 outputs_out)
 {
+    const LeapEipBridgeMapping* map;
+
     if (state == NULL || outputs_out == NULL ||
         mapping_index >= state->config.mapping_count)
     {
         return -1;
     }
 
-    *outputs_out = state->peer_io[mapping_index].digital_outputs;
+    map = &state->config.mappings[mapping_index];
+    if (!map->enabled)
+    {
+        return -1;
+    }
+
+    *outputs_out = read_le16(
+        state->output_assembly,
+        map->output.assembly_byte,
+        map->output.bit,
+        map->output.width_bits);
     return 0;
 }

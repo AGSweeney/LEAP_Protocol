@@ -103,6 +103,16 @@ LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer_at_slot(
     int                           slot);
 
 /*
+ * Bootstrap using live DISC HELLO (no synthetic cached HELLO). Use when probe
+ * fails or the peer table entry may be stale after a controller reboot.
+ */
+LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer_live_at_slot(
+    LeapControllerSessionHub*     hub,
+    const LeapControllerStackIo*  io,
+    const uint8_t*                peer_mac,
+    int                           slot);
+
+/*
  * Bootstrap every entry in a discovery table (best-effort; continues on failure).
  * bootstrapped_count receives the number of peers now in OP.
  */

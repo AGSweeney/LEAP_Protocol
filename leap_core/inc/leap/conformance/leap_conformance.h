@@ -65,6 +65,12 @@ typedef struct LeapConformanceIo
     int (*locate)(void* user_ctx, const uint8_t* peer_mac,
                   unsigned duration_ms, int* ok_out);
 
+    /*
+     * Optional: MAC bound by bootstrap/cyclic when Expected peer MAC was unset.
+     * Returns 0 with *has_out=1 when a session peer is known.
+     */
+    int (*get_session_peer_mac)(void* user_ctx, uint8_t* mac_out, int* has_out);
+
     int (*snapshot)(void* user_ctx, LeapConformanceMetrics* out);
     void (*cancel)(void* user_ctx);
     int (*is_cancelled)(void* user_ctx);

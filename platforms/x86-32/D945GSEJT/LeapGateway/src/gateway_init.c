@@ -24,6 +24,7 @@
 #endif
 
 #include "leap/leap_build_info.h"
+#include "leap/leap_controller_session_hub.h"
 #include "leap/leap_controller_stack.h"
 #include "leap/leap_gateway_config.h"
 #include "leap/leap_protocol.h"
@@ -37,8 +38,8 @@
 rtems_task
 Init(rtems_task_argument ignored)
 {
-    LeapControllerStackConfig stack_config;
-    rtems_status_code         sc;
+    LeapControllerSessionHubConfig hub_config;
+    rtems_status_code              sc;
 
     (void)ignored;
 
@@ -48,6 +49,11 @@ Init(rtems_task_argument ignored)
         leap_rtems_uptime_str());
 
     leap_gateway_runtime_init();
+
+    /*
+     * Mount boot CF before libbsd — legacy pc386 IDE reads can fail once
+     * the BSD stack has initialized on some ICH7 + CF-via-IDE boards.
+     */
     if (leap_gateway_storage_init() == 0)
     {
         (void)leap_gateway_config_load_file(
@@ -59,20 +65,9 @@ Init(rtems_task_argument ignored)
     {
         printf(
             LEAP_TS_FMT LEAP_ANSI_WARN
-            "Gateway: no config volume - Web UI Apply works; Save needs CF/IDE boot media" LEAP_ANSI_RESET "\n",
+            "Gateway: no config volume — IDE could not mount /cf (Save disabled)" LEAP_ANSI_RESET "\n",
             leap_rtems_uptime_str());
     }
-
-    /* Emergency recovery profile: always boot on known network settings. */
-    g_gateway.config.network.mode = LEAP_GATEWAY_NIC_SINGLE;
-    g_gateway.config.network.dhcp = 0;
-    g_gateway.config.network.auto_ifname = 1;
-    strncpy(g_gateway.config.network.ifname, "re0", sizeof(g_gateway.config.network.ifname) - 1u);
-    g_gateway.config.network.ifname[sizeof(g_gateway.config.network.ifname) - 1u] = '\0';
-    strncpy(g_gateway.config.network.ipv4_addr, "192.168.1.2", sizeof(g_gateway.config.network.ipv4_addr) - 1u);
-    g_gateway.config.network.ipv4_addr[sizeof(g_gateway.config.network.ipv4_addr) - 1u] = '\0';
-    strncpy(g_gateway.config.network.ipv4_mask, "255.255.255.0", sizeof(g_gateway.config.network.ipv4_mask) - 1u);
-    g_gateway.config.network.ipv4_mask[sizeof(g_gateway.config.network.ipv4_mask) - 1u] = '\0';
 
     sc = rtems_bsd_initialize();
     if (sc != RTEMS_SUCCESSFUL)
@@ -82,7 +77,22 @@ Init(rtems_task_argument ignored)
     }
 
     rtems_task_wake_after(2);
+    sleep(2);
     (void)rtems_bsd_ifconfig_lo0();
+
+    if (!leap_gateway_storage_ready() &&
+        leap_gateway_storage_retry_after_pci() == 0)
+    {
+        (void)leap_gateway_config_load_file(
+            &g_gateway.config,
+            LEAP_GATEWAY_CONFIG_PATH);
+        leap_eip_bridge_set_config(&g_gateway.bridge, &g_gateway.config.bridge);
+        printf(
+            LEAP_TS_FMT LEAP_ANSI_OK
+            "Gateway: config loaded from %s after PCI storage retry" LEAP_ANSI_RESET "\n",
+            leap_rtems_uptime_str(),
+            LEAP_GATEWAY_CONFIG_PATH);
+    }
 
     if (leap_gateway_net_bring_up(&g_gateway) != 0)
     {
@@ -93,16 +103,21 @@ Init(rtems_task_argument ignored)
         &g_gateway.controller_io,
         &g_gateway.transport);
 
-    memset(&stack_config, 0, sizeof(stack_config));
+    memset(&hub_config, 0, sizeof(hub_config));
     memcpy(
-        stack_config.mgmt.controller_mac,
+        hub_config.default_peer.mgmt.controller_mac,
         g_gateway.transport.local_mac,
         6);
-    stack_config.bootstrap_lease_us = 5000000u;
-    stack_config.pd.cycle_period_ms = g_gateway.config.cyclic_ms;
-    stack_config.pd.use_exchange = 1;
-    stack_config.default_profile_id = LEAP_PROFILE_DIGITAL_IO_8X8;
-    leap_controller_stack_init(&g_gateway.controller, &stack_config);
+    hub_config.default_peer.bootstrap_lease_us    = 5000000u;
+    hub_config.default_peer.bootstrap_watchdog_us = 500000u;
+    hub_config.default_peer.recv_timeout_ms       = 5000;
+    hub_config.default_peer.pd.cycle_period_ms     = g_gateway.config.cyclic_ms;
+    hub_config.default_peer.pd.use_exchange        = 1;
+    hub_config.default_peer.pd.use_fixed_outputs   = 1;
+    hub_config.default_peer.pd.fixed_digital_outputs = 0u;
+    hub_config.default_peer.default_profile_id       = LEAP_PROFILE_DIGITAL_IO_8X8;
+    hub_config.skip_foreign_owned_peers              = 1;
+    leap_controller_session_hub_init(&g_gateway.session_hub, &hub_config);
 
 #if LEAP_GATEWAY_OPENER_ENABLE
     opener_init(leap_gateway_eip_ifname(&g_gateway.config));
@@ -131,15 +146,13 @@ Init(rtems_task_argument ignored)
     if (leap_gateway_leap_session_start_task() != 0)
     {
         printf(
-            LEAP_TS_FMT LEAP_ANSI_ERR "Gateway: LEAP session task failed" LEAP_ANSI_RESET "\n",
+            LEAP_TS_FMT LEAP_ANSI_WARN
+            "Gateway: LEAP scan/connect unavailable (session task failed)" LEAP_ANSI_RESET "\n",
             leap_rtems_uptime_str());
     }
     else
     {
-        printf(
-            LEAP_TS_FMT LEAP_ANSI_INFO
-            "Gateway: LEAP autoconnect disabled - use Web UI Connect LEAP when ready" LEAP_ANSI_RESET "\n",
-            leap_rtems_uptime_str());
+        leap_gateway_leap_session_request_auto_connect(&g_gateway);
     }
 
     for (;;)
@@ -170,15 +183,14 @@ Init(rtems_task_argument ignored)
 #define CONFIGURE_APPLICATION_NEEDS_ZERO_DRIVER
 #define CONFIGURE_APPLICATION_NEEDS_LIBBLOCK
 
-#ifdef RTEMS_BSP_HAS_IDE_DRIVER
+/* pc386 /dev/hda for CF on ICH7 SATA0 legacy — required for /cf dosfs mount. */
 #define CONFIGURE_APPLICATION_NEEDS_IDE_DRIVER
-#endif
 
 #define CONFIGURE_FILESYSTEM_DOSFS
 
 #define CONFIGURE_MAXIMUM_FILE_DESCRIPTORS 256
+#define CONFIGURE_MAXIMUM_DRIVERS 32
 #define CONFIGURE_MAXIMUM_USER_EXTENSIONS 1
-#define CONFIGURE_MAXIMUM_TASKS 12
 #define CONFIGURE_UNLIMITED_ALLOCATION_SIZE 32
 #define CONFIGURE_UNLIMITED_OBJECTS
 #define CONFIGURE_UNIFIED_WORK_AREAS

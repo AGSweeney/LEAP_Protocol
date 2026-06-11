@@ -331,9 +331,17 @@ Init(rtems_task_argument ignored)
 					    result.diag_payload_length);
 				}
 			}
+			else if (status == LEAP_DEVICE_STACK_MGMT_ERROR &&
+			         result.service_id == (uint16_t)LEAP_SERVICE_MGMT &&
+			         result.frame.header.message_type == LEAP_MGMT_OWNER_RELEASE &&
+			         stack.mgmt.owner_active == 0u)
+			{
+				/* Idempotent RELEASE with no owner — no error reply. */
+			}
 			else if (status == LEAP_DEVICE_STACK_PD_REJECTED ||
 			         status == LEAP_DEVICE_STACK_DIR_ERROR ||
-			         status == LEAP_DEVICE_STACK_DIAG_ERROR)
+			         status == LEAP_DEVICE_STACK_DIAG_ERROR ||
+			         status == LEAP_DEVICE_STACK_MGMT_ERROR)
 			{
 				printf(
 				    LEAP_TS_FMT LEAP_ANSI_ERR "LEAP service error: status=%d svc=0x%04X msg=0x%04X err=0x%04X state=0x%04X" LEAP_ANSI_RESET "\n",

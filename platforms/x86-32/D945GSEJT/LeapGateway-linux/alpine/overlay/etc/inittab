@@ -1,0 +1,8 @@
+# LeapOS-Gateway: serial console for D945GSEJT COM1 headless bring-up
+::sysinit:/sbin/openrc sysinit
+::sysinit:/sbin/openrc boot
+::sysinit:/bin/sh -c '/bin/mount -a 2>/dev/null; /bin/mkdir -p /cf /dev/pts /dev/shm'
+::wait:/sbin/openrc default
+::respawn:/sbin/getty -L ttyS0 115200 vt100
+::respawn:/sbin/getty -L 38400 tty1
+::shutdown:/sbin/openrc shutdown

@@ -765,14 +765,12 @@ static LeapControllerStackStatus leap_ctrl_stack_on_hello_reply(
 
         if (hello->current_state == (uint16_t)LEAP_STATE_OP)
         {
-            stack->phase       = LEAP_CTRL_STACK_FAULT;
-            stack->last_status = LEAP_CTRL_STACK_MGMT_ERROR;
-            if (event != NULL)
-            {
-                event->status = LEAP_CTRL_STACK_MGMT_ERROR;
-                event->phase  = stack->phase;
-            }
-            return LEAP_CTRL_STACK_MGMT_ERROR;
+            return leap_ctrl_stack_send_open_session(
+                stack,
+                io,
+                event,
+                (uint16_t)(LEAP_OPEN_FLAG_REQUEST_OWNER |
+                             LEAP_OPEN_FLAG_STEAL_EXPIRED));
         }
     }
 
@@ -1231,6 +1229,21 @@ LeapControllerStackStatus leap_controller_stack_step(
                 event->phase  = stack->phase;
             }
             return LEAP_CTRL_STACK_MGMT_ERROR;
+        }
+
+        if (stack->mgmt.peer_device_state == (uint16_t)LEAP_STATE_OP)
+        {
+            stack->mgmt.state  = LEAP_MGMT_CTRL_OP;
+            stack->phase       = LEAP_CTRL_STACK_OP;
+            stack->last_status = LEAP_CTRL_STACK_OK;
+            leap_ctrl_stack_on_op_entered(stack);
+            if (event != NULL)
+            {
+                event->status = LEAP_CTRL_STACK_OK;
+                event->phase  = stack->phase;
+                event->flags |= LEAP_CTRL_STACK_FLAG_OP_ENTERED;
+            }
+            return LEAP_CTRL_STACK_OK;
         }
 
         payload_length = leap_mgmt_controller_build_set_state(

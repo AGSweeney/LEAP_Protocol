@@ -223,6 +223,55 @@ LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer_at_slot(
     return LEAP_CTRL_STACK_OK;
 }
 
+LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer_live_at_slot(
+    LeapControllerSessionHub*     hub,
+    const LeapControllerStackIo*  io,
+    const uint8_t*                peer_mac,
+    int                           slot)
+{
+    LeapControllerStackStatus status;
+
+    if (hub == NULL || io == NULL || peer_mac == NULL ||
+        leap_ctrl_hub_mac_is_zero(peer_mac))
+    {
+        return LEAP_CTRL_STACK_INVALID_ARG;
+    }
+
+    if (slot < 0 || (unsigned)slot >= LEAP_CTRL_MAX_PEERS)
+    {
+        return LEAP_CTRL_STACK_INVALID_ARG;
+    }
+
+    if (leap_controller_session_hub_find(hub, peer_mac) >= 0)
+    {
+        return LEAP_CTRL_STACK_UNEXPECTED_REPLY;
+    }
+
+    if (hub->slots[slot].in_use != 0)
+    {
+        return LEAP_CTRL_STACK_ABORTED;
+    }
+
+    leap_controller_stack_init(
+        &hub->slots[slot].stack,
+        &hub->config.default_peer);
+    memcpy(hub->slots[slot].peer_mac, peer_mac, 6);
+    hub->slots[slot].in_use = 1;
+    hub->active_count++;
+
+    status = leap_controller_stack_bootstrap(
+        &hub->slots[slot].stack,
+        io,
+        NULL);
+    if (status != LEAP_CTRL_STACK_OK)
+    {
+        leap_ctrl_hub_free_slot(hub, slot);
+        return status;
+    }
+
+    return LEAP_CTRL_STACK_OK;
+}
+
 LeapControllerStackStatus leap_controller_session_hub_bootstrap_peer(
     LeapControllerSessionHub*     hub,
     const LeapControllerStackIo*  io,

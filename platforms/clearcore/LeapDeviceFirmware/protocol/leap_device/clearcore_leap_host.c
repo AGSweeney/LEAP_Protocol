@@ -26,6 +26,10 @@
 
 #include "clearcore_leap_trace.h"
 
+#include "clearcore_leap_identity.h"
+
+#include "clearcore_leap_locate.h"
+
 
 
 #include "leap/leap_device_host_perf.h"
@@ -34,7 +38,11 @@
 
 #include "leap/leap_dir_device.h"
 
+#include "leap/leap_disc_device.h"
+
 #include "leap/leap_frame.h"
+
+#include "leap/leap_mgmt_device.h"
 
 #include "leap/leap_pd_device.h"
 
@@ -446,6 +454,24 @@ static void clearcore_leap_log_status(
             result->error_code);
         clearcore_leap_trace_queue(line);
         break;
+    case LEAP_DEVICE_STACK_DISC_ERROR:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: DISC error msg=0x%04X status=0x%04X",
+            result->frame.header.message_type,
+            result->error_code);
+        clearcore_leap_trace_queue(line);
+        break;
+    case LEAP_DEVICE_STACK_MGMT_ERROR:
+        (void)snprintf(
+            line,
+            sizeof(line),
+            "LEAP: MGMT error msg=0x%04X status=0x%04X",
+            result->frame.header.message_type,
+            result->error_code);
+        clearcore_leap_trace_queue(line);
+        break;
     case LEAP_DEVICE_STACK_UNSUPPORTED_SERVICE:
         (void)snprintf(
             line,
@@ -491,7 +517,28 @@ static void clearcore_leap_handle_result(
 
         clearcore_leap_apply_result(result);
 
+        if (result->service_id == (uint16_t)LEAP_SERVICE_DISC &&
+            result->frame.header.message_type == LEAP_DISC_LOCATE_DEVICE &&
+            result->frame.payload_length >= sizeof(LeapLocateDeviceRequest))
+        {
+            const LeapLocateDeviceRequest *req =
+                (const LeapLocateDeviceRequest *)result->frame.payload;
 
+            if ((req->flags & LEAP_LOCATE_FLAG_CANCEL) != 0u)
+            {
+                clearcore_leap_locate_start(0u, 0u, 1);
+            }
+            else
+            {
+                uint16_t accepted_ms =
+                    leap_disc_clamp_locate_duration_ms(req->duration_ms);
+
+                clearcore_leap_locate_start(
+                    (uint32_t)accepted_ms * 1000u,
+                    req->pattern,
+                    0);
+            }
+        }
 
         if ((result->flags & LEAP_DEVICE_STACK_FLAG_DISC_HAS_REPLY) != 0u)
 
@@ -703,6 +750,60 @@ static void clearcore_leap_handle_result(
             result->frame.header.message_type,
 
             result->error_code);
+
+        clearcore_leap_log_status(status, result);
+
+    }
+
+    else if (status == LEAP_DEVICE_STACK_DISC_ERROR)
+
+    {
+
+        clearcore_leap_send_error_reply(
+
+            netif,
+
+            src_mac,
+
+            result,
+
+            (uint16_t)LEAP_SERVICE_DISC,
+
+            result->frame.header.message_type,
+
+            result->error_code);
+
+        clearcore_leap_log_status(status, result);
+
+    }
+
+    else if (status == LEAP_DEVICE_STACK_MGMT_ERROR)
+
+    {
+
+        if (result->service_id == (uint16_t)LEAP_SERVICE_MGMT &&
+            result->frame.header.message_type == LEAP_MGMT_OWNER_RELEASE &&
+            g_stack.mgmt.owner_active == 0u)
+        {
+            /* Idempotent RELEASE with no active owner. */
+        }
+        else if (result->error_code != 0u &&
+                 result->error_code != (uint16_t)LEAP_STATUS_OK)
+        {
+            clearcore_leap_send_error_reply(
+
+                netif,
+
+                src_mac,
+
+                result,
+
+                (uint16_t)LEAP_SERVICE_MGMT,
+
+                result->frame.header.message_type,
+
+                result->error_code);
+        }
 
         clearcore_leap_log_status(status, result);
 
@@ -1022,11 +1123,9 @@ int clearcore_leap_host_init(struct netif *netif)
 
 
 
-    memcpy(g_stack.dir.config.identity.primary_mac, netif->hwaddr, 6);
+    clearcore_leap_identity_apply(&g_stack, netif);
 
-    memcpy(g_stack.disc.config.identity.primary_mac, netif->hwaddr, 6);
-
-    leap_dir_device_sync_disc(&g_stack.dir, &g_stack.disc);
+    clearcore_leap_locate_init();
 
     leap_mgmt_device_on_transport_ready(&g_stack.mgmt);
 
@@ -1188,7 +1287,7 @@ void clearcore_leap_host_cyclic(void)
 
     (void)leap_device_stack_tick(&g_stack, now_us, &tick_flags);
 
-
+    clearcore_leap_locate_update(now_us);
 
     if ((tick_flags & LEAP_DEVICE_STACK_FLAG_SAFE_STATE_ENTERED) != 0u)
 

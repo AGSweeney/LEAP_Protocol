@@ -16,14 +16,8 @@ MODE="${1:-all}"
 bash "$SCRIPT_DIR/check-deps.sh"
 
 build_cf_images() {
-	if [ "$(id -u)" -eq 0 ]; then
-		bash "$SCRIPT_DIR/make-cf-image.sh" device
-		bash "$SCRIPT_DIR/make-cf-image.sh" gateway
-	else
-		echo "Building CF images (requires sudo for loop mount)..."
-		sudo IMAGE_MB="${IMAGE_MB:-128}" bash "$SCRIPT_DIR/make-cf-image.sh" device
-		sudo IMAGE_MB="${IMAGE_MB:-128}" bash "$SCRIPT_DIR/make-cf-image.sh" gateway
-	fi
+	bash "$SCRIPT_DIR/make-cf-image.sh" device
+	bash "$SCRIPT_DIR/make-cf-image.sh" gateway
 }
 
 case "$MODE" in
@@ -60,19 +54,11 @@ case "$MODE" in
         ;;
     cf-device)
         bash "$SCRIPT_DIR/build-leap-port.sh"
-        if [ "$(id -u)" -eq 0 ]; then
-            bash "$SCRIPT_DIR/make-cf-image.sh" device
-        else
-            sudo IMAGE_MB="${IMAGE_MB:-128}" bash "$SCRIPT_DIR/make-cf-image.sh" device
-        fi
+        bash "$SCRIPT_DIR/make-cf-image.sh" device
         ;;
     cf-gateway)
         bash "$SCRIPT_DIR/build-leap-eip-gateway.sh"
-        if [ "$(id -u)" -eq 0 ]; then
-            bash "$SCRIPT_DIR/make-cf-image.sh" gateway
-        else
-            sudo IMAGE_MB="${IMAGE_MB:-128}" bash "$SCRIPT_DIR/make-cf-image.sh" gateway
-        fi
+        bash "$SCRIPT_DIR/make-cf-image.sh" gateway
         ;;
     all)
         bash "$SCRIPT_DIR/build-leap-port.sh"

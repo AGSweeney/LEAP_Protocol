@@ -179,7 +179,41 @@ typedef struct LeapConformanceRunState
 {
     LeapConformanceDeviceCaps device_caps;
     int                       device_caps_valid;
+    uint8_t                   resolved_peer_mac[6];
+    int                       has_resolved_peer_mac;
 } LeapConformanceRunState;
+
+static int leap_conf_resolve_peer_mac(
+    const LeapConformanceRunConfig* config,
+    const LeapConformanceRunState*  run_state,
+    const LeapConformanceIo*        io,
+    uint8_t                         mac_out[6])
+{
+    if (config != NULL && config->has_peer_mac)
+    {
+        memcpy(mac_out, config->peer_mac, 6);
+        return 1;
+    }
+
+    if (run_state != NULL && run_state->has_resolved_peer_mac)
+    {
+        memcpy(mac_out, run_state->resolved_peer_mac, 6);
+        return 1;
+    }
+
+    if (io != NULL && io->get_session_peer_mac != NULL)
+    {
+        int has_session = 0;
+
+        if (io->get_session_peer_mac(io->user_ctx, mac_out, &has_session) == 0 &&
+            has_session)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
 
 static uint16_t leap_conf_step_outputs(
     const LeapConformanceScenarioStep* def,
@@ -279,10 +313,27 @@ static LeapConformanceStatus leap_conf_run_one(
         if (config->has_peer_mac)
         {
             sub = io->find_peer_mac(io->user_ctx, config->peer_mac, &ok);
+            (void)snprintf(
+                detail,
+                sizeof(detail),
+                "%s",
+                config->peer_mac_text != NULL ? config->peer_mac_text : "");
         }
         else
         {
             ok = 0;
+            if (peer_count > 1u)
+            {
+                (void)snprintf(
+                    detail,
+                    sizeof(detail),
+                    "%u peers — set Expected peer MAC (Discovery tab, double-click row)",
+                    peer_count);
+            }
+            else
+            {
+                detail[0] = '\0';
+            }
         }
         row = leap_conf_add_step(result);
         leap_conf_fill_step(
@@ -291,16 +342,29 @@ static LeapConformanceStatus leap_conf_run_one(
             "DISC peer MAC",
             (sub == 0 && ok) ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
             (uint32_t)(leap_conf_now_ms() - step_start),
-            config->peer_mac_text != NULL ? config->peer_mac_text : "");
+            detail);
         break;
     }
 
     case LEAP_CONF_KIND_PROBE_CAPS:
     {
         LeapConformanceDeviceCaps caps;
+        uint8_t                   peer_mac[6];
 
         leap_conformance_device_caps_init(&caps);
-        if (!config->has_peer_mac || io->probe_capabilities == NULL)
+        if (!leap_conf_resolve_peer_mac(config, run_state, io, peer_mac))
+        {
+            row = leap_conf_add_step(result);
+            leap_conf_fill_step(
+                row,
+                def,
+                "read device capabilities",
+                LEAP_CONF_STEP_FAIL,
+                (uint32_t)(leap_conf_now_ms() - step_start),
+                "peer MAC or probe_capabilities missing");
+            break;
+        }
+        if (io->probe_capabilities == NULL)
         {
             row = leap_conf_add_step(result);
             leap_conf_fill_step(
@@ -313,7 +377,7 @@ static LeapConformanceStatus leap_conf_run_one(
             break;
         }
 
-        sub = io->probe_capabilities(io->user_ctx, config->peer_mac, &caps);
+        sub = io->probe_capabilities(io->user_ctx, peer_mac, &caps);
         row = leap_conf_add_step(result);
         ok  = (sub == 0 && caps.valid);
         if (ok && run_state != NULL)
@@ -367,6 +431,20 @@ static LeapConformanceStatus leap_conf_run_one(
             (sub == 0 && op) ? LEAP_CONF_STEP_PASS : LEAP_CONF_STEP_FAIL,
             (uint32_t)(leap_conf_now_ms() - step_start),
             config->peer_mac_text != NULL ? config->peer_mac_text : "");
+
+        if (sub == 0 && op && run_state != NULL && io->get_session_peer_mac != NULL)
+        {
+            int has_session = 0;
+
+            if (io->get_session_peer_mac(
+                    io->user_ctx,
+                    run_state->resolved_peer_mac,
+                    &has_session) == 0 &&
+                has_session)
+            {
+                run_state->has_resolved_peer_mac = 1;
+            }
+        }
 
         if (outputs == 0u)
         {
@@ -801,14 +879,17 @@ static LeapConformanceStatus leap_conf_run_one(
     }
 
     case LEAP_CONF_KIND_IDENTIFY:
-        if (!config->has_peer_mac)
+    {
+        uint8_t peer_mac[6];
+
+        if (!leap_conf_resolve_peer_mac(config, run_state, io, peer_mac))
         {
             row = leap_conf_add_step(result);
             leap_conf_fill_step(row, def, "DISC IDENTIFY", LEAP_CONF_STEP_FAIL,
                                 0u, "peer MAC required");
             break;
         }
-        sub = io->identify(io->user_ctx, config->peer_mac, &ok);
+        sub = io->identify(io->user_ctx, peer_mac, &ok);
         row = leap_conf_add_step(result);
         leap_conf_fill_step(
             row,
@@ -820,9 +901,13 @@ static LeapConformanceStatus leap_conf_run_one(
                 run_state->device_caps.identify_detail :
                 "DISC IDENTIFY");
         break;
+    }
 
     case LEAP_CONF_KIND_LOCATE:
-        if (!config->has_peer_mac)
+    {
+        uint8_t peer_mac[6];
+
+        if (!leap_conf_resolve_peer_mac(config, run_state, io, peer_mac))
         {
             row = leap_conf_add_step(result);
             leap_conf_fill_step(row, def, "DISC LOCATE_DEVICE", LEAP_CONF_STEP_FAIL,
@@ -844,7 +929,7 @@ static LeapConformanceStatus leap_conf_run_one(
         }
         sub = io->locate(
             io->user_ctx,
-            config->peer_mac,
+            peer_mac,
             def->locate_duration_ms > 0u ? def->locate_duration_ms : 1500u,
             &ok);
         row = leap_conf_add_step(result);
@@ -858,6 +943,7 @@ static LeapConformanceStatus leap_conf_run_one(
                 run_state->device_caps.locate_detail :
                 "LOCATE_DEVICE");
         break;
+    }
 
     default:
         row = leap_conf_add_step(result);

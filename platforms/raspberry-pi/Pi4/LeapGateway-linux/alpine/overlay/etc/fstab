@@ -1,0 +1,3 @@
+# LeapOS-Gateway (Alpine Pi4) — gateway-only SD root
+LABEL=LEAPGW   /      ext4   defaults,noatime   0 1
+tmpfs          /tmp   tmpfs  defaults,size=32m  0 0

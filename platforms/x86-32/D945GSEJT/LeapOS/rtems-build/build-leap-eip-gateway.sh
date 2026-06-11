@@ -22,6 +22,7 @@ LEAP_CORE_SOURCES=(
 	leap_pd_common
 	leap_diag_controller
 	leap_controller_stack
+	leap_controller_session_hub
 	leap_controller_peer
 	leap_controller_sequence
 	leap_eip_bridge
@@ -43,6 +44,7 @@ GATEWAY_SOURCES=(
 	leap_gateway_opener
 	leap_transport
 	leap_time
+	leapos_ich7_sata
 )
 
 if [ ! -f "$LIBBSD_A" ]; then
@@ -77,6 +79,7 @@ REGISTER_LINE="        self.addTest(mm.generator['test']('$TEST_NAME', [$SOURCE_
 echo "Using libbsd source: $LIBBSD_SRC"
 
 bash "$LEAP_GATEWAY_DIR/scripts/gen-web-index.sh"
+bash "$LEAP_PORT_DIR/scripts/gen_build_info.sh"
 
 bash "$SCRIPT_DIR/build-opener-rtems.sh"
 
@@ -84,6 +87,8 @@ mkdir -p "$LIBBSD_SRC/$TEST_DIR"
 
 cp "$LEAP_GATEWAY_DIR/src/"*.c "$LIBBSD_SRC/$TEST_DIR/"
 cp "$LEAP_GATEWAY_DIR/src/"*.h "$LIBBSD_SRC/$TEST_DIR/"
+cp "$SCRIPT_DIR/leapos_ich7_sata.c" "$SCRIPT_DIR/leapos_ich7_sata.h" \
+	"$LIBBSD_SRC/$TEST_DIR/"
 cp "$LEAP_PORT_DIR/src/leap_config.h" "$LIBBSD_SRC/$TEST_DIR/leap_config.h"
 cp "$LEAP_PORT_DIR/src/leap_transport.c" "$LIBBSD_SRC/$TEST_DIR/leap_transport.c"
 cp "$LEAP_PORT_DIR/src/leap_transport.h" "$LIBBSD_SRC/$TEST_DIR/leap_transport.h"
@@ -120,6 +125,7 @@ copy_leap_core leap_pd_controller src/services/pd/leap_pd_controller.c
 copy_leap_core leap_pd_common src/services/pd/leap_pd_common.c
 copy_leap_core leap_diag_controller src/services/diag/leap_diag_controller.c
 copy_leap_core leap_controller_stack src/leap_controller_stack.c
+copy_leap_core leap_controller_session_hub src/leap_controller_session_hub.c
 copy_leap_core leap_controller_peer src/leap_controller_peer.c
 copy_leap_core leap_controller_sequence src/leap_controller_sequence.c
 copy_leap_core leap_eip_bridge src/bridge/leap_eip_bridge.c

@@ -261,7 +261,13 @@
     <Compile Include="main.cpp">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="protocol\leap_device\clearcore_leap_identity.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="protocol\leap_device\clearcore_leap_io.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="protocol\leap_device\clearcore_leap_locate.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="protocol\leap_device\clearcore_leap_trace.cpp">

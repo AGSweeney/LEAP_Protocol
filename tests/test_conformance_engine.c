@@ -277,6 +277,7 @@ static LeapConformanceIo g_mock_io = {
     mock_cyclic,
     mock_identify,
     mock_locate,
+    NULL,
     mock_snapshot,
     mock_cancel,
 };

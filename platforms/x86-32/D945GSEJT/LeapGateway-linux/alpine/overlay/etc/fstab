@@ -1,0 +1,3 @@
+# LeapOS-Gateway (Alpine) — gateway-only CF root
+LABEL=LEAPGW   /      ext4   defaults,noatime   0 1
+tmpfs          /tmp   tmpfs  defaults,size=16m  0 0

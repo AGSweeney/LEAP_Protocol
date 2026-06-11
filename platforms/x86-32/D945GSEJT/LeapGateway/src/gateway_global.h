@@ -13,6 +13,7 @@
 #include "leap_transport.h"
 
 #include "leap/leap_controller_peer.h"
+#include "leap/leap_controller_session_hub.h"
 #include "leap/leap_controller_stack.h"
 #include "leap/leap_eip_bridge.h"
 #include "leap/leap_gateway_config.h"
@@ -22,7 +23,7 @@ typedef struct LeapGatewayRuntime
     LeapGatewayConfig             config;
     LeapEipBridgeState            bridge;
     LeapRtemsTransport            transport;
-    LeapControllerStack           controller;
+    LeapControllerSessionHub      session_hub;
     LeapControllerStackIo         controller_io;
     LeapControllerPeerTable       peer_table;
     LeapGatewayLeapSessionState   leap_session;

@@ -27,6 +27,7 @@ in this repository.
 | [../platforms/clearcore/README.md](../platforms/clearcore/README.md) | ClearCore embedded device firmware |
 | [../platforms/NetBurner/README.md](../platforms/NetBurner/README.md) | NetBurner port status and target links |
 | [../platforms/x86-32/README.md](../platforms/x86-32/README.md) | x86-32 RTEMS port (D945GSEJT — LeapOS bootable device) |
+| [../platforms/raspberry-pi/README.md](../platforms/raspberry-pi/README.md) | Raspberry Pi 4 Alpine gateway (LeapOS-Gateway scaffold) |
 | [../leap_studio_qt/README.md](../leap_studio_qt/README.md) | Studio build/run + I/O bench DIAG toggle behavior |
 
 ## Reference stack module map

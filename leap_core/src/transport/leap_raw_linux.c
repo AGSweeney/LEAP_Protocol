@@ -60,6 +60,7 @@ uint64_t leap_raw_linux_monotonic_us(void)
 static int leap_raw_linux_ifindex(int fd, const char* ifname, uint8_t* mac_out)
 {
     struct ifreq ifr;
+    int          ifindex;
 
     memset(&ifr, 0, sizeof(ifr));
     (void)snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
@@ -69,6 +70,12 @@ static int leap_raw_linux_ifindex(int fd, const char* ifname, uint8_t* mac_out)
         leap_raw_linux_set_errno();
         return -1;
     }
+
+    /*
+     * ifr_ifindex and ifr_hwaddr alias the same union — save the index before
+     * SIOCGIFHWADDR overwrites it (binding to the garbage index gives ENODEV).
+     */
+    ifindex = ifr.ifr_ifindex;
 
     if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0)
     {
@@ -81,7 +88,7 @@ static int leap_raw_linux_ifindex(int fd, const char* ifname, uint8_t* mac_out)
         (void)memcpy(mac_out, ifr.ifr_hwaddr.sa_data, LEAP_RAW_LINUX_MAC_LEN);
     }
 
-    return ifr.ifr_ifindex;
+    return ifindex;
 }
 
 static int leap_raw_linux_set_promiscuous(int fd, const char* ifname, int enable)

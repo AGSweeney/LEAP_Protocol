@@ -1,0 +1,10 @@
+# Alpine aarch64 — Pi 4 gateway appliance (install linux-firmware-none before linux-rpi)
+alpine-base
+busybox-openrc
+e2fsprogs
+linux-firmware-none
+linux-rpi
+raspberrypi-bootloader
+mkinitfs
+openrc
+iproute2

@@ -1,0 +1,4 @@
+
+  LeapOS-Gateway (Alpine Pi4) — LEAP / EtherNet/IP bridge
+  Web UI: http://<gateway-ip>:8080
+  Config: /cf/config.txt

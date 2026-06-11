@@ -49,6 +49,9 @@ QString platformName(uint32_t productCode) {
     if (productCode == 0x0618C618u || productCode == 0x0868A016u) {
         return QStringLiteral("ESP32");
     }
+    if (productCode == 0x434C4301u) {
+        return QStringLiteral("ClearCore");
+    }
     return QStringLiteral("—");
 }
 
@@ -58,6 +61,9 @@ QString productName(uint32_t productCode) {
     }
     if (productCode == 0x0868A016u) {
         return QStringLiteral("KC868-A16");
+    }
+    if (productCode == 0x434C4301u) {
+        return QStringLiteral("ClearCore LEAP");
     }
     return QStringLiteral("0x%1").arg(productCode, 8, 16, QChar('0'));
 }
@@ -98,6 +104,9 @@ QString stateWithLastSeen(const QString& state, qint64 seenEpochMs) {
 }
 
 QString vendorName(uint16_t vendorId, uint32_t productCode) {
+    if (vendorId == 0x544Bu) {
+        return QStringLiteral("Teknic");
+    }
     if (vendorId == 0u) {
         if (productCode == 0x0618C618u || productCode == 0x0868A016u) {
             return QStringLiteral("AGS");

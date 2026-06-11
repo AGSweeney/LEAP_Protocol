@@ -23,15 +23,16 @@ need_cmd wget
 need_cmd tar
 need_cmd grub-mkrescue
 need_cmd xorriso
-need_cmd mkfs.vfat
+need_cmd mformat
+need_cmd mcopy
 need_cmd sfdisk
-need_cmd losetup
+need_cmd grub-mkimage
 
 if [ "${#missing[@]}" -gt 0 ]; then
     echo "Missing commands: ${missing[*]}" >&2
     echo "Install on Ubuntu/WSL:" >&2
     echo "  sudo apt install build-essential python3 python3-venv wget tar \\"
-    echo "    grub-pc-bin grub-common xorriso dosfstools fdisk util-linux" >&2
+    echo "    grub-pc-bin grub-common xorriso mtools dosfstools fdisk util-linux" >&2
     exit 1
 fi
 

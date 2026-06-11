@@ -1,50 +1,28 @@
-LeapOS (pc386 / i386) — Device and Gateway images
-=================================================
+LeapOS-Gateway (Alpine i386) — D945GSEJT
+=========================================
 
-Targets: Intel D945GSEJT + Atom N270 (CF-via-IDE or USB boot).
+Target: Intel D945GSEJT + Atom N270, CF on SATA0, 256 MB card.
 
-Each boot image contains **one product only** (Device or Gateway).
+Artifact
+--------
+  leapos-gateway-alpine.img   Gateway-only Linux image (~128 MB; flash to CF)
 
-Artifacts
----------
-  leapos-device.iso      LeapOS-Device ISO (leap-port.exe)
-  leapos-device.img      LeapOS-Device CF/IDE disk image
-  leapos-gateway.iso     LeapOS-Gateway ISO (leap-eip-gateway.exe)
-  leapos-gateway.img     LeapOS-Gateway CF/IDE disk image
-  leap-port.exe          LeapOS-Device ELF
-  leap-eip-gateway.exe   LeapOS-Gateway ELF (E/IP bridge)
-  net-probe.exe          Network probe ELF (not on boot images; build separately)
+Flash to CF
+-----------
+  balenaEtcher: select leapos-gateway-alpine.img (raw block write)
 
-Flash to CF / USB
------------------
-D945GSEJT primary boot path is **CF on parallel IDE**. Prefer the .img for CF:
+  Linux/WSL:
+  sudo dd if=leapos-gateway-alpine.img of=/dev/sdX bs=4M status=progress conv=fsync
 
-  sudo dd if=leapos-device.img of=/dev/sdX bs=4M status=progress conv=fsync
-  sudo dd if=leapos-gateway.img of=/dev/sdX bs=4M status=progress conv=fsync
-
-For USB sticks:
-
-  sudo dd if=leapos-device.iso of=/dev/sdX bs=4M status=progress conv=fsync
-  sudo dd if=leapos-gateway.iso of=/dev/sdX bs=4M status=progress conv=fsync
-
-Boot the D945GSEJT
-------------------
-1. BIOS: IDE/CF first, legacy boot, LBA enabled; disable TCO watchdog if present.
-2. Connect serial COM1 @ 115200 8N1 — default GRUB entry uses serial console.
-3. **Device image**: boots leap-port.exe (LEAP device + LPT I/O).
-4. **Gateway image**: boots leap-eip-gateway.exe (HTTP :8080, LEAP controller).
-
-VGA notes (945GSE IGP)
-----------------------
-RTEMS VBE is disabled (945GSE: "VBE Core not implemented").
-VGA text mode uses /dev/vgacons with --video=off.
+Boot
+----
+1. BIOS: SATA/CF first, legacy boot, LBA enabled.
+2. Serial COM1 @ 115200 8N1 — OpenRC boot log and leap-gateway stub.
+3. Default IP from /cf/config.txt: 192.168.1.2 (eth0).
 
 Rebuild
 -------
-  cd platforms/x86-32/D945GSEJT/LeapOS/rtems-build
-  bash build-all.sh iso-device     # device ISO only
-  bash build-all.sh iso-gateway    # gateway ISO only
-  bash build-all.sh iso            # both ISOs
-  bash build-all.sh all            # ELFs + both ISOs + both CF images
+  cd platforms/x86-32/D945GSEJT/LeapGateway-linux/alpine
+  sudo bash mk-image.sh
 
-See LeapGateway/README.md and LeapOS docs in the platform tree.
+See LeapGateway-linux/alpine/README.md

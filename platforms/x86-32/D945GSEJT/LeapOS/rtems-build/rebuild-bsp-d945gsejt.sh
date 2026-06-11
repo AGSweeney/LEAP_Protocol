@@ -26,6 +26,9 @@ cp "$CONFIG" "$RTEMS_ROOT/build/config.ini"
 cd "$RTEMS_TREE"
 rm -f .lock-waf_linux_build 2>/dev/null || true
 
+echo "Applying CF/IDE LBA patch for CompactFlash..."
+bash "$SCRIPT_DIR/apply-rtems-ide-cf-patch.sh"
+
 echo "Configuring pc386 with D945GSEJT profile..."
 ./waf configure \
     --prefix="$RTEMS_PREFIX" \

@@ -1,0 +1,12 @@
+#!/sbin/openrc-run
+
+name="leap-gateway"
+description="LeapOS-Gateway LEAP/EIP bridge"
+command="/usr/sbin/leap-gateway"
+command_background=true
+command_args="--config /cf/config.txt"
+pidfile="/run/${RC_SVCNAME}.pid"
+depend() {
+	need localmount
+	after net firewall
+}

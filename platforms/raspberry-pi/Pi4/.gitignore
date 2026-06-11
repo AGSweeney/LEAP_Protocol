@@ -1,0 +1,11 @@
+# Generated Alpine Pi4 gateway images
+leapos-gateway-alpine.img
+
+# Build cache (re-download with FORCE_ROOTFS=1)
+LeapGateway-linux/alpine/cache/
+LeapGateway-linux/alpine/build-work/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp

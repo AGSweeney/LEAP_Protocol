@@ -283,8 +283,13 @@ apply_config_kv(
             }
             memset(active, 0, sizeof(*active));
             active->profile_id = LEAP_PROFILE_DIGITAL_IO_8X8;
+            active->input.assembly_byte = index;
+            active->input.bit = 0u;
             active->input.width_bits = 8u;
+            active->output.assembly_byte = index + 2u;
+            active->output.bit = 0u;
             active->output.width_bits = 8u;
+            active->status_assembly_byte = index + 4u;
             active->status_width_bytes = 2u;
         }
         else

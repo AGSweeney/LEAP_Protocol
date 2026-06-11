@@ -59,7 +59,8 @@ typedef enum LeapControllerPeerStatus
     LEAP_CTRL_PEER_INVALID_ARG,
     LEAP_CTRL_PEER_IO_MISSING,
     LEAP_CTRL_PEER_SEND_FAILED,
-    LEAP_CTRL_PEER_TABLE_FULL
+    LEAP_CTRL_PEER_TABLE_FULL,
+    LEAP_CTRL_PEER_NOT_FOUND
 } LeapControllerPeerStatus;
 
 void leap_controller_peer_table_init(LeapControllerPeerTable* table);

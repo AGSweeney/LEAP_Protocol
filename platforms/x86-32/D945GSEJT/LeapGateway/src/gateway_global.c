@@ -19,7 +19,7 @@ leap_gateway_runtime_init(void)
     leap_gateway_config_defaults(&g_gateway.config);
     leap_eip_bridge_init(&g_gateway.bridge);
     leap_controller_peer_table_init(&g_gateway.peer_table);
-    g_gateway.leap_session.mapping_index = -1;
+    g_gateway.leap_session.op_peer_count = 0u;
 }
 
 int

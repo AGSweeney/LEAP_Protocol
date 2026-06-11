@@ -17,6 +17,7 @@
 #include "gateway_web_index.h"
 #include "leap_time.h"
 
+#include "leap/leap_controller_session_hub.h"
 #include "leap/leap_controller_peer.h"
 #include "leap/leap_controller_stack.h"
 #include "leap/leap_gateway_config.h"
@@ -40,6 +41,14 @@ static int   g_listen_fds[LEAP_GATEWAY_HTTP_LISTEN_MAX];
 static int   g_listen_count;
 static char  g_http_request[LEAP_GATEWAY_HTTP_REQUEST_MAX];
 static char  g_http_body[LEAP_GATEWAY_HTTP_BODY_MAX];
+
+static int
+http_mac_is_zero(const uint8_t mac[6])
+{
+    static const uint8_t zero[6] = { 0u, 0u, 0u, 0u, 0u, 0u };
+
+    return memcmp(mac, zero, 6) == 0;
+}
 
 static int
 http_set_nonblocking(int fd)
@@ -258,24 +267,42 @@ append_peer_json(char* buf, size_t cap, size_t* used)
             *used = strlen(buf);
         }
 
-        (void)snprintf(
-            buf + *used,
-            cap - *used,
-            "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"%02x:%02x:%02x:%02x:%02x:%02x\"}",
-            peer->mac[0],
-            peer->mac[1],
-            peer->mac[2],
-            peer->mac[3],
-            peer->mac[4],
-            peer->mac[5],
-            (unsigned)peer->active_profile_id,
-            (unsigned)peer->device_state,
-            peer->active_owner_mac[0],
-            peer->active_owner_mac[1],
-            peer->active_owner_mac[2],
-            peer->active_owner_mac[3],
-            peer->active_owner_mac[4],
-            peer->active_owner_mac[5]);
+        if (http_mac_is_zero(peer->active_owner_mac))
+        {
+            (void)snprintf(
+                buf + *used,
+                cap - *used,
+                "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"none\"}",
+                peer->mac[0],
+                peer->mac[1],
+                peer->mac[2],
+                peer->mac[3],
+                peer->mac[4],
+                peer->mac[5],
+                (unsigned)peer->active_profile_id,
+                (unsigned)peer->device_state);
+        }
+        else
+        {
+            (void)snprintf(
+                buf + *used,
+                cap - *used,
+                "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"%02x:%02x:%02x:%02x:%02x:%02x\"}",
+                peer->mac[0],
+                peer->mac[1],
+                peer->mac[2],
+                peer->mac[3],
+                peer->mac[4],
+                peer->mac[5],
+                (unsigned)peer->active_profile_id,
+                (unsigned)peer->device_state,
+                peer->active_owner_mac[0],
+                peer->active_owner_mac[1],
+                peer->active_owner_mac[2],
+                peer->active_owner_mac[3],
+                peer->active_owner_mac[4],
+                peer->active_owner_mac[5]);
+        }
         *used = strlen(buf);
     }
 
@@ -307,15 +334,57 @@ leap_phase_name(LeapControllerStackPhase phase)
 }
 
 static void
+gateway_http_leap_phase_text(char* buf, size_t cap)
+{
+    unsigned op_count;
+    unsigned i;
+
+    if (buf == NULL || cap == 0u)
+    {
+        return;
+    }
+
+    op_count = leap_controller_session_hub_count_op_peers(&g_gateway.session_hub);
+    if (op_count == 0u)
+    {
+        (void)snprintf(buf, cap, "IDLE");
+        return;
+    }
+
+    if (op_count == 1u)
+    {
+        for (i = 0u; i < LEAP_CTRL_MAX_PEERS; ++i)
+        {
+            if (leap_controller_session_hub_is_op(&g_gateway.session_hub, (int)i) != 0)
+            {
+                LeapControllerStack* stack =
+                    leap_controller_session_hub_stack(&g_gateway.session_hub, (int)i);
+
+                if (stack != NULL)
+                {
+                    (void)snprintf(
+                        buf,
+                        cap,
+                        "%s",
+                        leap_phase_name(leap_controller_stack_get_phase(stack)));
+                    return;
+                }
+            }
+        }
+    }
+
+    (void)snprintf(buf, cap, "OP(%u)", op_count);
+}
+
+static void
 append_io_json(char* buf, size_t cap, size_t* used)
 {
-    unsigned                  i;
-    LeapControllerStackPhase  phase;
-    int                       session_active;
+    unsigned i;
+    char     phase_text[24];
+    int      session_active;
 
-    phase = leap_controller_stack_get_phase(&g_gateway.controller);
-    session_active =
-        (phase == LEAP_CTRL_STACK_OP && g_gateway.controller.peer_bound != 0) ? 1 : 0;
+    gateway_http_leap_phase_text(phase_text, sizeof(phase_text));
+    session_active = leap_gateway_leap_session_active(&g_gateway) ? 1 : 0;
 
     (void)snprintf(
         buf + *used,
@@ -323,8 +392,8 @@ append_io_json(char* buf, size_t cap, size_t* used)
         "{\"session_active\":%s,\"leap_phase\":\"%s\",\"leap_phase_code\":%u,"
         "\"leap_comm_ok\":%s,\"mappings\":[",
         session_active ? "true" : "false",
-        leap_phase_name(phase),
-        (unsigned)phase,
+        phase_text,
+        (unsigned)leap_controller_session_hub_count_op_peers(&g_gateway.session_hub),
         g_gateway.bridge.leap_comm_ok ? "true" : "false");
     *used = strlen(buf);
 
@@ -334,11 +403,20 @@ append_io_json(char* buf, size_t cap, size_t* used)
         const LeapEipBridgePeerIo*  peer = &g_gateway.bridge.peer_io[i];
         uint8_t                     eip_in_byte = 0u;
         uint8_t                     eip_out_byte = 0u;
+        uint16_t                    leap_outputs = 0u;
+        uint8_t                     packed_input[LEAP_EIP_BRIDGE_MAX_ASSEMBLY_BYTES];
+        size_t                      packed_input_len = 0u;
 
-        if (map->input.assembly_byte < g_gateway.bridge.config.input_assembly_size)
+        (void)leap_eip_bridge_peer_outputs(&g_gateway.bridge, i, &leap_outputs);
+
+        if (leap_eip_bridge_pack_input_assembly(
+                &g_gateway.bridge,
+                packed_input,
+                sizeof(packed_input),
+                &packed_input_len) == 0 &&
+            map->input.assembly_byte < packed_input_len)
         {
-            eip_in_byte =
-                g_gateway.bridge.input_assembly[map->input.assembly_byte];
+            eip_in_byte = packed_input[map->input.assembly_byte];
         }
         if (map->output.assembly_byte < g_gateway.bridge.config.output_assembly_size)
         {
@@ -357,6 +435,7 @@ append_io_json(char* buf, size_t cap, size_t* used)
             cap - *used,
             "{\"index\":%u,\"enabled\":%s,"
             "\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\","
+            "\"leap_connected\":%s,"
             "\"comm_ok\":%s,"
             "\"leap_inputs\":%u,\"leap_outputs\":%u,"
             "\"io_status\":%u,"
@@ -370,9 +449,11 @@ append_io_json(char* buf, size_t cap, size_t* used)
             map->leap_mac[3],
             map->leap_mac[4],
             map->leap_mac[5],
+            leap_controller_session_hub_is_op(&g_gateway.session_hub, (int)i) ?
+                "true" : "false",
             peer->comm_ok ? "true" : "false",
             (unsigned)peer->digital_inputs,
-            (unsigned)peer->digital_outputs,
+            (unsigned)leap_outputs,
             (unsigned)peer->io_status,
             (unsigned)eip_in_byte,
             (unsigned)eip_out_byte,
@@ -470,13 +551,16 @@ handle_request(int client_fd, const char* request)
 
     if (strcmp(method, "POST") == 0 && strcmp(path, "/api/v1/leap/connect") == 0)
     {
+        char phase_text[24];
+
         leap_gateway_leap_session_request_connect(&g_gateway);
+        gateway_http_leap_phase_text(phase_text, sizeof(phase_text));
 
         (void)snprintf(
             g_http_body,
             sizeof(g_http_body),
             "{\"ok\":true,\"connect_pending\":true,\"leap_phase\":\"%s\"}",
-            leap_phase_name(leap_controller_stack_get_phase(&g_gateway.controller)));
+            phase_text);
         http_reply_cstr(client_fd, 200, "application/json", g_http_body);
         return;
     }
@@ -512,21 +596,25 @@ handle_request(int client_fd, const char* request)
 
     if (strcmp(method, "GET") == 0 && strcmp(path, "/api/v1/status") == 0)
     {
+        char phase_text[24];
+
+        gateway_http_leap_phase_text(phase_text, sizeof(phase_text));
         (void)snprintf(
             g_http_body,
             sizeof(g_http_body),
             "{\"product\":\"LeapOS-Gateway\",\"ifname\":\"%s\",\"ipv4\":\"%s\","
-            "\"http_port\":%u,\"ui_version\":3,\"storage_ready\":%s,"
+            "\"http_port\":%u,\"ui_version\":5,\"storage_ready\":%s,"
             "\"config_path\":\"%s\",\"leap_comm_ok\":%s,\"leap_phase\":\"%s\","
-            "\"leap_session_active\":%s,\"mappings\":%u}",
+            "\"leap_session_active\":%s,\"leap_op_peers\":%u,\"mappings\":%u}",
             g_gateway.bound_ifname,
             g_gateway.config.network.ipv4_addr,
             (unsigned)LEAP_GATEWAY_HTTP_PORT,
             leap_gateway_storage_ready() ? "true" : "false",
             g_gateway.config.config_path,
             g_gateway.bridge.leap_comm_ok ? "true" : "false",
-            leap_phase_name(leap_controller_stack_get_phase(&g_gateway.controller)),
+            phase_text,
             leap_gateway_leap_session_active(&g_gateway) ? "true" : "false",
+            leap_controller_session_hub_count_op_peers(&g_gateway.session_hub),
             g_gateway.config.bridge.mapping_count);
         http_reply_cstr(client_fd, 200, "application/json", g_http_body);
         return;

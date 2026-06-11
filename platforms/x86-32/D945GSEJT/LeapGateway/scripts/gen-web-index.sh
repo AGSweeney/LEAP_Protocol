@@ -1,10 +1,11 @@
 #!/bin/bash
-# Embed LeapGateway/web/index.html as a C translation unit.
+# Embed LeapGateway/web/index.html (+ style.css) as a C translation unit.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GATEWAY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SRC_HTML="$GATEWAY_DIR/web/index.html"
+SRC_CSS="$GATEWAY_DIR/web/style.css"
 OUT_C="$GATEWAY_DIR/src/gateway_web_index.c"
 OUT_H="$GATEWAY_DIR/src/gateway_web_index.h"
 
@@ -13,14 +14,30 @@ if [ ! -f "$SRC_HTML" ]; then
 	exit 1
 fi
 
-python3 - "$SRC_HTML" "$OUT_C" "$OUT_H" <<'PY'
+python3 - "$SRC_HTML" "$SRC_CSS" "$OUT_C" "$OUT_H" <<'PY'
 import sys
 
-src_path, out_c, out_h = sys.argv[1:4]
-data = open(src_path, "r", encoding="utf-8").read()
+src_path, css_path, out_c, out_h = sys.argv[1:5]
+html = open(src_path, "r", encoding="utf-8").read()
+
+link_tag = '<link rel="stylesheet" href="style.css">'
+if link_tag in html:
+    try:
+        css = open(css_path, "r", encoding="utf-8").read()
+    except OSError:
+        css = ""
+    if css:
+        html = html.replace(link_tag, f"<style>\n{css}\n</style>")
+
+non_ascii = sorted({ch for ch in html if ord(ch) > 127})
+if non_ascii:
+    sample = ", ".join(f"U+{ord(ch):04X}" for ch in non_ascii[:8])
+    raise SystemExit(
+        f"web UI must be ASCII-only for embedded gateway (found: {sample})"
+    )
 
 lines = []
-for ch in data:
+for ch in html:
     if ch == "\\":
         lines.append("\\\\")
     elif ch == "\"":

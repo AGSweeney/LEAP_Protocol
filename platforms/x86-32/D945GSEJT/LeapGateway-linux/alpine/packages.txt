@@ -1,0 +1,11 @@
+# Alpine i386 — gateway appliance (install linux-firmware-none BEFORE linux-lts)
+alpine-base
+busybox-openrc
+e2fsprogs
+syslinux
+linux-firmware-none
+linux-firmware-rtl_nic
+linux-lts
+mkinitfs
+openrc
+iproute2

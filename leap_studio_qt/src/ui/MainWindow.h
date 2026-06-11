@@ -66,6 +66,7 @@ private slots:
     void onRunFinished(bool pass, const QString& summary, quint64 runToken);
     void onConformanceRows(const QStringList& rows, quint64 runToken);
     void onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers);
+    void onDiscoveryRowActivated(int row, int column);
     void refreshDiscoveryLastSeen();
 
 private:
@@ -99,6 +100,8 @@ private:
                                   const QString& stateText) const;
     QString conformanceForMac(const QString& mac) const;
     DiscoveryPeerRow deviceForExport() const;
+    QString peerMacForConformance(bool* autoSelected = nullptr) const;
+    void applyDiscoveryRowToPeerMac(int row);
     qint64 lastSeenForMac(const QString& mac) const;
 
     static void leapLogSink(void* ctx, int is_error, const char* line);

@@ -300,8 +300,13 @@ LeapControllerPeerStatus leap_controller_peer_table_probe_peer(
 
         if (leap_controller_peer_table_find(table, peer_mac) >= 0)
         {
-            break;
+            return LEAP_CTRL_PEER_OK;
         }
+    }
+
+    if (leap_controller_peer_table_find(table, peer_mac) < 0)
+    {
+        return LEAP_CTRL_PEER_NOT_FOUND;
     }
 
     return LEAP_CTRL_PEER_OK;

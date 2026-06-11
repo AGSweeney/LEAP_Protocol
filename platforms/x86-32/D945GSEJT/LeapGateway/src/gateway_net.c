@@ -63,44 +63,6 @@ iface_set_ipv4(const char* ifname, const char* addr, const char* mask)
 }
 
 static int
-iface_set_up(const char* ifname)
-{
-    struct ifreq  ifr;
-    unsigned int  flags;
-    int           s;
-
-    memset(&ifr, 0, sizeof(ifr));
-    strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
-
-    s = socket(AF_INET, SOCK_DGRAM, 0);
-    if (s < 0)
-    {
-        return -1;
-    }
-
-    if (ioctl(s, SIOCGIFFLAGS, &ifr) != 0)
-    {
-        close(s);
-        return -1;
-    }
-
-    flags = (unsigned int)(ifr.ifr_flags & 0xffffU) |
-            ((unsigned int)ifr.ifr_flagshigh << 16);
-    flags |= IFF_UP;
-
-    ifr.ifr_flags    = (short)(flags & 0xffffU);
-    ifr.ifr_flagshigh = (short)((flags >> 16) & 0xffffU);
-    if (ioctl(s, SIOCSIFFLAGS, &ifr) != 0)
-    {
-        close(s);
-        return -1;
-    }
-
-    close(s);
-    return 0;
-}
-
-static int
 try_transport(LeapGatewayRuntime* gw, const char* ifname)
 {
     if (leap_rtems_transport_init(
@@ -166,34 +128,12 @@ leap_gateway_net_bring_up(LeapGatewayRuntime* gw)
     }
 
     eip_if = leap_gateway_eip_ifname(&gw->config);
-    if (iface_set_up(eip_if) != 0)
-    {
-        printf(
-            LEAP_TS_FMT LEAP_ANSI_WARN "Gateway: failed to set %s UP (%s)" LEAP_ANSI_RESET "\n",
-            leap_rtems_uptime_str(),
-            eip_if,
-            strerror(errno));
-    }
-
     if (!gw->config.network.dhcp)
     {
-        int ipv4_ok = -1;
-        int attempt;
-
-        for (attempt = 0; attempt < 5; ++attempt)
-        {
-            if (iface_set_ipv4(
-                    eip_if,
-                    gw->config.network.ipv4_addr,
-                    gw->config.network.ipv4_mask) == 0)
-            {
-                ipv4_ok = 0;
-                break;
-            }
-            sleep(1);
-        }
-
-        if (ipv4_ok != 0)
+        if (iface_set_ipv4(
+                eip_if,
+                gw->config.network.ipv4_addr,
+                gw->config.network.ipv4_mask) != 0)
         {
             printf(
                 LEAP_TS_FMT LEAP_ANSI_WARN "Gateway: IPv4 assign failed on %s: %s" LEAP_ANSI_RESET "\n",

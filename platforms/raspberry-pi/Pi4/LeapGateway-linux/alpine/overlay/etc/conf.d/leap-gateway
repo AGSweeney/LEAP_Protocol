@@ -1,0 +1,2 @@
+# LeapOS-Gateway (Alpine Pi4) — editable via Web UI or serial
+# Static IPv4 is applied from /cf/config.txt by leap-gateway when network.dhcp=0

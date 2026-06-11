@@ -2541,6 +2541,37 @@ static void leap_conf_win_cancel(void* user_ctx)
     }
 }
 
+static int leap_conf_win_get_session_peer_mac(
+    void*    user_ctx,
+    uint8_t* mac_out,
+    int*     has_out)
+{
+    LeapConformanceWinContext* ctx = (LeapConformanceWinContext*)user_ctx;
+
+    if (ctx == NULL || mac_out == NULL || has_out == NULL)
+    {
+        return -1;
+    }
+
+    *has_out = 0;
+
+    if (ctx->stack.peer_bound != 0)
+    {
+        memcpy(mac_out, ctx->stack.peer_mac, 6);
+        *has_out = 1;
+        return 0;
+    }
+
+    if (ctx->has_peer_mac)
+    {
+        memcpy(mac_out, ctx->peer_mac, 6);
+        *has_out = 1;
+        return 0;
+    }
+
+    return 0;
+}
+
 LeapConformanceWinContext* leap_conformance_win_create(void)
 {
     LeapConformanceWinContext* ctx =
@@ -2569,6 +2600,7 @@ LeapConformanceWinContext* leap_conformance_win_create(void)
     ctx->io.cyclic_pd        = leap_conf_win_cyclic;
     ctx->io.identify         = leap_conf_win_identify;
     ctx->io.locate           = leap_conf_win_locate;
+    ctx->io.get_session_peer_mac = leap_conf_win_get_session_peer_mac;
     ctx->io.snapshot         = leap_conf_win_snapshot;
     ctx->io.cancel           = leap_conf_win_cancel;
     ctx->io.is_cancelled     = leap_conf_win_is_cancelled;

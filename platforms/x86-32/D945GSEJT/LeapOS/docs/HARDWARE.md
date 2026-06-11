@@ -8,7 +8,7 @@
 | CPU | Intel **Atom N270** @ 1.6 GHz (**32-bit only**, no x86-64) |
 | Chipset | Intel 945GSE + ICH7 |
 | RAM | DDR2 SO-DIMM, **max 2 GB** |
-| Boot media | **CF via IDE** (CF-to-IDE adapter on parallel ATA) |
+| Boot media | **CF via IDE** (CF-to-IDE adapter on parallel ATA) or **CF via SATA** (see below) |
 | Expansion | 1× PCI 2.3, 2× SATA, 8× USB 2.0 |
 | Serial | COM1/COM2 headers (RS-232) |
 
@@ -36,6 +36,26 @@ BIOS settings to verify:
 - Legacy BIOS boot (not UEFI-only)
 - LBA mode for CF
 - Disable TCO/watchdog if available
+
+### CF on SATA0 (D945GSEJT)
+
+CF on **SATA0** with BIOS **Legacy/IDE** is the expected setup when the 44-pin PATA header
+is not used.
+
+BIOS Legacy mode is correct for GRUB boot. RTEMS also needs **ICH7 PCI setup** so SATA port 0
+maps to primary master (`/dev/hda`) after OS handoff:
+
+- `apply-rtems-ide-cf-patch.sh` installs `leapos_ich7_sata0_prep()` in the BSP (before IDE probe)
+- Disables unused PATA legacy decode on PCI `00:1f.1` (empty header can ghost on IDE0)
+- Enables SATA port 0 on PCI `00:1f.2` (MAP/PCS/timing registers)
+
+The `425G` capacity in serial is garbage IDENTIFY from an uninitialized bus — not your 256 MB CF.
+
+After `bash rebuild-bsp-d945gsejt.sh` and reflash, serial should show
+`ICH7: SATA0 legacy prep (dev 27c4 ...)` then either
+`Storage: config volume mounted /dev/hda1 -> /cf` or a real IDENTIFY (~256 MB).
+
+If reads still fail with `error 7f`, paste the full IDE + ICH7 lines from serial.
 
 ## Expected PoC boot behavior
 

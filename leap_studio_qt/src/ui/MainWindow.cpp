@@ -320,6 +320,11 @@ void MainWindow::buildDiscoveryTab(QWidget* page) {
     discoveryTable_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     discoveryTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     layout->addWidget(discoveryTable_);
+    connect(
+        discoveryTable_,
+        &QTableWidget::cellDoubleClicked,
+        this,
+        &MainWindow::onDiscoveryRowActivated);
 }
 
 void MainWindow::buildConformanceTab(QWidget* page) {
@@ -818,9 +823,20 @@ void MainWindow::onRunAll() {
     }
     resetDiagnosticsTrafficRates();
     unsigned cycPer = cyclePeriodSpin_ ? cyclePeriodSpin_->value() : 100u;
+    bool autoMac = false;
+    const QString peerMac = peerMacForConformance(&autoMac);
+    if (autoMac) {
+        appendLog(QStringLiteral(
+            "Conformance: using ClearCore MAC %1 from Discovery (Gateway also on segment)")
+                      .arg(peerMac));
+    } else if (peerMac.isEmpty() && lastDiscoveryPeers_.size() > 1u) {
+        appendLog(QStringLiteral(
+            "Conformance: %1 peers found — double-click ClearCore in Discovery or set Expected peer MAC")
+                      .arg(lastDiscoveryPeers_.size()));
+    }
     adapter_->runScenario(selectedScenarioId(), {},
                           selectedAdapterPath(), selectedAdapterLabel(),
-                          peerMacEdit_->text(), 2u, cycPer);
+                          peerMac, 2u, cycPer);
     conformanceRunToken_ = adapter_->lastRunToken();
 }
 
@@ -848,9 +864,20 @@ void MainWindow::onRunSelected() {
     runProgress_->setValue(0);
     resultsTable_->setRowCount(0);
     unsigned cycPer = cyclePeriodSpin_ ? cyclePeriodSpin_->value() : 100u;
+    bool autoMac = false;
+    const QString peerMac = peerMacForConformance(&autoMac);
+    if (autoMac) {
+        appendLog(QStringLiteral(
+            "Conformance: using ClearCore MAC %1 from Discovery (Gateway also on segment)")
+                      .arg(peerMac));
+    } else if (peerMac.isEmpty() && lastDiscoveryPeers_.size() > 1u) {
+        appendLog(QStringLiteral(
+            "Conformance: %1 peers found — double-click ClearCore in Discovery or set Expected peer MAC")
+                      .arg(lastDiscoveryPeers_.size()));
+    }
     adapter_->runScenario(selectedScenarioId(), steps,
                           selectedAdapterPath(), selectedAdapterLabel(),
-                          peerMacEdit_->text(), 2u, cycPer);
+                          peerMac, 2u, cycPer);
     conformanceRunToken_ = adapter_->lastRunToken();
 }
 
@@ -1088,9 +1115,68 @@ void MainWindow::onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers) {
         if (peerMacEdit_ != nullptr) {
             peerMacEdit_->setText(peer.mac);
         }
+    } else if (peers.size() > 1 && peerMacEdit_ != nullptr &&
+               peerMacEdit_->text().trimmed().isEmpty()) {
+        static constexpr uint32_t kClearCoreProduct = 0x434C4301u;
+        for (const DiscoveryPeerRow& peer : peers) {
+            if (peer.productCode == kClearCoreProduct) {
+                peerMacEdit_->setText(peer.mac);
+                setStatusText(QStringLiteral(
+                    "Discovery: %1 peers — auto-selected ClearCore %2")
+                                  .arg(peers.size())
+                                  .arg(peer.mac));
+                return;
+            }
+        }
     }
 
     setStatusText(QStringLiteral("Discovery: %1 peer(s)").arg(peers.size()));
+}
+
+void MainWindow::onDiscoveryRowActivated(int row, int column) {
+    Q_UNUSED(column);
+    applyDiscoveryRowToPeerMac(row);
+    if (row >= 0 && row < lastDiscoveryPeers_.size() && peerMacEdit_ != nullptr) {
+        setStatusText(QStringLiteral("Expected peer MAC set to %1")
+                          .arg(lastDiscoveryPeers_.at(row).mac));
+        showTab(tabIndexByLabel(QStringLiteral("Connection")));
+    }
+}
+
+void MainWindow::applyDiscoveryRowToPeerMac(int row) {
+    if (peerMacEdit_ == nullptr || row < 0 || row >= lastDiscoveryPeers_.size()) {
+        return;
+    }
+    peerMacEdit_->setText(lastDiscoveryPeers_.at(row).mac);
+}
+
+QString MainWindow::peerMacForConformance(bool* autoSelected) const {
+    if (autoSelected != nullptr) {
+        *autoSelected = false;
+    }
+
+    if (peerMacEdit_ != nullptr) {
+        const QString configured = peerMacEdit_->text().trimmed();
+        if (!configured.isEmpty()) {
+            return configured;
+        }
+    }
+
+    if (lastDiscoveryPeers_.size() == 1u) {
+        return lastDiscoveryPeers_.first().mac;
+    }
+
+    static constexpr uint32_t kClearCoreProduct = 0x434C4301u;
+    for (const DiscoveryPeerRow& peer : lastDiscoveryPeers_) {
+        if (peer.productCode == kClearCoreProduct) {
+            if (autoSelected != nullptr) {
+                *autoSelected = true;
+            }
+            return peer.mac;
+        }
+    }
+
+    return QString();
 }
 
 void MainWindow::onConformanceRows(const QStringList& rows, quint64 runToken) {

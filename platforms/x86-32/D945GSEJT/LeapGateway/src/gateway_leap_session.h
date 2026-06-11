@@ -14,10 +14,8 @@ typedef struct LeapGatewayRuntime LeapGatewayRuntime;
 
 typedef struct LeapGatewayLeapSessionState
 {
-    int                       active;
-    int                       mapping_index;
     int                       connect_pending;
-    uint8_t                   peer_mac[6];
+    unsigned                  op_peer_count;
     LeapControllerStackStatus last_status;
     unsigned                  retry_ticks;
 } LeapGatewayLeapSessionState;
@@ -27,6 +25,8 @@ int leap_gateway_leap_session_active(const LeapGatewayRuntime* gw);
 int leap_gateway_leap_session_start_task(void);
 
 void leap_gateway_leap_session_request_connect(LeapGatewayRuntime* gw);
+
+void leap_gateway_leap_session_request_auto_connect(LeapGatewayRuntime* gw);
 
 int leap_gateway_leap_session_connect(LeapGatewayRuntime* gw);
 

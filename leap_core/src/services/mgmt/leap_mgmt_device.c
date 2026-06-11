@@ -340,6 +340,15 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
                 return LEAP_MGMT_DEVICE_HANDLE_ERROR;
             }
         }
+        else if ((open_req->open_flags & LEAP_OPEN_FLAG_REBOOT_RECOVERY) != 0u &&
+                 ctx->device_state == LEAP_STATE_OP)
+        {
+            /*
+             * Orphaned OP (HELLO shows no active_owner_mac): demote so
+             * bootstrap SET_STATE SAFE->OP can run after OPEN->SAFE.
+             */
+            ctx->device_state = LEAP_STATE_CONFIGURED;
+        }
 
         ctx->owner_active = 1u;
         leap_mac_copy(ctx->owner_mac, source_mac);
