@@ -8,6 +8,7 @@
 #ifndef LEAP_GATEWAY_LEAP_SESSION_H
 #define LEAP_GATEWAY_LEAP_SESSION_H
 
+#include "leap/leap_controller_peer.h"
 #include "leap/leap_controller_stack.h"
 
 typedef struct LeapGatewayRuntime LeapGatewayRuntime;
@@ -18,6 +19,8 @@ typedef struct LeapGatewayLeapSessionState
     unsigned                  op_peer_count;
     LeapControllerStackStatus last_status;
     unsigned                  retry_ticks;
+    unsigned                  pd_miss_count[LEAP_CTRL_MAX_PEERS];
+    unsigned                  reconnect_ticks[LEAP_CTRL_MAX_PEERS];
 } LeapGatewayLeapSessionState;
 
 int leap_gateway_leap_session_active(const LeapGatewayRuntime* gw);

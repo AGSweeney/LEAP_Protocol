@@ -2,7 +2,9 @@
 alpine-base
 busybox-openrc
 e2fsprogs
+e2fsprogs-extra
 syslinux
+util-linux
 linux-firmware-none
 linux-firmware-rtl_nic
 linux-lts

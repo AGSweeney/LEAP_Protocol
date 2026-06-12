@@ -9,13 +9,14 @@ sudo apt update
 sudo apt install -y \
   qemu-user-static binfmt-support \
   wget tar gzip rsync \
-  util-linux genext2fs grub-pc-bin
+  util-linux e2fsprogs grub-pc-bin
 sudo update-binfmts --enable qemu-i386 2>/dev/null || true
 ```
 
 Boot chain is **GRUB i386-pc** (`boot.img` + embedded `core.img`), same as the RTEMS
-CF images. Image assembly is **loop-free**: `genext2fs` packs the rootfs in
-userspace, so it works on WSL2 (whose kernel has no `loop` module).
+CF images. Image assembly is **loop-free**: `mke2fs -d` packs the rootfs into
+an ext4 partition image in userspace, so it works on WSL2 (whose kernel has no
+`loop` module).
 
 ## Build image
 
@@ -36,7 +37,14 @@ Second and later runs **only repack the `.img`** (~30 seconds) unless you change
 sudo FORCE_ROOTFS=1 bash mk-image.sh   # force full apk/chroot rebuild
 ```
 
-Output: `LeapOS/rtems-image/leapos-gateway-alpine.img` (~240 MiB)
+Output: `LeapOS/rtems-image/leapos-gateway-alpine.img`. By default
+`IMAGE_MB=auto` builds the smallest practical image (`rootfs + 32 MiB`, minimum
+160 MiB). Override with `IMAGE_MB=240 bash mk-image.sh` when you need a fixed
+size.
+
+On first boot, `leap-growfs` grows partition 1 and the ext4 root filesystem to
+fill the available CF/USB/HDD/QEMU disk, then stamps
+`/var/lib/leap-growfs.done` so it does not run again.
 
 ## Gateway daemon (the real port)
 

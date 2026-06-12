@@ -1,10 +1,8 @@
 /*
  * clearcore_leap_io.cpp
  *
- * ClearCore ConnectorIO0..5 driver for LEAP PD outputs.
- * Pattern matches ClearLink clearcore_wrapper / ApplyDopOutput:
- *   ON  -> Mode(OUTPUT_DIGITAL) then State(true)
- *   OFF -> Mode(INPUT_DIGITAL)
+ * ClearCore ConnectorIO0..5 driver for LEAP PD outputs and
+ * ConnectorDI6..ConnectorA12 reader for LEAP PD inputs.
  *
  * Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
  * SPDX-License-Identifier: MIT
@@ -20,8 +18,10 @@
 
 #include <stdio.h>
 
-static const uint8_t k_io_count = 6U;
-static const uint8_t k_all_pins = (uint8_t)((1U << 6U) - 1U);
+static const uint8_t  k_hardware_output_count = 6U;
+static const uint8_t  k_hardware_input_count  = 7U;
+static const uint16_t k_output_mask           = (uint16_t)((1U << CLEARCORE_LEAP_DO_COUNT) - 1U);
+static const uint8_t  k_hardware_output_mask  = (uint8_t)((1U << 6U) - 1U);
 
 static void clearcore_leap_io_set_pin_mode_output(uint8_t bit)
 {
@@ -50,27 +50,30 @@ static void clearcore_leap_io_set_pin_mode_output(uint8_t bit)
     }
 }
 
-static void clearcore_leap_io_set_pin_mode_input(uint8_t bit)
+static void clearcore_leap_io_set_input_mode(uint8_t input)
 {
-    switch (bit)
+    switch (input)
     {
     case 0U:
-        (void)ConnectorIO0.Mode(Connector::INPUT_DIGITAL);
+        (void)ConnectorDI6.Mode(Connector::INPUT_DIGITAL);
         break;
     case 1U:
-        (void)ConnectorIO1.Mode(Connector::INPUT_DIGITAL);
+        (void)ConnectorDI7.Mode(Connector::INPUT_DIGITAL);
         break;
     case 2U:
-        (void)ConnectorIO2.Mode(Connector::INPUT_DIGITAL);
+        (void)ConnectorDI8.Mode(Connector::INPUT_DIGITAL);
         break;
     case 3U:
-        (void)ConnectorIO3.Mode(Connector::INPUT_DIGITAL);
+        (void)ConnectorA9.Mode(Connector::INPUT_DIGITAL);
         break;
     case 4U:
-        (void)ConnectorIO4.Mode(Connector::INPUT_DIGITAL);
+        (void)ConnectorA10.Mode(Connector::INPUT_DIGITAL);
         break;
     case 5U:
-        (void)ConnectorIO5.Mode(Connector::INPUT_DIGITAL);
+        (void)ConnectorA11.Mode(Connector::INPUT_DIGITAL);
+        break;
+    case 6U:
+        (void)ConnectorA12.Mode(Connector::INPUT_DIGITAL);
         break;
     default:
         break;
@@ -79,9 +82,10 @@ static void clearcore_leap_io_set_pin_mode_input(uint8_t bit)
 
 static void clearcore_leap_io_drive_pin(uint8_t bit, int output_on)
 {
+    clearcore_leap_io_set_pin_mode_output(bit);
+
     if (output_on != 0)
     {
-        clearcore_leap_io_set_pin_mode_output(bit);
         switch (bit)
         {
         case 0U:
@@ -108,26 +112,50 @@ static void clearcore_leap_io_drive_pin(uint8_t bit, int output_on)
     }
     else
     {
-        clearcore_leap_io_set_pin_mode_input(bit);
+        switch (bit)
+        {
+        case 0U:
+            (void)ConnectorIO0.State(false);
+            break;
+        case 1U:
+            (void)ConnectorIO1.State(false);
+            break;
+        case 2U:
+            (void)ConnectorIO2.State(false);
+            break;
+        case 3U:
+            (void)ConnectorIO3.State(false);
+            break;
+        case 4U:
+            (void)ConnectorIO4.State(false);
+            break;
+        case 5U:
+            (void)ConnectorIO5.State(false);
+            break;
+        default:
+            break;
+        }
     }
 }
 
-static int clearcore_leap_io_read_pin(uint8_t bit)
+static int clearcore_leap_io_read_input(uint8_t input)
 {
-    switch (bit)
+    switch (input)
     {
     case 0U:
-        return ConnectorIO0.State();
+        return ConnectorDI6.State();
     case 1U:
-        return ConnectorIO1.State();
+        return ConnectorDI7.State();
     case 2U:
-        return ConnectorIO2.State();
+        return ConnectorDI8.State();
     case 3U:
-        return ConnectorIO3.State();
+        return ConnectorA9.State();
     case 4U:
-        return ConnectorIO4.State();
+        return ConnectorA10.State();
     case 5U:
-        return ConnectorIO5.State();
+        return ConnectorA11.State();
+    case 6U:
+        return ConnectorA12.State();
     default:
         return 0;
     }
@@ -151,12 +179,19 @@ extern "C" void clearcore_leap_io_init(ClearcoreLeapIoShadow *io)
     io->pin_output_mask  = 0U;
     io->pin_state_mask   = 0U;
 
-    /* Match ClearLink ApplicationInitialization: IO-0..IO-5 as outputs. */
-    for (bit = 0U; bit < k_io_count; ++bit)
+    /* ClearCore LEAP 8x8: IO-0..IO-5 outputs; output bits 6..7 no-op. */
+    for (bit = 0U; bit < k_hardware_output_count; ++bit)
     {
         clearcore_leap_io_set_pin_mode_output(bit);
+        clearcore_leap_io_drive_pin(bit, 0);
     }
-    io->pin_output_mask = k_all_pins;
+    io->pin_output_mask = k_hardware_output_mask;
+
+    /* DI-6, DI-7, DI-8, A-9, A-10, A-11, A-12 map to input bits 0..6. */
+    for (bit = 0U; bit < k_hardware_input_count; ++bit)
+    {
+        clearcore_leap_io_set_input_mode(bit);
+    }
 
     clearcore_leap_io_refresh_inputs(io);
 }
@@ -170,20 +205,11 @@ extern "C" void clearcore_leap_io_refresh_inputs(ClearcoreLeapIoShadow *io)
         return;
     }
 
-    for (uint8_t bit = 0U; bit < k_io_count; ++bit)
+    for (uint8_t bit = 0U; bit < k_hardware_input_count; ++bit)
     {
         const uint16_t bit_mask = (uint16_t)(1U << bit);
 
-        if ((io->pin_output_mask & (uint8_t)bit_mask) != 0U)
-        {
-            if ((io->digital_outputs & bit_mask) != 0U)
-            {
-                inputs = (uint16_t)(inputs | bit_mask);
-            }
-            continue;
-        }
-
-        if (clearcore_leap_io_read_pin(bit) != 0)
+        if (clearcore_leap_io_read_input(bit) != 0)
         {
             inputs = (uint16_t)(inputs | bit_mask);
         }
@@ -194,7 +220,6 @@ extern "C" void clearcore_leap_io_refresh_inputs(ClearcoreLeapIoShadow *io)
 
 extern "C" void clearcore_leap_io_apply_outputs(ClearcoreLeapIoShadow *io, uint16_t outputs)
 {
-    uint8_t pin_outputs = 0U;
     uint8_t pin_states  = 0U;
 
     if (io == NULL)
@@ -202,12 +227,14 @@ extern "C" void clearcore_leap_io_apply_outputs(ClearcoreLeapIoShadow *io, uint1
         return;
     }
 
+    outputs = (uint16_t)(outputs & k_output_mask);
+
     io->safe_active     = 0;
     io->digital_outputs = outputs;
     io->io_status       = LEAP_DIO_STATUS_OK;
     io->outputs_dirty   = 0;
 
-    for (uint8_t bit = 0U; bit < k_io_count; ++bit)
+    for (uint8_t bit = 0U; bit < k_hardware_output_count; ++bit)
     {
         const uint8_t  bit_mask = (uint8_t)(1U << bit);
         const int      on       = ((outputs >> bit) & 1U) != 0U;
@@ -216,14 +243,13 @@ extern "C" void clearcore_leap_io_apply_outputs(ClearcoreLeapIoShadow *io, uint1
 
         if (on != 0)
         {
-            pin_outputs = (uint8_t)(pin_outputs | bit_mask);
             pin_states  = (uint8_t)(pin_states | bit_mask);
         }
     }
 
-    io->pin_output_mask = pin_outputs;
+    io->pin_output_mask = k_hardware_output_mask;
     io->pin_state_mask  = pin_states;
-    io->digital_inputs  = outputs & k_all_pins;
+    clearcore_leap_io_refresh_inputs(io);
 
     {
         static uint16_t last_usb_outputs = 0xFFFFU;

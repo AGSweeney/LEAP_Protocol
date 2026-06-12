@@ -40,33 +40,23 @@ body {
 
 .brand {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
+	align-items: flex-start;
+	justify-content: flex-start;
 	gap: 16px;
 }
 
-.brand-mark {
-	width: 72px;
-	height: 72px;
-	border-radius: 10px;
-	border: 1px solid var(--stroke);
-	background: linear-gradient(145deg, var(--accent-2), #005f8f);
-	color: #fff;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-weight: 700;
-	font-size: 13px;
-	letter-spacing: 0.8px;
-	flex-shrink: 0;
+.brand-title {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: flex-start;
 }
 
-h1 {
-	margin: 0;
-	font-family: Georgia, "Times New Roman", serif;
-	font-size: 42px;
-	font-weight: 700;
-	letter-spacing: 0.4px;
+.brand-logo {
+	width: min(460px, 70vw);
+	height: 150px;
+	object-fit: contain;
+	object-position: left center;
+	display: block;
 }
 
 .subtitle {
@@ -75,7 +65,7 @@ h1 {
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 1.2px;
-	margin: 8px 0 0;
+	margin: 2px 0 0;
 }
 
 .lead {
@@ -392,17 +382,45 @@ code {
 	word-break: break-word;
 }
 
-.bits {
+.io-value {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 3px;
+	white-space: nowrap;
+}
+
+.io-hex {
 	font-family: Consolas, "Courier New", monospace;
-	letter-spacing: 0.08em;
 	font-size: 11px;
+	line-height: 1rem;
+	color: var(--text);
+}
+
+.bits {
+	display: inline-flex;
+	flex-direction: column;
+	gap: 2px;
+	font-family: Consolas, "Courier New", monospace;
+	font-size: 10px;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.bit-row {
+	display: inline-flex;
+	gap: 2px;
+	white-space: nowrap;
 }
 
 .bit {
-	display: inline-block;
-	width: 1.1rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 0.9rem;
+	min-width: 0.9rem;
+	height: 1rem;
 	text-align: center;
-	margin-right: 0.15rem;
 	border-radius: 3px;
 	background: #eef3f7;
 	color: var(--muted);

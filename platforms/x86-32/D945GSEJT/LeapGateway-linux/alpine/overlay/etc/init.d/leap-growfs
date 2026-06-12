@@ -1,0 +1,77 @@
+#!/sbin/openrc-run
+
+name="leap-growfs"
+description="Grow LeapOS root partition and filesystem on first boot"
+
+depend() {
+	need root
+	before localmount leap-gateway
+}
+
+start() {
+	local stamp="/var/lib/leap-growfs.done"
+	local root_dev root_base sys_path part_num disk disk_size start_sector cur_size new_size
+
+	if [ -e "$stamp" ]; then
+		return 0
+	fi
+
+	root_dev="$(findmnt -n -o SOURCE / 2>/dev/null || awk '$2 == "/" { print $1; exit }' /proc/mounts)"
+	if [ "$root_dev" = "/dev/root" ] || [ "${root_dev#/dev/}" = "$root_dev" ]; then
+		root_dev="$(findfs LABEL=LEAPGW 2>/dev/null || true)"
+	fi
+	if [ -z "$root_dev" ] || [ ! -b "$root_dev" ]; then
+		ewarn "root block device not found; skipping growfs"
+		return 0
+	fi
+
+	root_base="$(basename "$(readlink -f "$root_dev")")"
+	sys_path="/sys/class/block/$root_base"
+	if [ ! -r "$sys_path/partition" ] || [ ! -r "$sys_path/start" ] || [ ! -r "$sys_path/size" ]; then
+		ewarn "$root_dev is not a resizable partition; skipping growfs"
+		mkdir -p "$(dirname "$stamp")"
+		touch "$stamp"
+		return 0
+	fi
+
+	part_num="$(cat "$sys_path/partition")"
+	disk="/dev/$(basename "$(readlink -f "$sys_path/..")")"
+	if [ ! -b "$disk" ]; then
+		ewarn "parent disk for $root_dev not found; skipping growfs"
+		return 0
+	fi
+
+	disk_size="$(blockdev --getsz "$disk")"
+	start_sector="$(cat "$sys_path/start")"
+	cur_size="$(cat "$sys_path/size")"
+	new_size="$((disk_size - start_sector))"
+
+	if [ "$new_size" -le "$cur_size" ]; then
+		ebegin "Root partition already uses available disk space"
+		eend 0
+	else
+		ebegin "Growing root partition $root_dev to fill $disk"
+		printf ',+\n' | sfdisk --no-reread -N "$part_num" "$disk" >/dev/null || {
+			eend 1
+			return 1
+		}
+		partx -u "$disk" >/dev/null 2>&1 || blockdev --rereadpt "$disk" >/dev/null 2>&1 || true
+		eend 0
+	fi
+
+	ebegin "Growing root filesystem on $root_dev"
+	if ! command -v resize2fs >/dev/null 2>&1; then
+		eend 1
+		ewarn "resize2fs not found; install e2fsprogs-extra"
+		return 1
+	fi
+	resize2fs "$root_dev" >/var/log/leap-growfs.log 2>&1 || {
+		eend 1
+		ewarn "resize2fs failed; see /var/log/leap-growfs.log"
+		return 1
+	}
+	eend 0
+
+	mkdir -p "$(dirname "$stamp")"
+	touch "$stamp"
+}

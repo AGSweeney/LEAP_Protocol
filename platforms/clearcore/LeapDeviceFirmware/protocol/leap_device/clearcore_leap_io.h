@@ -12,8 +12,8 @@
 
 #include <stdint.h>
 
-#define CLEARCORE_LEAP_DO_COUNT     6u
-#define CLEARCORE_LEAP_DI_COUNT     6u
+#define CLEARCORE_LEAP_DO_COUNT       8u
+#define CLEARCORE_LEAP_DI_COUNT       8u
 /* LEAP_PROFILE_DIGITAL_IO_8X8 — keep literal; this header must not include leap_core */
 #define CLEARCORE_LEAP_PROFILE_ID     0x00010001u
 

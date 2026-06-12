@@ -28,6 +28,7 @@ typedef struct LeapGatewayRuntime
     LeapControllerPeerTable       peer_table;
     LeapGatewayLeapSessionState   leap_session;
     int                           discover_pending_ms;
+    int                           discover_active;
     int                           config_dirty;
     char                          bound_ifname[16];
 } LeapGatewayRuntime;

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Build raw MBR + ext2 Alpine i386 disk image for D945GSEJT gateway-only CF.
+# Build raw MBR + ext4 Alpine i386 disk image for D945GSEJT gateway-only CF.
 # Root is only required for the first apk/chroot rootfs build. When
 # build-work/rootfs/.leap-alpine-rootfs-ready exists, repack is loop-free
-# (genext2fs + GRUB) and runs without sudo.
+# (mke2fs -d + GRUB) and runs without sudo.
 #   bash mk-image.sh              # repack from cached rootfs
 #   sudo FORCE_ROOTFS=1 bash mk-image.sh   # full rootfs rebuild
 set -euo pipefail
@@ -16,8 +16,10 @@ APK_CACHE="$CACHE/apk"
 
 ALPINE_RELEASE="${ALPINE_RELEASE:-3.20.6}"
 ALPINE_BRANCH="${ALPINE_BRANCH:-$(echo "$ALPINE_RELEASE" | cut -d. -f1,2)}"
-# 240 MiB image → ~238 MiB ext2 partition (fits 256 MiB CF with headroom)
-IMAGE_MB="${IMAGE_MB:-240}"
+# auto = rootfs size + IMAGE_MARGIN_MB, rounded up. Override with IMAGE_MB=240.
+IMAGE_MB="${IMAGE_MB:-auto}"
+IMAGE_MIN_MB="${IMAGE_MIN_MB:-160}"
+IMAGE_MARGIN_MB="${IMAGE_MARGIN_MB:-32}"
 PART_START=2048
 WORK="$SCRIPT_DIR/build-work"
 ROOT="$WORK/rootfs"
@@ -54,16 +56,16 @@ unmount_chroot_mounts() {
 need_cmd() {
 	if ! command -v "$1" >/dev/null 2>&1; then
 		echo "error: missing command: $1" >&2
-		echo "Install: sudo apt install -y qemu-user-static binfmt-support wget tar util-linux rsync genext2fs grub-pc-bin" >&2
+		echo "Install: sudo apt install -y qemu-user-static binfmt-support wget tar util-linux rsync e2fsprogs grub-pc-bin" >&2
 		exit 1
 	fi
 }
 
 # No loop devices / mounts needed for image assembly:
-#   genext2fs packs the rootfs into an ext2 partition file in userspace,
+#   mke2fs -d packs the rootfs into an ext4 partition file in userspace,
 #   GRUB boot.img + core.img are dd'd raw (same method as RTEMS make-cf-image.sh).
 # This is required on WSL2, whose kernel has no loop module.
-need_cmd wget tar sfdisk rsync chroot genext2fs grub-mkimage dd
+need_cmd wget tar sfdisk rsync chroot mke2fs grub-mkimage dd
 
 GRUB_DIR="${GRUB_DIR:-/usr/lib/grub/i386-pc}"
 GRUB_MODS="biosdisk part_msdos ext2 linux serial terminal echo gzio"
@@ -193,6 +195,16 @@ fi
 ROOT_KB="$(du -sk "$ROOT" | awk '{print $1}')"
 echo "Rootfs size: $((ROOT_KB / 1024)) MiB"
 
+if [ "$IMAGE_MB" = "auto" ]; then
+	ROOT_MB=$(((ROOT_KB + 1023) / 1024))
+	IMAGE_MB=$((ROOT_MB + IMAGE_MARGIN_MB + 2))
+	if [ "$IMAGE_MB" -lt "$IMAGE_MIN_MB" ]; then
+		IMAGE_MB="$IMAGE_MIN_MB"
+	fi
+	IMAGE_MB=$((((IMAGE_MB + 3) / 4) * 4))
+	echo "Auto image size: ${IMAGE_MB} MiB (min=${IMAGE_MIN_MB}, margin=${IMAGE_MARGIN_MB})"
+fi
+
 echo "Creating ${IMAGE_MB} MiB disk image ..."
 mkdir -p "$IMAGE_DIR"
 rm -f "$IMG"
@@ -209,8 +221,8 @@ PART_BYTES=$((PART_SECTORS * 512))
 PART_KB=$((PART_BYTES / 1024))
 PART_MIB=$((PART_KB / 1024))
 # Stage partition + GRUB scratch files on native Linux fs (fast, avoids DrvFS quirks).
-LINUX_WORK="${ALPINE_LINUX_WORK:-/tmp/leap-alpine-build}"
-PART_IMG="$LINUX_WORK/partition.ext2"
+LINUX_WORK="${ALPINE_LINUX_WORK:-/tmp/leap-alpine-build-${USER:-user}}"
+PART_IMG="$LINUX_WORK/partition.ext4"
 mkdir -p "$LINUX_WORK"
 
 if [ "$ROOT_KB" -gt $((PART_KB * 95 / 100)) ]; then
@@ -222,8 +234,6 @@ fi
 
 # Last console= wins as primary /dev/console — keep ttyS0 last so OpenRC and
 # boot messages land on COM1 (headless board, QEMU -nographic).
-# rootfstype=ext4: Alpine's initramfs only ships the ext4 driver (no ext2.ko,
-# no ext2 alias) — the ext4 driver mounts our genext2fs ext2 partition natively.
 KERNEL_ARGS="root=LABEL=LEAPGW rootfstype=ext4 rootwait modules=sd-mod,ext4 earlyprintk=serial,ttyS0,115200 console=tty1 console=ttyS0,115200n8"
 
 # Applied at pack time so the cached rootfs picks up fixes without FORCE_ROOTFS=1.
@@ -237,6 +247,9 @@ rsync -a "$SCRIPT_DIR/overlay/" "$ROOT/"
 find "$ROOT/etc" "$ROOT/usr/sbin" -type f \
 	-exec grep -Iq . {} \; -exec sed -i 's/\r$//' {} \; 2>/dev/null || true
 chmod 755 "$ROOT/usr/sbin/leap-gateway" "$ROOT/etc/init.d/leap-gateway"
+if [ -e "$ROOT/etc/init.d/leap-growfs" ]; then
+	chmod 755 "$ROOT/etc/init.d/leap-growfs"
+fi
 # rc-update inside the chroot failed silently — enable services as plain
 # symlinks (exactly what rc-update does). Minimal appliance set:
 #   sysinit: device nodes + driver load
@@ -259,6 +272,7 @@ enable_svc sysinit hwdrivers
 enable_svc boot fsck
 enable_svc boot root
 enable_svc boot localmount
+enable_svc boot leap-growfs
 enable_svc boot modules
 enable_svc boot sysctl
 enable_svc boot hostname
@@ -291,9 +305,9 @@ EOF
 rm -rf "$ROOT/boot/extlinux" "$ROOT/boot/ldlinux.sys"
 
 FS_BLOCKS=$((PART_BYTES / 4096))
-echo "Packing rootfs with genext2fs (${PART_MIB} MiB, staging on ${LINUX_WORK}, no loop mount) ..."
+echo "Packing rootfs with mke2fs ext4 (${PART_MIB} MiB, staging on ${LINUX_WORK}, no loop mount) ..."
 rm -f "$PART_IMG"
-genext2fs -B 4096 -b "$FS_BLOCKS" -N "$FS_BLOCKS" -d "$ROOT" -L LEAPGW "$PART_IMG"
+mke2fs -q -t ext4 -b 4096 -L LEAPGW -d "$ROOT" "$PART_IMG" "$FS_BLOCKS"
 
 echo "Writing partition into disk image (seek sector ${PART_START}) ..."
 dd if="$PART_IMG" of="$IMG" bs=512 seek="$PART_START" conv=notrunc status=none

@@ -15,6 +15,8 @@
 
 #include <string.h>
 
+#define LEAP_GATEWAY_PD_REPLY_TIMEOUT_MS 100
+
 typedef struct LeapGatewayPdTransport
 {
     LeapRtemsTransport* transport;
@@ -95,6 +97,8 @@ gateway_pd_wait_exchange_reply(
     uint8_t                 frame_buf[256];
     size_t                  frame_length;
     int                     rc;
+    uint64_t                deadline_us;
+    int                     wait_ms;
 
     if (ctx == NULL || ctx->transport == NULL || reply_length == NULL ||
         peer_mac == NULL)
@@ -107,15 +111,34 @@ gateway_pd_wait_exchange_reply(
         *reply_recv_us_out = 0u;
     }
 
+    if (timeout_ms <= 0 || timeout_ms > LEAP_GATEWAY_PD_REPLY_TIMEOUT_MS)
+    {
+        timeout_ms = LEAP_GATEWAY_PD_REPLY_TIMEOUT_MS;
+    }
+    deadline_us = leap_rtems_monotonic_us() + ((uint64_t)timeout_ms * 1000u);
+
     for (;;)
     {
+        uint64_t now_us = leap_rtems_monotonic_us();
+
+        if (now_us >= deadline_us)
+        {
+            return -1;
+        }
+
+        wait_ms = (int)((deadline_us - now_us) / 1000u);
+        if (wait_ms <= 0)
+        {
+            wait_ms = 1;
+        }
+
         rc = leap_rtems_transport_recv(
             ctx->transport,
             src_mac,
             frame_buf,
             sizeof(frame_buf),
             &frame_length,
-            timeout_ms);
+            wait_ms);
         if (rc != 0)
         {
             return -1;

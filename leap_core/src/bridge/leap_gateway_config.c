@@ -65,8 +65,6 @@ trim_newline(char* line)
 void
 leap_gateway_config_defaults(LeapGatewayConfig* config)
 {
-    LeapEipBridgeMapping* map;
-
     if (config == NULL)
     {
         return;
@@ -97,20 +95,7 @@ leap_gateway_config_defaults(LeapGatewayConfig* config)
     config->bridge.output_assembly_id = 150u;
     config->bridge.input_assembly_size = 32u;
     config->bridge.output_assembly_size = 32u;
-    config->bridge.mapping_count = 1u;
-
-    map = &config->bridge.mappings[0];
-    memset(map->leap_mac, 0, sizeof(map->leap_mac));
-    map->profile_id = LEAP_PROFILE_DIGITAL_IO_8X8;
-    map->input.assembly_byte = 0u;
-    map->input.bit = 0u;
-    map->input.width_bits = 8u;
-    map->output.assembly_byte = 2u;
-    map->output.bit = 0u;
-    map->output.width_bits = 8u;
-    map->status_assembly_byte = 4u;
-    map->status_width_bytes = 2u;
-    map->enabled = 0;
+    config->bridge.mapping_count = 0u;
 }
 
 const char*

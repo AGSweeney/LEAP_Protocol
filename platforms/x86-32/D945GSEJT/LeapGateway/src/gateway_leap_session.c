@@ -41,6 +41,8 @@
 #include "leap/leap_controller_peer.h"
 
 #define LEAP_GATEWAY_BOOTSTRAP_PROBE_MS 1500
+#define LEAP_GATEWAY_PD_MISS_LIMIT      3u
+#define LEAP_GATEWAY_RECONNECT_TICKS    20u
 
 #include "leap/leap_controller_session_hub.h"
 
@@ -533,6 +535,110 @@ gateway_sync_pd_outputs_from_bridge(LeapGatewayRuntime* gw, unsigned mapping_ind
 
 static void
 
+gateway_mark_mapping_down(
+
+    LeapGatewayRuntime*          gw,
+
+    unsigned                     mapping_index,
+
+    const LeapPdControllerIo*    pd_io)
+
+{
+
+    const LeapEipBridgePeerIo* peer;
+
+    uint16_t                   inputs = 0u;
+
+    uint16_t                   outputs = 0u;
+
+    uint16_t                   status = LEAP_DIO_STATUS_OK;
+
+
+
+    if (gw == NULL || mapping_index >= LEAP_EIP_BRIDGE_MAX_MAPPINGS)
+
+    {
+
+        return;
+
+    }
+
+
+
+    peer = &gw->bridge.peer_io[mapping_index];
+
+    inputs = peer->digital_inputs;
+
+    outputs = peer->digital_outputs;
+
+    status = peer->io_status;
+
+    leap_eip_bridge_update_peer_io(
+
+        &gw->bridge,
+
+        mapping_index,
+
+        inputs,
+
+        outputs,
+
+        status,
+
+        0);
+
+
+
+    if (leap_controller_session_hub_is_op(&gw->session_hub, (int)mapping_index) != 0 ||
+
+        (mapping_index < LEAP_CTRL_MAX_PEERS &&
+
+         gw->session_hub.slots[mapping_index].in_use != 0))
+
+    {
+
+        printf(
+
+            LEAP_TS_FMT LEAP_ANSI_WARN
+
+            "Gateway: LEAP peer mapping %u down, releasing slot for retry" LEAP_ANSI_RESET "\n",
+
+            leap_rtems_uptime_str(),
+
+            mapping_index);
+
+        (void)leap_controller_session_hub_release(
+
+            &gw->session_hub,
+
+            (int)mapping_index,
+
+            &gw->controller_io);
+
+    }
+
+
+
+    if (mapping_index < LEAP_CTRL_MAX_PEERS)
+
+    {
+
+        gw->leap_session.pd_miss_count[mapping_index] = 0u;
+
+        gw->leap_session.reconnect_ticks[mapping_index] = LEAP_GATEWAY_RECONNECT_TICKS;
+
+    }
+
+
+
+    (void)pd_io;
+
+}
+
+
+
+static void
+
 gateway_push_dirty_outputs(LeapGatewayRuntime* gw, const LeapPdControllerIo* pd_io)
 
 {
@@ -936,6 +1042,116 @@ gateway_bootstrap_mapping_slot(
 
 static void
 
+gateway_retry_down_mappings(LeapGatewayRuntime* gw)
+
+{
+
+    unsigned i;
+
+
+
+    if (gw == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    for (i = 0u; i < gw->config.bridge.mapping_count && i < LEAP_CTRL_MAX_PEERS; ++i)
+
+    {
+
+        LeapControllerStackStatus status;
+
+
+
+        if (!mapping_slot_enabled(gw, i))
+
+        {
+
+            gw->leap_session.reconnect_ticks[i] = 0u;
+
+            gw->leap_session.pd_miss_count[i] = 0u;
+
+            continue;
+
+        }
+
+
+
+        if (leap_controller_session_hub_is_op(&gw->session_hub, (int)i) != 0)
+
+        {
+
+            continue;
+
+        }
+
+
+
+        if (gw->leap_session.reconnect_ticks[i] > 0u)
+
+        {
+
+            gw->leap_session.reconnect_ticks[i]--;
+
+            continue;
+
+        }
+
+
+
+        status = gateway_bootstrap_mapping_slot(
+
+            gw,
+
+            i,
+
+            &gw->config.bridge.mappings[i]);
+
+        if (status == LEAP_CTRL_STACK_OK &&
+
+            leap_controller_session_hub_is_op(&gw->session_hub, (int)i) != 0)
+
+        {
+
+            gateway_sync_pd_outputs_from_bridge(gw, i);
+
+            gw->leap_session.pd_miss_count[i] = 0u;
+
+            gw->leap_session.reconnect_ticks[i] = 0u;
+
+            printf(
+
+                LEAP_TS_FMT LEAP_ANSI_OK
+
+                "Gateway: LEAP peer mapping %u recovered" LEAP_ANSI_RESET "\n",
+
+                leap_rtems_uptime_str(),
+
+                i);
+
+        }
+
+        else
+
+        {
+
+            gw->leap_session.reconnect_ticks[i] = LEAP_GATEWAY_RECONNECT_TICKS;
+
+        }
+
+    }
+
+}
+
+
+
+static void
+
 gateway_release_unused_mapping_slots(LeapGatewayRuntime* gw)
 
 {
@@ -1011,6 +1227,7 @@ gateway_run_pending_discover(void)
 
 
     g_gateway.discover_pending_ms = 0;
+    g_gateway.discover_active = 1;
 
     (void)leap_controller_peer_table_discover(
 
@@ -1029,6 +1246,7 @@ gateway_run_pending_discover(void)
         leap_rtems_uptime_str(),
 
         g_gateway.peer_table.count);
+    g_gateway.discover_active = 0;
 
 }
 
@@ -1082,6 +1300,10 @@ leap_gateway_leap_session_disconnect(LeapGatewayRuntime* gw)
 
     gw->leap_session.retry_ticks     = 0u;
 
+    memset(gw->leap_session.pd_miss_count, 0, sizeof(gw->leap_session.pd_miss_count));
+
+    memset(gw->leap_session.reconnect_ticks, 0, sizeof(gw->leap_session.reconnect_ticks));
+
     gw->bridge.leap_comm_ok          = 0;
 
 }
@@ -1107,6 +1329,8 @@ leap_gateway_leap_session_request_connect(LeapGatewayRuntime* gw)
     gw->leap_session.connect_pending = 1;
 
     gw->leap_session.retry_ticks     = 0u;
+
+    memset(gw->leap_session.reconnect_ticks, 0, sizeof(gw->leap_session.reconnect_ticks));
 
 }
 
@@ -1220,7 +1444,25 @@ leap_gateway_leap_session_connect(LeapGatewayRuntime* gw)
 
             gateway_sync_pd_outputs_from_bridge(gw, i);
 
+            if (i < LEAP_CTRL_MAX_PEERS)
+
+            {
+
+                gw->leap_session.pd_miss_count[i] = 0u;
+
+                gw->leap_session.reconnect_ticks[i] = 0u;
+
+            }
+
             op_count++;
+
+        }
+
+        else if (i < LEAP_CTRL_MAX_PEERS)
+
+        {
+
+            gw->leap_session.reconnect_ticks[i] = LEAP_GATEWAY_RECONNECT_TICKS;
 
         }
 
@@ -1330,6 +1572,10 @@ gateway_leap_session_loop(void)
 
 
 
+        gateway_retry_down_mappings(&g_gateway);
+
+
+
         gateway_push_dirty_outputs(&g_gateway, &pd_io);
 
 
@@ -1430,7 +1676,39 @@ gateway_leap_session_loop(void)
 
                     {
 
+                        if (i < LEAP_CTRL_MAX_PEERS)
+
+                        {
+
+                            g_gateway.leap_session.pd_miss_count[i] = 0u;
+
+                            g_gateway.leap_session.reconnect_ticks[i] = 0u;
+
+                        }
+
                         any_comm_ok = 1;
+
+                    }
+
+                    else if (i < LEAP_CTRL_MAX_PEERS)
+
+                    {
+
+                        g_gateway.leap_session.pd_miss_count[i]++;
+
+                        if (g_gateway.leap_session.pd_miss_count[i] >= LEAP_GATEWAY_PD_MISS_LIMIT)
+
+                        {
+
+                            gateway_mark_mapping_down(
+
+                                &g_gateway,
+
+                                i,
+
+                                &pd_io);
+
+                        }
 
                     }
 

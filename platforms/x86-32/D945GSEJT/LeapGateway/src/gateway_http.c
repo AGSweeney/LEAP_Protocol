@@ -32,6 +32,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#if defined(__linux__)
+#include <sys/reboot.h>
+#elif defined(__rtems__)
+#include <rtems.h>
+#endif
+
 #define LEAP_GATEWAY_HTTP_REQUEST_MAX 4096u
 #define LEAP_GATEWAY_HTTP_BODY_MAX    4096u
 #define LEAP_GATEWAY_HTTP_RECV_MS     3000
@@ -41,6 +47,7 @@ static int   g_listen_fds[LEAP_GATEWAY_HTTP_LISTEN_MAX];
 static int   g_listen_count;
 static char  g_http_request[LEAP_GATEWAY_HTTP_REQUEST_MAX];
 static char  g_http_body[LEAP_GATEWAY_HTTP_BODY_MAX];
+static int   g_reboot_pending;
 
 static int
 http_mac_is_zero(const uint8_t mac[6])
@@ -48,6 +55,34 @@ http_mac_is_zero(const uint8_t mac[6])
     static const uint8_t zero[6] = { 0u, 0u, 0u, 0u, 0u, 0u };
 
     return memcmp(mac, zero, 6) == 0;
+}
+
+static int
+http_peer_is_owned_live(const uint8_t peer_mac[6])
+{
+    unsigned i;
+
+    if (peer_mac == NULL)
+    {
+        return 0;
+    }
+
+    for (i = 0u; i < LEAP_CTRL_MAX_PEERS; ++i)
+    {
+        if (g_gateway.session_hub.slots[i].in_use == 0)
+        {
+            continue;
+        }
+
+        if (memcmp(g_gateway.session_hub.slots[i].peer_mac, peer_mac, 6) != 0)
+        {
+            continue;
+        }
+
+        return leap_controller_session_hub_is_op(&g_gateway.session_hub, (int)i);
+    }
+
+    return 0;
 }
 
 static int
@@ -129,6 +164,36 @@ http_reply_cstr(int fd, int code, const char* ctype, const char* body)
     size_t body_len = body != NULL ? strlen(body) : 0u;
 
     http_reply(fd, code, ctype, body, body_len);
+}
+
+static void
+http_reboot_if_pending(void)
+{
+    if (g_reboot_pending == 0)
+    {
+        return;
+    }
+
+    printf(
+        LEAP_TS_FMT LEAP_ANSI_WARN "Gateway: reboot requested from Web UI" LEAP_ANSI_RESET "\n",
+        leap_rtems_uptime_str());
+    sync();
+
+#if defined(__linux__)
+    (void)reboot(RB_AUTOBOOT);
+    printf(
+        LEAP_TS_FMT LEAP_ANSI_ERR "Gateway: reboot syscall failed: %s" LEAP_ANSI_RESET "\n",
+        leap_rtems_uptime_str(),
+        strerror(errno));
+    g_reboot_pending = 0;
+#elif defined(__rtems__)
+    rtems_shutdown_executive(0);
+#else
+    printf(
+        LEAP_TS_FMT LEAP_ANSI_ERR "Gateway: reboot unsupported on this platform" LEAP_ANSI_RESET "\n",
+        leap_rtems_uptime_str());
+    g_reboot_pending = 0;
+#endif
 }
 
 static int
@@ -261,52 +326,66 @@ append_peer_json(char* buf, size_t cap, size_t* used)
             continue;
         }
 
-        if (*used > 12u && buf[*used - 1u] != '[')
+        if (http_peer_is_owned_live(peer->mac) != 0)
         {
-            (void)snprintf(buf + *used, cap - *used, ",");
-            *used = strlen(buf);
+            continue;
         }
 
-        if (http_mac_is_zero(peer->active_owner_mac))
         {
-            (void)snprintf(
-                buf + *used,
-                cap - *used,
-                "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"none\"}",
-                peer->mac[0],
-                peer->mac[1],
-                peer->mac[2],
-                peer->mac[3],
-                peer->mac[4],
-                peer->mac[5],
-                (unsigned)peer->active_profile_id,
-                (unsigned)peer->device_state);
-        }
-        else
-        {
-            (void)snprintf(
-                buf + *used,
-                cap - *used,
-                "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"%02x:%02x:%02x:%02x:%02x:%02x\"}",
-                peer->mac[0],
-                peer->mac[1],
-                peer->mac[2],
-                peer->mac[3],
-                peer->mac[4],
-                peer->mac[5],
-                (unsigned)peer->active_profile_id,
-                (unsigned)peer->device_state,
-                peer->active_owner_mac[0],
-                peer->active_owner_mac[1],
-                peer->active_owner_mac[2],
-                peer->active_owner_mac[3],
-                peer->active_owner_mac[4],
-                peer->active_owner_mac[5]);
+            uint16_t      state = peer->device_state;
+            const uint8_t* owner = peer->active_owner_mac;
+
+            if (*used > 12u && buf[*used - 1u] != '[')
+            {
+                (void)snprintf(buf + *used, cap - *used, ",");
+                *used = strlen(buf);
+            }
+
+            if (http_mac_is_zero(owner))
+            {
+                (void)snprintf(
+                    buf + *used,
+                    cap - *used,
+                    "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"none\"}",
+                    peer->mac[0],
+                    peer->mac[1],
+                    peer->mac[2],
+                    peer->mac[3],
+                    peer->mac[4],
+                    peer->mac[5],
+                    (unsigned)peer->active_profile_id,
+                    (unsigned)state);
+            }
+            else
+            {
+                (void)snprintf(
+                    buf + *used,
+                    cap - *used,
+                    "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"%02x:%02x:%02x:%02x:%02x:%02x\"}",
+                    peer->mac[0],
+                    peer->mac[1],
+                    peer->mac[2],
+                    peer->mac[3],
+                    peer->mac[4],
+                    peer->mac[5],
+                    (unsigned)peer->active_profile_id,
+                    (unsigned)state,
+                    owner[0],
+                    owner[1],
+                    owner[2],
+                    owner[3],
+                    owner[4],
+                    owner[5]);
+            }
         }
         *used = strlen(buf);
     }
 
-    (void)snprintf(buf + *used, cap - *used, "]}");
+    (void)snprintf(
+        buf + *used,
+        cap - *used,
+        "],\"discover_active\":%s}",
+        g_gateway.discover_active ? "true" : "false");
 }
 
 static const char*
@@ -382,6 +461,7 @@ append_io_json(char* buf, size_t cap, size_t* used)
     unsigned i;
     char     phase_text[24];
     int      session_active;
+    int      io_emitted = 0;
 
     gateway_http_leap_phase_text(phase_text, sizeof(phase_text));
     session_active = leap_gateway_leap_session_active(&g_gateway) ? 1 : 0;
@@ -400,6 +480,15 @@ append_io_json(char* buf, size_t cap, size_t* used)
     for (i = 0u; i < g_gateway.config.bridge.mapping_count; ++i)
     {
         const LeapEipBridgeMapping* map = &g_gateway.config.bridge.mappings[i];
+
+        if (!map->enabled ||
+            (map->leap_mac[0] == 0u && map->leap_mac[1] == 0u &&
+             map->leap_mac[2] == 0u && map->leap_mac[3] == 0u &&
+             map->leap_mac[4] == 0u && map->leap_mac[5] == 0u))
+        {
+            continue;
+        }
+
         const LeapEipBridgePeerIo*  peer = &g_gateway.bridge.peer_io[i];
         uint8_t                     eip_in_byte = 0u;
         uint8_t                     eip_out_byte = 0u;
@@ -424,11 +513,12 @@ append_io_json(char* buf, size_t cap, size_t* used)
                 g_gateway.bridge.output_assembly[map->output.assembly_byte];
         }
 
-        if (i > 0u)
+        if (io_emitted != 0)
         {
             (void)snprintf(buf + *used, cap - *used, ",");
             *used = strlen(buf);
         }
+        io_emitted = 1;
 
         (void)snprintf(
             buf + *used,
@@ -540,12 +630,13 @@ handle_request(int client_fd, const char* request)
             http_reply_cstr(client_fd, 400, "text/plain", "apply failed");
             return;
         }
+        leap_gateway_leap_session_request_auto_connect(&g_gateway);
 
         http_reply_cstr(
             client_fd,
             200,
             "application/json",
-            "{\"ok\":true,\"config_applied\":true}");
+            "{\"ok\":true,\"config_applied\":true,\"connect_pending\":true}");
         return;
     }
 
@@ -594,6 +685,17 @@ handle_request(int client_fd, const char* request)
         return;
     }
 
+    if (strcmp(method, "POST") == 0 && strcmp(path, "/api/v1/system/reboot") == 0)
+    {
+        g_reboot_pending = 1;
+        http_reply_cstr(
+            client_fd,
+            200,
+            "application/json",
+            "{\"ok\":true,\"reboot_pending\":true}");
+        return;
+    }
+
     if (strcmp(method, "GET") == 0 && strcmp(path, "/api/v1/status") == 0)
     {
         char phase_text[24];
@@ -603,7 +705,7 @@ handle_request(int client_fd, const char* request)
             g_http_body,
             sizeof(g_http_body),
             "{\"product\":\"LeapOS-Gateway\",\"ifname\":\"%s\",\"ipv4\":\"%s\","
-            "\"http_port\":%u,\"ui_version\":5,\"storage_ready\":%s,"
+            "\"http_port\":%u,\"ui_version\":6,\"storage_ready\":%s,"
             "\"config_path\":\"%s\",\"leap_comm_ok\":%s,\"leap_phase\":\"%s\","
             "\"leap_session_active\":%s,\"leap_op_peers\":%u,\"mappings\":%u}",
             g_gateway.bound_ifname,
@@ -622,12 +724,13 @@ handle_request(int client_fd, const char* request)
 
     if (strcmp(method, "POST") == 0 && strcmp(path, "/api/v1/leap/discover") == 0)
     {
-        g_gateway.discover_pending_ms = 1000;
+        g_gateway.discover_pending_ms = 2500;
+        g_gateway.discover_active = 1;
         http_reply_cstr(
             client_fd,
             200,
             "application/json",
-            "{\"ok\":true,\"scan_ms\":1000}");
+            "{\"ok\":true,\"scan_ms\":2500}");
         return;
     }
 
@@ -802,6 +905,11 @@ leap_gateway_http_poll(void)
             if (client_fd >= 0)
             {
                 http_serve_client(client_fd);
+                http_reboot_if_pending();
+                if (g_reboot_pending != 0)
+                {
+                    return;
+                }
                 served = 1;
             }
             else if (errno != EAGAIN && errno != EWOULDBLOCK)

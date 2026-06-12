@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GATEWAY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SRC_HTML="$GATEWAY_DIR/web/index.html"
 SRC_CSS="$GATEWAY_DIR/web/style.css"
+SRC_LOGO="$GATEWAY_DIR/web/leapos-logo.png"
 OUT_C="$GATEWAY_DIR/src/gateway_web_index.c"
 OUT_H="$GATEWAY_DIR/src/gateway_web_index.h"
 
@@ -14,10 +15,11 @@ if [ ! -f "$SRC_HTML" ]; then
 	exit 1
 fi
 
-python3 - "$SRC_HTML" "$SRC_CSS" "$OUT_C" "$OUT_H" <<'PY'
+python3 - "$SRC_HTML" "$SRC_CSS" "$SRC_LOGO" "$OUT_C" "$OUT_H" <<'PY'
+import base64
 import sys
 
-src_path, css_path, out_c, out_h = sys.argv[1:5]
+src_path, css_path, logo_path, out_c, out_h = sys.argv[1:6]
 html = open(src_path, "r", encoding="utf-8").read()
 
 link_tag = '<link rel="stylesheet" href="style.css">'
@@ -28,6 +30,15 @@ if link_tag in html:
         css = ""
     if css:
         html = html.replace(link_tag, f"<style>\n{css}\n</style>")
+
+logo_token = "__LEAPOS_LOGO_DATA_URI__"
+if logo_token in html:
+    try:
+        with open(logo_path, "rb") as f:
+            logo_b64 = base64.b64encode(f.read()).decode("ascii")
+    except OSError as exc:
+        raise SystemExit(f"missing LeapOS logo: {logo_path}: {exc}")
+    html = html.replace(logo_token, f"data:image/png;base64,{logo_b64}")
 
 non_ascii = sorted({ch for ch in html if ord(ch) > 127})
 if non_ascii:

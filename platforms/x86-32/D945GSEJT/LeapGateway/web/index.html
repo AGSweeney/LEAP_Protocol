@@ -10,22 +10,29 @@
 
   <div class="header-card">
     <div class="brand">
-      <div>
-        <h1>LeapOS-Gateway</h1>
+      <div class="brand-title">
+        <img class="brand-logo" src="__LEAPOS_LOGO_DATA_URI__" alt="LeapOS Gateway">
         <p class="subtitle">Configuration Console</p>
       </div>
-      <div class="brand-mark">LEAP</div>
     </div>
     <p class="lead">Discover LEAP devices, map EtherNet/IP assemblies, and manage gateway configuration.</p>
     <div class="nav-bar">
       <button class="button primary" type="button" id="scan">Scan LEAP</button>
-      <button class="button" type="button" id="connect_leap">Connect LEAP</button>
-      <button class="button" type="button" id="reload">Reload config</button>
-      <button class="button" type="button" id="status">Refresh status</button>
-      <button class="button primary" type="button" id="save">Apply to runtime</button>
-      <button class="button primary" type="button" id="persist">Save to disk</button>
+      <button class="button primary" type="button" id="save">Save &amp; Apply</button>
+      <button class="button" type="button" id="reload">Discard edits</button>
+      <button class="button" type="button" id="reboot">Reboot gateway</button>
     </div>
     <div id="msg" class="message"></div>
+  </div>
+
+  <div class="card">
+    <h2>Discovered peers</h2>
+    <table class="grid">
+      <thead>
+        <tr><th>MAC</th><th>Profile</th><th>State</th><th>Owner</th><th>Action</th></tr>
+      </thead>
+      <tbody id="peers"></tbody>
+    </table>
   </div>
 
   <div class="card status-card">
@@ -58,7 +65,6 @@
         </div>
       </div>
     </div>
-    <pre id="stat" class="config-pre" style="margin:0;border:0;border-radius:0;max-height:160px;">Loading...</pre>
   </div>
 
   <div class="card">
@@ -85,7 +91,10 @@
         </div>
       </div>
     </div>
-    <p class="hint">IP changes take effect after reboot. <strong>Save to disk</strong> requires boot from the CF/IDE image (<code>leapos-gateway.img</code>), not the ISO alone.</p>
+    <div class="card-toolbar" style="justify-content:flex-end;margin-top:12px">
+      <button class="button primary" type="button" id="network_save">Save network settings</button>
+    </div>
+    <p class="hint">IP changes take effect after reboot. <strong>Save &amp; Apply</strong> writes the config to disk, applies it to the running gateway, and queues LEAP ownership for mapped peers.</p>
   </div>
 
   <div class="card">
@@ -112,7 +121,7 @@
       </thead>
       <tbody id="mapping_rows"><tr><td colspan="8" class="muted">No mappings - use Map on a discovered peer</td></tr></tbody>
     </table>
-    <div class="editor-grid" style="margin-top:16px">
+    <div id="mapping_editor" class="editor-grid" style="margin-top:16px;display:none">
       <div class="row">
         <label for="map_mac">Peer MAC</label>
         <input id="map_mac" type="text" placeholder="aa:bb:cc:dd:ee:ff">
@@ -140,8 +149,11 @@
       <div class="full checkbox-row">
         <label><input id="map_enabled" type="checkbox"> Enable this mapping</label>
       </div>
+      <div class="full card-toolbar" style="justify-content:flex-end">
+        <button class="button" type="button" id="map_cancel">Done editing</button>
+      </div>
     </div>
-    <p class="hint">Pick a discovered peer with <strong>Map</strong> to add or update a slot (each device keeps its own E/IP byte offsets). Edit a row with <strong>Edit</strong>, then <strong>Apply</strong>. Use <strong>Connect LEAP</strong> to bootstrap ownership (DISC -&gt; MGMT -&gt; OP) on demand.</p>
+    <p class="hint">Pick a discovered peer with <strong>Map</strong> to add or update a slot (each device keeps its own E/IP byte offsets). Edit a row with <strong>Edit</strong>, then use <strong>Save &amp; Apply</strong>.</p>
   </div>
 
   <div class="card">
@@ -167,17 +179,12 @@
   </div>
 
   <div class="card">
-    <h2>Discovered peers</h2>
-    <table class="grid">
-      <thead>
-        <tr><th>MAC</th><th>Profile</th><th>State</th><th>Owner</th><th>Action</th></tr>
-      </thead>
-      <tbody id="peers"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
     <h2>Raw config preview</h2>
+    <div class="card-toolbar">
+      <button class="button" type="button" id="config_download">Download config</button>
+      <button class="button" type="button" id="config_upload">Upload &amp; Apply config</button>
+      <input id="config_upload_file" type="file" accept=".txt,.conf,text/plain" style="display:none">
+    </div>
     <pre id="config_preview" class="config-pre"></pre>
   </div>
 
@@ -215,6 +222,11 @@ let mappings = [];
 let selectedMappingIdx = -1;
 
 function $(id) { return document.getElementById(id); }
+
+function isZeroMac(mac) {
+  const m = (mac || '').trim().toLowerCase().replace(/-/g, ':');
+  return m === '' || m === '00:00:00:00:00:00';
+}
 
 function defaultMapping(index) {
   return {
@@ -267,10 +279,17 @@ function syncFormToSelectedMapping() {
   renderMappingTable();
 }
 
-function loadMappingIntoForm(index) {
-  if (index < 0 || index >= mappings.length) {
+function setMappingEditorVisible(visible) {
+  $('mapping_editor').style.display = visible ? 'grid' : 'none';
+  if (!visible) {
     selectedMappingIdx = -1;
     $('map_edit_label').textContent = '';
+  }
+}
+
+function loadMappingIntoForm(index) {
+  if (index < 0 || index >= mappings.length) {
+    setMappingEditorVisible(false);
     return;
   }
   selectedMappingIdx = index;
@@ -283,6 +302,7 @@ function loadMappingIntoForm(index) {
   $('map_width').value = m.width;
   $('map_enabled').checked = m.enabled;
   $('map_edit_label').textContent = `Editing mapping ${index + 1} of ${mappings.length}`;
+  setMappingEditorVisible(true);
 }
 
 function renderMappingTable() {
@@ -325,7 +345,7 @@ function renderMappingTable() {
       const idx = Number(btn.dataset.idx);
       mappings.splice(idx, 1);
       if (selectedMappingIdx === idx) {
-        loadMappingIntoForm(mappings.length > 0 ? Math.min(idx, mappings.length - 1) : -1);
+        loadMappingIntoForm(-1);
       } else if (selectedMappingIdx > idx) {
         selectedMappingIdx -= 1;
       }
@@ -467,12 +487,12 @@ function buildConfigText() {
     `cyclic_ms=${Number($('cyclic_ms').value) || 50}`
   ];
 
-  mappings.forEach((m, index) => {
+  mappings.filter(m => !isZeroMac(m.mac)).forEach((m, index) => {
     const width = Number(m.width) || mappingDefaults.width;
     lines.push(
       `mapping.begin=${index}`,
       `mapping.enabled=${m.enabled ? 1 : 0}`,
-      `mapping.mac=${m.mac || '00:00:00:00:00:00'}`,
+      `mapping.mac=${m.mac.trim().toLowerCase()}`,
       `mapping.profile=${m.profile || mappingDefaults.profile}`,
       `mapping.input.byte=${Number(m.input_byte) || 0}`,
       'mapping.input.bit=0',
@@ -492,7 +512,9 @@ function applyConfigToForm(cfg) {
   $('mask').value = cfg.network.mask;
   $('ifname').value = cfg.network.ifname;
   $('cyclic_ms').value = cfg.cyclic_ms;
-  mappings = (cfg.mappings || []).map((m, index) => ({
+  mappings = (cfg.mappings || [])
+    .filter(m => !isZeroMac(m.mac))
+    .map((m, index) => ({
     mac: m.mac || '',
     profile: m.profile || mappingDefaults.profile,
     input_byte: Number.isFinite(m.input_byte) ? m.input_byte : index,
@@ -501,7 +523,7 @@ function applyConfigToForm(cfg) {
     width: Number(m.width) || mappingDefaults.width,
     enabled: !!m.enabled
   }));
-  loadMappingIntoForm(mappings.length > 0 ? 0 : -1);
+  loadMappingIntoForm(-1);
   renderMappingTable();
   $('config_preview').textContent = buildConfigText();
   $('metricMappings').textContent = mappings.length;
@@ -515,17 +537,26 @@ async function loadConfig() {
 }
 
 function fmtBits(value, width) {
-  let out = '';
   const w = Math.min(Math.max(width || 8, 1), 16);
-  for (let bit = w - 1; bit >= 0; bit--) {
-    const on = (value >> bit) & 1;
-    out += `<span class="bit ${on ? 'on' : 'off'}">${on}</span>`;
+  let rows = [];
+  for (let rowStart = w - 1; rowStart >= 0; rowStart -= 8) {
+    let row = '';
+    const rowEnd = Math.max(rowStart - 7, 0);
+    for (let bit = rowStart; bit >= rowEnd; bit--) {
+      const on = (value >> bit) & 1;
+      row += `<span class="bit ${on ? 'on' : 'off'}">${on}</span>`;
+    }
+    rows.push(`<span class="bit-row">${row}</span>`);
   }
-  return out;
+  return rows.join('');
 }
 
 function fmtHexByte(v) {
   return '0x' + (v & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+}
+
+function fmtIoValue(value, width) {
+  return `<div class="io-value"><span class="io-hex">${fmtHexByte(value)}</span><span class="bits">${fmtBits(value, width)}</span></div>`;
 }
 
 function updateStatusCard(data) {
@@ -570,10 +601,10 @@ async function loadIo() {
     tr.innerHTML = `
       <td>${m.mac}</td>
       <td>${comm}</td>
-      <td><div>${fmtHexByte(m.leap_inputs)}</div><div class="bits">${fmtBits(m.leap_inputs, m.input_width_bits)}</div></td>
-      <td><div>${fmtHexByte(m.leap_outputs)}</div><div class="bits">${fmtBits(m.leap_outputs, m.output_width_bits)}</div></td>
-      <td>${fmtHexByte(m.eip_input_byte)} <span class="bits">${fmtBits(m.eip_input_byte, m.input_width_bits)}</span></td>
-      <td>${fmtHexByte(m.eip_output_byte)} <span class="bits">${fmtBits(m.eip_output_byte, m.output_width_bits)}</span></td>`;
+      <td>${fmtIoValue(m.leap_inputs, m.input_width_bits)}</td>
+      <td>${fmtIoValue(m.leap_outputs, m.output_width_bits)}</td>
+      <td>${fmtIoValue(m.eip_input_byte, m.input_width_bits)}</td>
+      <td>${fmtIoValue(m.eip_output_byte, m.output_width_bits)}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -591,11 +622,10 @@ $('io_auto').onchange = startIoPoll;
 async function loadStatus() {
   const r = await fetch('/api/v1/status');
   const data = await r.json();
-  $('stat').textContent = JSON.stringify(data, null, 2);
   updateStatusCard(data);
 
   if (data.storage_ready === false) {
-    showMsg('Config volume not mounted - Apply works in RAM; Save to disk needs CF/IDE boot (not read-only ISO).', true);
+    showMsg('Config volume not mounted - Save & Apply needs CF/IDE boot with writable /cf.', true);
   } else if (data.leap_session_active) {
     showMsg(`LEAP owner session active (${data.leap_phase})`);
   } else if (data.leap_phase && data.leap_phase !== 'IDLE' && data.leap_phase !== 'Idle') {
@@ -607,8 +637,13 @@ async function loadPeers() {
   const r = await fetch('/api/v1/leap/peers');
   const data = await r.json();
   const tbody = $('peers');
+  const peers = data.peers || [];
   tbody.innerHTML = '';
-  (data.peers || []).forEach(p => {
+  if (peers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="muted">No available unowned peers found. Owned/mapped peers are shown in Live I/O.</td></tr>';
+    return data;
+  }
+  peers.forEach(p => {
     const tr = document.createElement('tr');
     const stateLabel = LEAP_STATES[p.state] ? `${LEAP_STATES[p.state]} (${p.state})` : p.state;
     tr.innerHTML = `
@@ -627,31 +662,74 @@ async function loadPeers() {
       }
     };
   });
+  return data;
 }
 
-async function applyConfig() {
+async function applyConfig(showMessage = true) {
   const body = buildConfigText();
   $('config_preview').textContent = body;
   const r = await fetch('/api/v1/config', { method: 'PUT', body });
   const text = await r.text();
   if (!r.ok) throw new Error(text || 'Apply failed');
-  showMsg('Configuration applied. Click Connect LEAP when ready. IP changes still need reboot.');
-}
-
-async function connectLeap() {
-  const r = await fetch('/api/v1/leap/connect', { method: 'POST' });
-  const text = await r.text();
-  if (!r.ok) throw new Error(text || 'Connect failed');
-  showMsg('LEAP connect requested.');
-  await loadStatus();
+  if (showMessage) {
+    showMsg('Configuration applied. LEAP ownership is automatic. IP changes still need reboot.');
+  }
 }
 
 async function persistConfig() {
-  await applyConfig();
+  await applyConfig(false);
   const r = await fetch('/api/v1/config/apply', { method: 'POST' });
   const text = await r.text();
   if (!r.ok) throw new Error(text || 'Save failed');
-  showMsg('Configuration saved to disk.');
+  showMsg('Configuration saved, applied, and LEAP ownership queued automatically.');
+  await loadStatus();
+  await loadPeers();
+  await loadIo().catch(() => {});
+}
+
+function downloadConfig() {
+  const body = buildConfigText();
+  $('config_preview').textContent = body;
+  const blob = new Blob([body], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'leapos-gateway-config.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showMsg('Configuration downloaded.');
+}
+
+async function uploadConfigText(text) {
+  if (!text || !text.trim()) {
+    throw new Error('Uploaded config is empty');
+  }
+
+  const r = await fetch('/api/v1/config', { method: 'PUT', body: text });
+  const reply = await r.text();
+  if (!r.ok) throw new Error(reply || 'Uploaded config is invalid');
+
+  const save = await fetch('/api/v1/config/apply', { method: 'POST' });
+  const saveText = await save.text();
+  if (!save.ok) throw new Error(saveText || 'Uploaded config applied but save failed');
+
+  applyConfigToForm(parseConfigText(text));
+  showMsg('Uploaded configuration saved, applied, and LEAP ownership queued automatically.');
+  await loadStatus();
+  await loadPeers();
+  await loadIo().catch(() => {});
+}
+
+async function rebootGateway() {
+  if (!window.confirm('Reboot the gateway now?')) {
+    return;
+  }
+  const r = await fetch('/api/v1/system/reboot', { method: 'POST' });
+  const text = await r.text();
+  if (!r.ok) throw new Error(text || 'Reboot failed');
+  showMsg('Reboot requested. The Web UI will disconnect while the gateway restarts.');
 }
 
 function wirePreviewUpdates() {
@@ -696,47 +774,79 @@ $('map_add').onclick = () => {
   renderMappingTable();
   $('config_preview').textContent = buildConfigText();
   $('metricMappings').textContent = mappings.length;
-  showMsg('Added empty mapping - set MAC and byte offsets, then Apply.');
+  showMsg('Added empty mapping - set MAC and byte offsets, then Save & Apply.');
+};
+
+$('map_cancel').onclick = () => {
+  setMappingEditorVisible(false);
+  renderMappingTable();
+  $('config_preview').textContent = buildConfigText();
 };
 
 $('scan').onclick = async () => {
   showMsg('Scanning LEAP network...');
-  await fetch('/api/v1/leap/discover?scan_ms=1000', { method: 'POST' });
-  await new Promise(r => setTimeout(r, 1200));
-  await loadPeers();
-  showMsg('Scan complete.');
-};
+  const r = await fetch('/api/v1/leap/discover', { method: 'POST' });
+  const scan = await r.json();
+  const deadline = Date.now() + (Number(scan.scan_ms) || 2500) + 1500;
+  let data = { discover_active: true };
 
-$('connect_leap').onclick = async () => {
-  try {
-    await connectLeap();
-  } catch (e) {
-    showMsg(e.message, true);
+  while (data.discover_active && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    data = await loadPeers();
   }
+
+  if (data.discover_active) {
+    await loadPeers();
+  }
+  showMsg('Scan complete.');
 };
 
 $('reload').onclick = async () => {
   try {
     await loadConfig();
-    showMsg('Configuration loaded.');
+    showMsg('Unsaved edits discarded; configuration reloaded from gateway.');
   } catch (e) {
     showMsg(e.message, true);
   }
 };
 
-$('status').onclick = () => loadStatus().catch(e => showMsg(e.message, true));
+$('reboot').onclick = async () => {
+  try {
+    await rebootGateway();
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+};
 
 $('save').onclick = async () => {
   try {
-    await applyConfig();
+    await persistConfig();
   } catch (e) {
     showMsg(e.message, true);
   }
 };
 
-$('persist').onclick = async () => {
+$('network_save').onclick = async () => {
   try {
     await persistConfig();
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+};
+
+$('config_download').onclick = () => downloadConfig();
+
+$('config_upload').onclick = () => $('config_upload_file').click();
+
+$('config_upload_file').onchange = async () => {
+  const file = $('config_upload_file').files[0];
+  $('config_upload_file').value = '';
+  if (!file) {
+    return;
+  }
+
+  try {
+    await uploadConfigText(await file.text());
   } catch (e) {
     showMsg(e.message, true);
   }
