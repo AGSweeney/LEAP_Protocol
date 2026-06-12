@@ -154,7 +154,18 @@ gateway_pd_wait_exchange_reply(
             continue;
         }
 
-        if (view.header.service_id != (uint16_t)LEAP_SERVICE_PD ||
+        if (view.header.service_id != (uint16_t)LEAP_SERVICE_PD)
+        {
+            continue;
+        }
+
+        if (view.header.message_type != LEAP_PD_EXCHANGE_REPLY &&
+            view.header.message_type != LEAP_PD_EXCHANGE_ENDPOINTS)
+        {
+            continue;
+        }
+
+        if ((view.header.flags & LEAP_FLAG_ERROR) == 0u &&
             view.header.message_type != LEAP_PD_EXCHANGE_REPLY)
         {
             continue;

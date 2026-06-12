@@ -724,13 +724,23 @@ handle_request(int client_fd, const char* request)
 
     if (strcmp(method, "POST") == 0 && strcmp(path, "/api/v1/leap/discover") == 0)
     {
-        g_gateway.discover_pending_ms = 2500;
+        if (leap_gateway_leap_session_active(&g_gateway))
+        {
+            http_reply_cstr(
+                client_fd,
+                200,
+                "application/json",
+                "{\"ok\":true,\"skipped\":true,\"reason\":\"scan skipped while LEAP owner sessions are active\"}");
+            return;
+        }
+
+        g_gateway.discover_pending_ms = 1500;
         g_gateway.discover_active = 1;
         http_reply_cstr(
             client_fd,
             200,
             "application/json",
-            "{\"ok\":true,\"scan_ms\":2500}");
+            "{\"ok\":true,\"scan_ms\":1500}");
         return;
     }
 

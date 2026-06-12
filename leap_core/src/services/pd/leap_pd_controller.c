@@ -761,6 +761,27 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
         *reply_recv_us_out = reply_recv_us;
     }
 
+    if (reply_length == sizeof(LeapErrorPayload))
+    {
+        const LeapErrorPayload* err = (const LeapErrorPayload*)reply;
+
+        if (err->status_code != (uint16_t)LEAP_STATUS_OK)
+        {
+            leap_log_printf(
+                "PD EXCHANGE error reply: status=0x%04X peer=%02x:%02x:%02x:%02x:%02x:%02x seq=%u\n",
+                (unsigned)err->status_code,
+                peer_mac[0],
+                peer_mac[1],
+                peer_mac[2],
+                peer_mac[3],
+                peer_mac[4],
+                peer_mac[5],
+                (unsigned)sent_process_sequence);
+            pd->stats.reply_rejects++;
+            return LEAP_PD_CTRL_OK;
+        }
+    }
+
     if (reply_recv_us > cycle_start_us)
     {
         leap_pd_ctrl_update_network_rtt(pd, cycle_start_us, reply_recv_us);

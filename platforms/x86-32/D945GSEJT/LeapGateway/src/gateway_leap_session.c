@@ -40,9 +40,12 @@
 
 #include "leap/leap_controller_peer.h"
 
-#define LEAP_GATEWAY_BOOTSTRAP_PROBE_MS 1500
-#define LEAP_GATEWAY_PD_MISS_LIMIT      3u
-#define LEAP_GATEWAY_RECONNECT_TICKS    20u
+#define LEAP_GATEWAY_BOOTSTRAP_PROBE_MS   1500
+#define LEAP_GATEWAY_RECONNECT_PROBE_MS   300
+#define LEAP_GATEWAY_PD_MISS_LIMIT        3u
+#define LEAP_GATEWAY_RECONNECT_TICKS      20u
+
+static unsigned g_bootstrap_rr_index;
 
 #include "leap/leap_controller_session_hub.h"
 
@@ -731,7 +734,9 @@ gateway_bootstrap_mapping_slot(
 
     unsigned                     mapping_index,
 
-    const LeapEipBridgeMapping*  map)
+    const LeapEipBridgeMapping*  map,
+
+    int                          probe_ms)
 
 {
 
@@ -835,7 +840,7 @@ gateway_bootstrap_mapping_slot(
 
             map->leap_mac,
 
-            LEAP_GATEWAY_BOOTSTRAP_PROBE_MS);
+            (probe_ms > 0) ? probe_ms : LEAP_GATEWAY_BOOTSTRAP_PROBE_MS);
 
 
 
@@ -868,6 +873,42 @@ gateway_bootstrap_mapping_slot(
             {
 
                 use_live_bootstrap = 1;
+
+            }
+
+            else if (leap_controller_peer_owned_by_other(
+
+                         entry,
+
+                         gw->session_hub.config.default_peer.mgmt.controller_mac) != 0)
+
+            {
+
+                printf(
+
+                    LEAP_TS_FMT LEAP_ANSI_WARN
+
+                    "Gateway: mapping %u skipped — foreign owner on %02x:%02x:%02x:%02x:%02x:%02x"
+
+                    LEAP_ANSI_RESET "\n",
+
+                    leap_rtems_uptime_str(),
+
+                    mapping_index,
+
+                    map->leap_mac[0],
+
+                    map->leap_mac[1],
+
+                    map->leap_mac[2],
+
+                    map->leap_mac[3],
+
+                    map->leap_mac[4],
+
+                    map->leap_mac[5]);
+
+                return LEAP_CTRL_STACK_MGMT_ERROR;
 
             }
 
@@ -1046,7 +1087,9 @@ gateway_retry_down_mappings(LeapGatewayRuntime* gw)
 
 {
 
-    unsigned i;
+    unsigned mapping_count;
+
+    unsigned n;
 
 
 
@@ -1060,11 +1103,29 @@ gateway_retry_down_mappings(LeapGatewayRuntime* gw)
 
 
 
-    for (i = 0u; i < gw->config.bridge.mapping_count && i < LEAP_CTRL_MAX_PEERS; ++i)
+    mapping_count = gw->config.bridge.mapping_count;
+
+    if (mapping_count == 0u || mapping_count > LEAP_CTRL_MAX_PEERS)
 
     {
 
+        return;
+
+    }
+
+
+
+    for (n = 0u; n < mapping_count; ++n)
+
+    {
+
+        unsigned                  i;
+
         LeapControllerStackStatus status;
+
+
+
+        i = (g_bootstrap_rr_index + n) % mapping_count;
 
 
 
@@ -1104,13 +1165,19 @@ gateway_retry_down_mappings(LeapGatewayRuntime* gw)
 
 
 
+        g_bootstrap_rr_index = (i + 1u) % mapping_count;
+
+
+
         status = gateway_bootstrap_mapping_slot(
 
             gw,
 
             i,
 
-            &gw->config.bridge.mappings[i]);
+            &gw->config.bridge.mappings[i],
+
+            LEAP_GATEWAY_RECONNECT_PROBE_MS);
 
         if (status == LEAP_CTRL_STACK_OK &&
 
@@ -1143,6 +1210,10 @@ gateway_retry_down_mappings(LeapGatewayRuntime* gw)
             gw->leap_session.reconnect_ticks[i] = LEAP_GATEWAY_RECONNECT_TICKS;
 
         }
+
+
+
+        return;
 
     }
 
@@ -1227,6 +1298,25 @@ gateway_run_pending_discover(void)
 
 
     g_gateway.discover_pending_ms = 0;
+
+    if (leap_gateway_leap_session_active(&g_gateway))
+
+    {
+
+        g_gateway.discover_active = 0;
+
+        printf(
+
+            LEAP_TS_FMT LEAP_ANSI_WARN
+
+            "Gateway: LEAP discover skipped while owner sessions are active" LEAP_ANSI_RESET "\n",
+
+            leap_rtems_uptime_str());
+
+        return;
+
+    }
+
     g_gateway.discover_active = 1;
 
     (void)leap_controller_peer_table_discover(
@@ -1430,7 +1520,9 @@ leap_gateway_leap_session_connect(LeapGatewayRuntime* gw)
 
         any_enabled = 1;
 
-        status = gateway_bootstrap_mapping_slot(gw, i, map);
+        status = gateway_bootstrap_mapping_slot(
+
+            gw, i, map, LEAP_GATEWAY_BOOTSTRAP_PROBE_MS);
 
         last_status = status;
 
@@ -1556,6 +1648,22 @@ gateway_leap_session_loop(void)
 
 
 
+        if (g_gateway.config_dirty != 0)
+
+        {
+
+            g_gateway.config_dirty = 0;
+
+            leap_gateway_leap_session_disconnect(&g_gateway);
+
+            gateway_sync_hub_config(&g_gateway);
+
+            g_gateway.leap_session.connect_pending = 1;
+
+        }
+
+
+
         gateway_run_pending_discover();
 
 
@@ -1639,6 +1747,20 @@ gateway_leap_session_loop(void)
                     &pd_io,
 
                     (volatile int*)&g_leap_session_stop);
+
+
+
+                if (stack != NULL &&
+
+                    leap_controller_stack_get_phase(stack) != LEAP_CTRL_STACK_OP)
+
+                {
+
+                    gateway_mark_mapping_down(&g_gateway, i, &pd_io);
+
+                    continue;
+
+                }
 
 
 

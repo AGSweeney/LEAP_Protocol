@@ -578,6 +578,19 @@ static int leap_ctrl_stack_should_skip_select_profile(
         return 1;
     }
 
+    if (hello->current_state == (uint16_t)LEAP_STATE_CONFIGURED &&
+        controller_mac != NULL &&
+        !leap_ctrl_stack_mac_is_zero(hello->active_owner_mac) &&
+        memcmp(hello->active_owner_mac, controller_mac, 6) == 0)
+    {
+        /*
+         * A controller reboot/drop can leave a device in CONFIGURED while it
+         * still advertises our owner MAC. Skip SELECT_PROFILE and reopen with
+         * reboot recovery so the stale owner/session is replaced cleanly.
+         */
+        return 1;
+    }
+
     if (hello->current_state == (uint16_t)LEAP_STATE_OP)
     {
         if (leap_ctrl_stack_mac_is_zero(hello->active_owner_mac))
@@ -606,7 +619,8 @@ static uint16_t leap_ctrl_stack_reconnect_open_flags(
         return 0u;
     }
 
-    if (hello->current_state != (uint16_t)LEAP_STATE_OP)
+    if (hello->current_state != (uint16_t)LEAP_STATE_OP &&
+        hello->current_state != (uint16_t)LEAP_STATE_CONFIGURED)
     {
         return 0u;
     }

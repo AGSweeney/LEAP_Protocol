@@ -466,3 +466,15 @@ void leap_device_stack_notify_tx_drop(LeapDeviceStack* stack)
 
     leap_diag_device_on_frame_tx_dropped(&stack->diag);
 }
+
+void leap_device_stack_apply_safe_on_flags(
+    uint32_t flags,
+    void (*enter_safe)(void* ctx),
+    void* ctx)
+{
+    if ((flags & LEAP_DEVICE_STACK_FLAG_SAFE_STATE_ENTERED) != 0u &&
+        enter_safe != NULL)
+    {
+        enter_safe(ctx);
+    }
+}

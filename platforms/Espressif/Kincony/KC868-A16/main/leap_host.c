@@ -37,6 +37,11 @@ typedef struct LeapHostRxItem
 
 static LeapDeviceStack       s_stack;
 static LeapKc868IoShadow     s_io;
+
+static void leap_host_enter_safe_cb(void *ctx)
+{
+    leap_hw_enter_safe((LeapKc868IoShadow *)ctx);
+}
 static LeapPdDeviceIoBinding s_pd_io;
 static struct netif         *s_netif;
 static QueueHandle_t         s_rx_queue;
@@ -408,6 +413,11 @@ static void leap_handle_result(struct netif *netif, const uint8_t *src_mac,
                                const LeapDeviceStackResult *result)
 {
     if (status == LEAP_DEVICE_STACK_OK) {
+        leap_device_stack_apply_safe_on_flags(
+            result->flags,
+            leap_host_enter_safe_cb,
+            &s_io);
+
         if (result->service_id == LEAP_SERVICE_DISC) {
             leap_log_disc_request(src_mac, result);
 
@@ -718,8 +728,12 @@ void leap_host_cyclic(void)
 
     if ((tick_flags & LEAP_DEVICE_STACK_FLAG_SAFE_STATE_ENTERED) != 0u) {
         ESP_LOGW(TAG, "lease/watchdog expired -> SAFE");
-        leap_hw_enter_safe(&s_io);
     }
+
+    leap_device_stack_apply_safe_on_flags(
+        tick_flags,
+        leap_host_enter_safe_cb,
+        &s_io);
 
     leap_update_locate_led(now_us);
 }

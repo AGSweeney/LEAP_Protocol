@@ -497,6 +497,12 @@ static void clearcore_leap_log_status(
 #endif
 }
 
+static void clearcore_leap_host_enter_safe(void *ctx)
+{
+    (void)ctx;
+    clearcore_leap_io_enter_safe(&g_io);
+}
+
 static void clearcore_leap_handle_result(
 
     struct netif *               netif,
@@ -516,6 +522,11 @@ static void clearcore_leap_handle_result(
         clearcore_leap_log_rx(result);
 
         clearcore_leap_apply_result(result);
+
+        leap_device_stack_apply_safe_on_flags(
+            result->flags,
+            clearcore_leap_host_enter_safe,
+            NULL);
 
         if (result->service_id == (uint16_t)LEAP_SERVICE_DISC &&
             result->frame.header.message_type == LEAP_DISC_LOCATE_DEVICE &&
@@ -1290,14 +1301,14 @@ void clearcore_leap_host_cyclic(void)
     clearcore_leap_locate_update(now_us);
 
     if ((tick_flags & LEAP_DEVICE_STACK_FLAG_SAFE_STATE_ENTERED) != 0u)
-
     {
-
         clearcore_leap_trace_queue("LEAP: lease/watchdog expired -> SAFE");
-
-        clearcore_leap_io_enter_safe(&g_io);
-
     }
+
+    leap_device_stack_apply_safe_on_flags(
+        tick_flags,
+        clearcore_leap_host_enter_safe,
+        NULL);
 
 
 

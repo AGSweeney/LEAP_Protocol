@@ -34,6 +34,12 @@ static LeapRtemsTransport g_transport;
 static LeapRtemsBoardIo   g_board_io;
 
 static void
+leapport_host_enter_safe(void *ctx)
+{
+	leap_rtems_board_enter_safe((LeapRtemsBoardIo *)ctx);
+}
+
+static void
 device_send_reply(
     LeapDeviceStack *stack,
     const uint8_t *dst_mac,
@@ -226,6 +232,10 @@ Init(rtems_task_argument ignored)
 			if (status == LEAP_DEVICE_STACK_OK)
 			{
 				device_apply_pd_result(&result);
+				leap_device_stack_apply_safe_on_flags(
+				    result.flags,
+				    leapport_host_enter_safe,
+				    &g_board_io);
 #if LEAP_TRACE_VERBOSE
 				printf(
 				    "LEAP RX ok: svc=0x%04X msg=0x%04X flags=0x%08X state=0x%04X\n",
@@ -380,7 +390,13 @@ Init(rtems_task_argument ignored)
 		if (last_tick_us == 0u ||
 		    now_us >= last_tick_us + LEAP_RTEMS_TICK_PERIOD_US)
 		{
-			(void)leap_device_stack_tick(&stack, now_us, NULL);
+			uint32_t tick_flags = 0u;
+
+			(void)leap_device_stack_tick(&stack, now_us, &tick_flags);
+			leap_device_stack_apply_safe_on_flags(
+			    tick_flags,
+			    leapport_host_enter_safe,
+			    &g_board_io);
 			last_tick_us = now_us;
 		}
 	}

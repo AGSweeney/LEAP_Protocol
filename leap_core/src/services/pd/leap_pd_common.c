@@ -10,6 +10,7 @@
 #include "leap/leap_dir_device.h"
 #include "leap/leap_log.h"
 
+#include <stdint.h>
 #include <string.h>
 
 void leap_pd_profile_map_init_default(LeapPdProfileMap* out)
@@ -507,6 +508,12 @@ uint64_t leap_pd_frame_age_us(
     uint64_t now_us,
     uint64_t controller_timestamp_us)
 {
+    if (controller_timestamp_us > now_us)
+    {
+        /* Clock skew or future timestamp — treat as stale. */
+        return UINT64_MAX;
+    }
+
     return now_us - controller_timestamp_us;
 }
 

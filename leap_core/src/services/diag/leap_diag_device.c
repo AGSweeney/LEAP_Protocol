@@ -526,6 +526,15 @@ void leap_diag_device_on_pd_result(
     case LEAP_STATUS_OUT_OF_ORDER:
         ctx->out_of_order_frames++;
         break;
+    case LEAP_STATUS_STALE_FRAME:
+        ctx->stale_process_frames++;
+        leap_diag_device_record_event(
+            ctx,
+            (uint16_t)LEAP_EVENT_STALE_FRAME_REJECTED,
+            pd_result->error_code,
+            0u,
+            now_us);
+        break;
     default:
         break;
     }

@@ -787,6 +787,11 @@ $('scan').onclick = async () => {
   showMsg('Scanning LEAP network...');
   const r = await fetch('/api/v1/leap/discover', { method: 'POST' });
   const scan = await r.json();
+  if (scan.skipped) {
+    await loadPeers();
+    showMsg('Scan skipped while gateway owns LEAP devices. Stop mappings or reboot before scanning for new hardware.', true);
+    return;
+  }
   const deadline = Date.now() + (Number(scan.scan_ms) || 2500) + 1500;
   let data = { discover_active: true };
 

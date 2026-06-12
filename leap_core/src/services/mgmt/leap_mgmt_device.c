@@ -322,10 +322,11 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
             }
             else if (!leap_mgmt_owner_lease_expired(ctx, request->now_us))
             {
-                if (ctx->device_state == LEAP_STATE_OP)
-                {
-                    leap_mgmt_abort_owner_control(ctx);
-                }
+                /*
+                 * Reject foreign OPEN without disturbing the active owner.
+                 * Aborting here allowed any L2 peer to force SAFE on a live
+                 * controller session (industrial stability violation).
+                 */
                 leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
                 return LEAP_MGMT_DEVICE_HANDLE_ERROR;
             }

@@ -89,6 +89,69 @@ static const LeapPdProfileMap* leap_pd_device_profile(
     return &k_default;
 }
 
+static int leap_pd_check_inbound_frame_age(
+    uint16_t       message_type,
+    const uint8_t* payload,
+    size_t         payload_length,
+    uint64_t       now_us,
+    LeapPdDeviceResult* result)
+{
+    uint64_t controller_timestamp_us = 0u;
+    uint32_t max_frame_age_us        = 0u;
+
+    if (payload == NULL || result == NULL)
+    {
+        return -1;
+    }
+
+    if (message_type == LEAP_PD_WRITE_ENDPOINT)
+    {
+        if (payload_length < sizeof(LeapEndpointDataHeader))
+        {
+            return 0;
+        }
+
+        {
+            const LeapEndpointDataHeader* hdr =
+                (const LeapEndpointDataHeader*)payload;
+
+            controller_timestamp_us = hdr->controller_timestamp_us;
+            max_frame_age_us        = hdr->max_frame_age_us;
+        }
+    }
+    else if (message_type == LEAP_PD_EXCHANGE_ENDPOINTS)
+    {
+        if (payload_length < sizeof(LeapExchangeHeader))
+        {
+            return 0;
+        }
+
+        {
+            const LeapExchangeHeader* hdr = (const LeapExchangeHeader*)payload;
+
+            controller_timestamp_us = hdr->controller_timestamp_us;
+            max_frame_age_us        = hdr->max_frame_age_us;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+
+    if (leap_pd_check_frame_age(
+            now_us,
+            controller_timestamp_us,
+            max_frame_age_us,
+            0u) != LEAP_PD_COMMON_OK)
+    {
+        result->status     = LEAP_PD_DEVICE_REJECTED;
+        result->error_code = LEAP_STATUS_STALE_FRAME;
+        return -1;
+    }
+
+    return 0;
+}
+
 static int leap_pd_extract_process_sequence(
     uint16_t       message_type,
     const uint8_t* payload,
@@ -393,14 +456,24 @@ LeapPdDeviceStatus leap_pd_device_process_parsed_frame(
             result->frame.header.session_id,
             source_mac))
     {
-        result->status     = LEAP_PD_DEVICE_IGNORED_RESPONSE;
+        result->status     = LEAP_PD_DEVICE_REJECTED;
         result->error_code = LEAP_STATUS_NOT_OWNER;
         leap_log_security(
             LEAP_LOG_SEC_PD_NOT_OWNER,
             "session_id=%u state=%u",
             result->frame.header.session_id,
             (unsigned)mgmt->device_state);
-        return LEAP_PD_DEVICE_IGNORED_RESPONSE;
+        return LEAP_PD_DEVICE_REJECTED;
+    }
+
+    if (leap_pd_check_inbound_frame_age(
+            result->frame.header.message_type,
+            result->frame.payload,
+            result->frame.payload_length,
+            now_us,
+            result) != 0)
+    {
+        return LEAP_PD_DEVICE_REJECTED;
     }
 
     if (leap_pd_extract_process_sequence(

@@ -131,6 +131,15 @@ void leap_device_stack_notify_tx_ok(
 
 void leap_device_stack_notify_tx_drop(LeapDeviceStack* stack);
 
+/*
+ * Invoke platform enter_safe when tick or frame processing reports SAFE entry.
+ * Call after both leap_device_stack_process_frame() and leap_device_stack_tick().
+ */
+void leap_device_stack_apply_safe_on_flags(
+    uint32_t flags,
+    void (*enter_safe)(void* ctx),
+    void* ctx);
+
 #ifdef __cplusplus
 }
 #endif

@@ -48,6 +48,7 @@ leap_gateway_runtime_apply_config(const LeapGatewayConfig* config)
 
     leap_eip_bridge_set_config(&g_gateway.bridge, &g_gateway.config.bridge);
     g_gateway.config_dirty = 1;
+    g_gateway.leap_session.connect_pending = 1;
     return 0;
 }
 

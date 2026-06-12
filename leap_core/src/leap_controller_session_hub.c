@@ -681,7 +681,7 @@ LeapPdControllerStatus leap_controller_session_hub_run_parallel_lap(
         }
         if (status != LEAP_PD_CTRL_OK)
         {
-            return status;
+            continue;
         }
 
         ran_any = 1;
@@ -722,7 +722,7 @@ LeapPdControllerStatus leap_controller_session_hub_run_parallel_lap(
         }
         if (status != LEAP_PD_CTRL_OK)
         {
-            return status;
+            continue;
         }
     }
 

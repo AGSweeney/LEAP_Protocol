@@ -249,6 +249,37 @@ TEST(test_mgmt_rejects_second_owner_while_lease_active)
     ASSERT_EQ_U16(reply.error_code, LEAP_STATUS_NOT_OWNER);
 }
 
+TEST(test_mgmt_foreign_open_during_op_does_not_evict)
+{
+    LeapMgmtDeviceContext ctx;
+    LeapOpenSessionRequest open_req;
+    LeapMgmtDeviceRequest  request;
+    LeapMgmtDeviceReply    reply;
+    uint32_t               session_id;
+
+    mgmt_setup_ready(&ctx);
+    mgmt_open_owner_session(&ctx, k_mac_a, 0u, 1000000u, &session_id);
+    mgmt_set_state(&ctx, k_mac_a, session_id, LEAP_STATE_OP, 0u);
+
+    memset(&open_req, 0, sizeof(open_req));
+    memcpy(open_req.controller_mac, k_mac_b, 6);
+    open_req.open_flags = LEAP_OPEN_FLAG_REQUEST_OWNER;
+
+    memset(&request, 0, sizeof(request));
+    request.source_mac     = k_mac_b;
+    request.message_type   = LEAP_MGMT_OPEN_SESSION;
+    request.payload        = (const uint8_t*)&open_req;
+    request.payload_length = sizeof(open_req);
+    request.now_us         = 0u;
+
+    ASSERT_EQ_INT(
+        leap_mgmt_device_handle(&ctx, &request, &reply),
+        LEAP_MGMT_DEVICE_HANDLE_ERROR);
+    ASSERT_EQ_U16(reply.error_code, LEAP_STATUS_NOT_OWNER);
+    ASSERT_EQ_INT(leap_mgmt_device_get_state(&ctx), LEAP_STATE_OP);
+    ASSERT_TRUE(leap_mgmt_device_session_allows_owner_pd(&ctx, session_id, k_mac_a));
+}
+
 TEST(test_mgmt_reboot_recovery_drops_op_to_configured)
 {
     LeapMgmtDeviceContext ctx;
@@ -536,6 +567,7 @@ void leap_run_mgmt_device_tests(void)
     RUN_TEST(test_mgmt_heartbeat_extends_lease);
     RUN_TEST(test_mgmt_owner_release_clears_owner);
     RUN_TEST(test_mgmt_rejects_second_owner_while_lease_active);
+    RUN_TEST(test_mgmt_foreign_open_during_op_does_not_evict);
     RUN_TEST(test_mgmt_reboot_recovery_drops_op_to_configured);
     RUN_TEST(test_mgmt_fault_reset_returns_to_init);
     RUN_TEST(test_mgmt_watchdog_expiry_forces_safe);

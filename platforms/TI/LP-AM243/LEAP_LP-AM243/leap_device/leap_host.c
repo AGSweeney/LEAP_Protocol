@@ -43,6 +43,11 @@ typedef struct LeapHostRxItem
 
 static LeapDeviceStack       s_stack;
 static LeapAm243IoShadow     s_io;
+
+static void leap_host_enter_safe_cb(void *ctx)
+{
+    leap_hw_enter_safe((LeapAm243IoShadow *)ctx);
+}
 static LeapPdDeviceIoBinding s_pd_io;
 static QueueHandle_t         s_rx_queue;
 static StaticQueue_t         s_rx_queue_obj;
@@ -445,6 +450,11 @@ static void leap_handle_result(EnetMp_PerCtxt *port,
                                const LeapDeviceStackResult *result)
 {
     if (status == LEAP_DEVICE_STACK_OK) {
+        leap_device_stack_apply_safe_on_flags(
+            result->flags,
+            leap_host_enter_safe_cb,
+            &s_io);
+
         if (result->service_id == LEAP_SERVICE_DISC &&
             result->frame.header.message_type == LEAP_DISC_LOCATE_DEVICE &&
             result->frame.payload_length >= sizeof(LeapLocateDeviceRequest)) {
@@ -883,8 +893,12 @@ void leap_host_cyclic(void)
             (unsigned)(wd_remain_us / 1000u),
             (unsigned)(lease_remain_us / 1000u),
             (unsigned)s_stats.rx_drop);
-        leap_hw_enter_safe(&s_io);
     }
+
+    leap_device_stack_apply_safe_on_flags(
+        tick_flags,
+        leap_host_enter_safe_cb,
+        &s_io);
 
     leap_icssg_eth_poll_tx();
     leap_update_locate_led(now_us);
