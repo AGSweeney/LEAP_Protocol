@@ -215,8 +215,16 @@ apply_config_kv(
     }
     else if (strcmp(key, "network.ifname") == 0)
     {
-        strncpy(config->network.ifname, value, sizeof(config->network.ifname) - 1u);
-        config->network.auto_ifname = 0;
+        if (strcmp(value, "auto") == 0 || value[0] == '\0')
+        {
+            config->network.ifname[0] = '\0';
+            config->network.auto_ifname = 1;
+        }
+        else
+        {
+            strncpy(config->network.ifname, value, sizeof(config->network.ifname) - 1u);
+            config->network.auto_ifname = 0;
+        }
     }
     else if (strcmp(key, "network.leap_ifname") == 0)
     {

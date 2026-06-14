@@ -6,6 +6,67 @@ command="/usr/sbin/leap-gateway"
 command_background=true
 command_args="--config /cf/config.txt"
 pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/leap-gateway.log"
+error_log="/var/log/leap-gateway.log"
+
+kv() {
+	awk -F= -v k="$1" '$1==k {gsub(/\r$/, "", $2); print $2; exit}' /cf/config.txt 2>/dev/null
+}
+
+mask_to_prefix() {
+	case "$1" in
+	255.255.255.255) echo 32 ;;
+	255.255.255.0) echo 24 ;;
+	255.255.255.128) echo 25 ;;
+	255.255.255.192) echo 26 ;;
+	255.255.0.0) echo 16 ;;
+	255.0.0.0) echo 8 ;;
+	*) echo 24 ;;
+	esac
+}
+
+choose_ifname() {
+	local configured="$1"
+
+	if [ -n "$configured" ] && [ "$configured" != "auto" ] && [ -d "/sys/class/net/$configured" ]; then
+		echo "$configured"
+		return 0
+	fi
+	for ifname in eth0 end0 en0 eth1 end1 enp1s0 enp2s0; do
+		if [ -d "/sys/class/net/$ifname" ]; then
+			echo "$ifname"
+			return 0
+		fi
+	done
+	for path in /sys/class/net/*; do
+		ifname="${path##*/}"
+		[ "$ifname" = "lo" ] && continue
+		echo "$ifname"
+		return 0
+	done
+	return 1
+}
+
+start_pre() {
+	local dhcp ifname ip mask prefix
+
+	dhcp="$(kv network.dhcp)"
+	[ "$dhcp" = "1" ] && return 0
+
+	ip="$(kv network.ipv4)"
+	mask="$(kv network.mask)"
+	[ -n "$ip" ] || return 0
+	[ -n "$mask" ] || mask="255.255.255.0"
+
+	ifname="$(choose_ifname "$(kv network.ifname)")" || return 0
+	prefix="$(mask_to_prefix "$mask")"
+
+	ebegin "Assigning LeapOS-Gateway IPv4 $ip/$prefix to $ifname"
+	ip link set "$ifname" up
+	ip addr replace "$ip/$prefix" dev "$ifname"
+	eend $?
+}
+
 depend() {
 	need localmount
 	after net firewall

@@ -45,7 +45,7 @@ $stageDir = Join-Path $BuildDir 'leap_studio_qt\Release'
 $distDir = Join-Path $repoRoot 'dist'
 $issFile = Join-Path $PSScriptRoot 'leap_studio_setup.iss'
 $iconScript = Join-Path $studioRoot 'resources\icons\generate_icons.py'
-$appVersion = '1.0.0'
+$appVersion = '1.0.1'
 
 function Resolve-InnoSetupCompiler {
     param([string] $ExplicitPath)

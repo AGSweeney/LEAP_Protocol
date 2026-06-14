@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/LeapBuildInfo.cmake)
-leap_configure_build_info(${CMAKE_BINARY_DIR}/generated)
+leap_configure_build_info(${CMAKE_BINARY_DIR}/generated ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 add_library(leap_core STATIC
   src/crc/leap_crc.c

@@ -56,7 +56,7 @@ Output: `../image/leapos-gateway-alpine.img`
 `rc-status` should show `leap-gateway [started]`. Check networking:
 
 ```sh
-ip addr show eth0
+ip addr
 ```
 
 ## Configuration
@@ -66,7 +66,7 @@ Persisted at `/cf/config.txt` on the root filesystem (same keys as x86 gateway):
 ```
 network.mode=single
 network.ifname=eth0
-network.ipv4=192.168.1.2
+network.ipv4=192.168.1.3
 network.mask=255.255.255.0
 network.dhcp=0
 ```

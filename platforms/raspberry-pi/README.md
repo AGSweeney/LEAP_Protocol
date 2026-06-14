@@ -9,7 +9,7 @@ see [docs/BUILD.md](../../docs/BUILD.md).
 
 | Target | Path | Status |
 | --- | --- | --- |
-| Raspberry Pi 4 / 400 / CM4 | [Pi4/](Pi4/) | scaffold — Alpine aarch64 gateway image |
+| Raspberry Pi 4 / 400 / CM4 | [Pi4/](Pi4/) | Alpine aarch64 gateway image |
 
 ## Pi 4 quick start
 
@@ -24,4 +24,4 @@ Flash the raw image to an SD card (32 MiB or larger), connect the onboard
 Gigabit Ethernet port, and open serial on GPIO UART @ **115200 8N1** (see
 [Pi4/README.md](Pi4/README.md)).
 
-Default static IPv4: `192.168.1.2/24` on `eth0` (`/cf/config.txt`).
+Default static IPv4: `192.168.1.3/24` on `eth0` (`/cf/config.txt`).

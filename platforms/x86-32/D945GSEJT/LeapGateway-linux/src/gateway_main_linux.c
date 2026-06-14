@@ -65,6 +65,7 @@ main(int argc, char** argv)
     LeapControllerSessionHubConfig hub_config;
     const char*                    config_path = LEAP_GATEWAY_CONFIG_PATH;
     int                            i;
+    int                            net_ready = 0;
 
     for (i = 1; i < argc; ++i)
     {
@@ -118,20 +119,29 @@ main(int argc, char** argv)
             config_path);
     }
 
-    gateway_wait_for_interface(leap_gateway_leap_ifname(&g_gateway.config));
+    if (!g_gateway.config.network.auto_ifname)
+    {
+        gateway_wait_for_interface(leap_gateway_leap_ifname(&g_gateway.config));
+    }
 
-    while (leap_gateway_net_bring_up(&g_gateway) != 0)
+    if (leap_gateway_net_bring_up(&g_gateway) == 0)
+    {
+        net_ready = 1;
+    }
+    else
     {
         printf(
             LEAP_TS_FMT LEAP_ANSI_WARN
-            "Gateway: network bring-up failed — retrying in 5 s" LEAP_ANSI_RESET "\n",
+            "Gateway: LEAP transport unavailable — Web UI starting in degraded mode" LEAP_ANSI_RESET "\n",
             leap_rtems_uptime_str());
-        sleep(5);
     }
 
-    leap_gateway_controller_io_init(
-        &g_gateway.controller_io,
-        &g_gateway.transport);
+    if (net_ready)
+    {
+        leap_gateway_controller_io_init(
+            &g_gateway.controller_io,
+            &g_gateway.transport);
+    }
 
     memset(&hub_config, 0, sizeof(hub_config));
     memcpy(
@@ -149,14 +159,21 @@ main(int argc, char** argv)
     hub_config.skip_foreign_owned_peers           = 1;
     leap_controller_session_hub_init(&g_gateway.session_hub, &hub_config);
 
+    if (leap_gateway_http_init() != 0)
+    {
+        printf(
+            LEAP_TS_FMT LEAP_ANSI_ERR "Gateway: HTTP init failed" LEAP_ANSI_RESET "\n",
+            leap_rtems_uptime_str());
+    }
+
 #if LEAP_GATEWAY_OPENER_ENABLE
-    opener_init(leap_gateway_eip_ifname(&g_gateway.config));
+    opener_init(g_gateway.bound_ifname[0] != '\0' ? g_gateway.bound_ifname : leap_gateway_eip_ifname(&g_gateway.config));
     if (opener_get_status() == 0)
     {
         printf(
             LEAP_TS_FMT LEAP_ANSI_OK "Gateway: EtherNet/IP (OpENer) on %s" LEAP_ANSI_RESET "\n",
             leap_rtems_uptime_str(),
-            leap_gateway_eip_ifname(&g_gateway.config));
+            g_gateway.bound_ifname[0] != '\0' ? g_gateway.bound_ifname : leap_gateway_eip_ifname(&g_gateway.config));
     }
     else
     {
@@ -166,14 +183,14 @@ main(int argc, char** argv)
     }
 #endif
 
-    if (leap_gateway_http_init() != 0)
+    if (!net_ready)
     {
         printf(
-            LEAP_TS_FMT LEAP_ANSI_ERR "Gateway: HTTP init failed" LEAP_ANSI_RESET "\n",
+            LEAP_TS_FMT LEAP_ANSI_WARN
+            "Gateway: LEAP scan/connect unavailable (transport not bound)" LEAP_ANSI_RESET "\n",
             leap_rtems_uptime_str());
     }
-
-    if (leap_gateway_leap_session_start_task() != 0)
+    else if (leap_gateway_leap_session_start_task() != 0)
     {
         printf(
             LEAP_TS_FMT LEAP_ANSI_WARN
@@ -187,14 +204,14 @@ main(int argc, char** argv)
 
     for (;;)
     {
+        leap_gateway_http_poll();
+
 #if LEAP_GATEWAY_OPENER_ENABLE
         if (opener_get_status() == 0)
         {
             opener_cyclic();
         }
 #endif
-
-        leap_gateway_http_poll();
 
         usleep(10u * 1000u);
     }

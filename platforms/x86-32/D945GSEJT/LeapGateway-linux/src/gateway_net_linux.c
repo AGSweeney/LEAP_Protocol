@@ -98,7 +98,9 @@ try_transport(LeapGatewayRuntime* gw, const char* ifname)
 static int
 bind_leap_transport(LeapGatewayRuntime* gw)
 {
-    static const char* const candidates[] = { "eth0", "eth1", "eth2", NULL };
+    static const char* const candidates[] = {
+        "eth0", "end0", "en0", "eth1", "end1", "enp1s0", "enp2s0", NULL
+    };
     size_t i;
 
     if (!gw->config.network.auto_ifname &&
@@ -145,7 +147,7 @@ leap_gateway_net_bring_up(LeapGatewayRuntime* gw)
         return -1;
     }
 
-    eip_if = leap_gateway_eip_ifname(&gw->config);
+    eip_if = (gw->bound_ifname[0] != '\0') ? gw->bound_ifname : leap_gateway_eip_ifname(&gw->config);
     if (!gw->config.network.dhcp)
     {
         if (iface_set_ipv4(

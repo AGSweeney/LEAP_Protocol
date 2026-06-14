@@ -22,6 +22,10 @@
 #include "leap/leap_controller_stack.h"
 #include "leap/leap_gateway_config.h"
 
+#if LEAP_GATEWAY_OPENER_ENABLE
+#include "opener.h"
+#endif
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -705,12 +709,17 @@ handle_request(int client_fd, const char* request)
             g_http_body,
             sizeof(g_http_body),
             "{\"product\":\"LeapOS-Gateway\",\"ifname\":\"%s\",\"ipv4\":\"%s\","
-            "\"http_port\":%u,\"ui_version\":6,\"storage_ready\":%s,"
+            "\"http_port\":%u,\"ui_version\":6,\"eip_ok\":%s,\"storage_ready\":%s,"
             "\"config_path\":\"%s\",\"leap_comm_ok\":%s,\"leap_phase\":\"%s\","
             "\"leap_session_active\":%s,\"leap_op_peers\":%u,\"mappings\":%u}",
             g_gateway.bound_ifname,
             g_gateway.config.network.ipv4_addr,
             (unsigned)LEAP_GATEWAY_HTTP_PORT,
+#if LEAP_GATEWAY_OPENER_ENABLE
+            opener_get_status() == 0 ? "true" : "false",
+#else
+            "false",
+#endif
             leap_gateway_storage_ready() ? "true" : "false",
             g_gateway.config.config_path,
             g_gateway.bridge.leap_comm_ok ? "true" : "false",

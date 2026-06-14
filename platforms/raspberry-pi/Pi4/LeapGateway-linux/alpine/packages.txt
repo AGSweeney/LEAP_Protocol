@@ -2,6 +2,8 @@
 alpine-base
 busybox-openrc
 e2fsprogs
+e2fsprogs-extra
+util-linux
 linux-firmware-none
 linux-rpi
 raspberrypi-bootloader

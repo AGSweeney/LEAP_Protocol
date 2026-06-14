@@ -57,19 +57,38 @@ unmount_chroot_mounts() {
 }
 
 strip_overlay_text() {
-	find "$ROOT/etc" "$ROOT/usr/sbin" "$ROOT/cf" "$ROOT/boot" -type f \
+	# grep -I keeps sed away from ELF binaries and Pi firmware blobs.
+	find "$ROOT/etc" "$ROOT/usr/sbin" "$ROOT/cf" -type f \
+		-exec grep -Iq . {} \; -exec sed -i 's/\r$//' {} \; 2>/dev/null || true
+	find "$ROOT/boot" -maxdepth 1 -type f \( -name '*.txt' -o -name '*.cmdline' \) \
 		-exec sed -i 's/\r$//' {} + 2>/dev/null || true
+}
+
+quiet_boot_noise() {
+	# The trimmed Pi appliance kernel does not need IPv6; Alpine's default
+	# sysctl snippets otherwise emit unknown-key warnings during boot.
+	for sysctl_file in \
+		"$ROOT"/etc/sysctl.conf \
+		"$ROOT"/etc/sysctl.d/*.conf \
+		"$ROOT"/lib/sysctl.d/*.conf \
+		"$ROOT"/usr/lib/sysctl.d/*.conf; do
+		[ -f "$sysctl_file" ] || continue
+		sed -i '/^[[:space:]]*net\.ipv6\./d' "$sysctl_file"
+	done
+
+	# Pi4 has no RTC in the appliance profile; avoid hwclock failure noise.
+	find "$ROOT/etc/runlevels" -type l -name hwclock -exec rm -f {} + 2>/dev/null || true
 }
 
 need_cmd() {
 	if ! command -v "$1" >/dev/null 2>&1; then
 		echo "error: missing command: $1" >&2
-		echo "Install: sudo apt install -y qemu-user-static binfmt-support wget tar util-linux rsync genext2fs mtools" >&2
+		echo "Install: sudo apt install -y qemu-user-static binfmt-support wget tar util-linux rsync e2fsprogs mtools" >&2
 		exit 1
 	fi
 }
 
-need_cmd wget tar sfdisk rsync chroot genext2fs dd mformat mcopy truncate
+need_cmd wget tar sfdisk rsync chroot mke2fs dd mformat mcopy truncate
 
 if [ "$HOST_ARCH" != "aarch64" ] && [ "$HOST_ARCH" != "arm64" ]; then
 	QEMU="$(command -v qemu-aarch64-static || true)"
@@ -160,6 +179,7 @@ build_rootfs() {
 	echo "Applying overlay ..."
 	rsync -a "$SCRIPT_DIR/overlay/" "$ROOT/"
 	strip_overlay_text
+	quiet_boot_noise
 	chmod 755 "$ROOT/usr/sbin/leap-gateway" "$ROOT/etc/init.d/leap-gateway"
 
 	trim_rootfs
@@ -185,26 +205,43 @@ enable_svc() {
 write_boot_config() {
 	local cmdline="console=serial0,115200 console=tty1 root=LABEL=LEAPGW rootfstype=ext4 rootwait modules=sd-mod,usb-storage,ext4"
 	mkdir -p "$ROOT/boot"
-	printf '%s\n' "$cmdline" > "$ROOT/boot/cmdline.txt"
-	if [ -f "$ROOT/boot/config.txt" ] && [ -f "$ROOT/boot/leap-config.txt" ]; then
-		echo "" >> "$ROOT/boot/config.txt"
-		cat "$ROOT/boot/leap-config.txt" >> "$ROOT/boot/config.txt"
-	elif [ -f "$ROOT/boot/leap-config.txt" ]; then
-		cp "$ROOT/boot/leap-config.txt" "$ROOT/boot/config.txt"
+
+	if [ ! -f "$ROOT/boot/kernel8.img" ] && [ -f "$ROOT/boot/vmlinuz-rpi" ]; then
+		cp "$ROOT/boot/vmlinuz-rpi" "$ROOT/boot/kernel8.img"
 	fi
+	if [ ! -f "$ROOT/boot/kernel8.img" ]; then
+		echo "error: Pi kernel not found at /boot/kernel8.img or /boot/vmlinuz-rpi" >&2
+		ls -la "$ROOT/boot" >&2 || true
+		exit 1
+	fi
+
+	printf '%s\n' "$cmdline" > "$ROOT/boot/cmdline.txt"
+	cat > "$ROOT/boot/config.txt" <<'BOOTCFG'
+# LeapOS-Gateway Pi4 boot config
+arm_64bit=1
+kernel=kernel8.img
+initramfs initramfs-rpi followkernel
+enable_uart=1
+disable_overscan=1
+disable_splash=1
+BOOTCFG
 	rm -f "$ROOT/boot/leap-config.txt"
 }
 
 pack_boot_partition() {
 	local boot_img="$1"
 	local boot_bytes=$((BOOT_PART_MB * 1024 * 1024))
+	local boot_stage="$LINUX_WORK/boot-stage"
 	if [ ! -d "$ROOT/boot" ] || [ -z "$(ls -A "$ROOT/boot" 2>/dev/null)" ]; then
 		echo "error: /boot is empty — linux-rpi / raspberrypi-bootloader may have failed" >&2
 		exit 1
 	fi
+	rm -rf "$boot_stage"
+	mkdir -p "$boot_stage"
+	rsync -aL --exclude '/boot' "$ROOT/boot/" "$boot_stage/"
 	truncate -s "${boot_bytes}" "$boot_img"
 	mformat -F -v LEAPBOOT -i "$boot_img" ::
-	mcopy -i "$boot_img" -s "$ROOT/boot"/* ::/
+	mcopy -i "$boot_img" -s "$boot_stage"/* ::/
 }
 
 unmount_chroot_mounts "$ROOT"
@@ -250,7 +287,7 @@ start=${BOOT_PART_START}, size=${BOOT_PART_SECTORS}, type=c, bootable
 start=${ROOT_PART_START}, size=-, type=83" | sfdisk "$IMG"
 
 LINUX_WORK="${ALPINE_LINUX_WORK:-/tmp/leap-alpine-pi4-build}"
-PART_IMG="$LINUX_WORK/partition.ext2"
+PART_IMG="$LINUX_WORK/partition.ext4"
 BOOT_IMG="$LINUX_WORK/bootpart.fat"
 mkdir -p "$LINUX_WORK"
 
@@ -258,7 +295,14 @@ echo "Applying boot fixups ..."
 sed -i 's/^root:[^:]*:/root::/' "$ROOT/etc/shadow"
 rsync -a "$SCRIPT_DIR/overlay/" "$ROOT/"
 strip_overlay_text
+quiet_boot_noise
 chmod 755 "$ROOT/usr/sbin/leap-gateway" "$ROOT/etc/init.d/leap-gateway"
+if [ -e "$ROOT/etc/init.d/leap-growfs" ]; then
+	chmod 755 "$ROOT/etc/init.d/leap-growfs"
+fi
+if [ -e "$ROOT/etc/init.d/leap-splash" ]; then
+	chmod 755 "$ROOT/etc/init.d/leap-splash"
+fi
 
 enable_svc sysinit devfs
 enable_svc sysinit dmesg
@@ -267,8 +311,9 @@ enable_svc sysinit hwdrivers
 enable_svc boot fsck
 enable_svc boot root
 enable_svc boot localmount
+enable_svc boot leap-splash
+enable_svc boot leap-growfs
 enable_svc boot modules
-enable_svc boot sysctl
 enable_svc boot hostname
 enable_svc boot bootmisc
 enable_svc boot syslog
@@ -277,13 +322,14 @@ rm -f "$ROOT/etc/runlevels/default/networking"
 enable_svc shutdown killprocs
 enable_svc shutdown savecache
 enable_svc shutdown mount-ro
+quiet_boot_noise
 
 write_boot_config
 
 FS_BLOCKS=$((ROOT_PART_BYTES / 4096))
-echo "Packing rootfs with genext2fs (${ROOT_PART_MIB} MiB, staging on ${LINUX_WORK}) ..."
+echo "Packing rootfs with mke2fs ext4 (${ROOT_PART_MIB} MiB, staging on ${LINUX_WORK}) ..."
 rm -f "$PART_IMG"
-genext2fs -B 4096 -b "$FS_BLOCKS" -N "$FS_BLOCKS" -d "$ROOT" -L LEAPGW "$PART_IMG"
+mke2fs -q -t ext4 -b 4096 -L LEAPGW -d "$ROOT" "$PART_IMG" "$FS_BLOCKS"
 
 echo "Writing ext4 root partition (seek sector ${ROOT_PART_START}) ..."
 dd if="$PART_IMG" of="$IMG" bs=512 seek="$ROOT_PART_START" conv=notrunc status=none
