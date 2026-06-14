@@ -11,8 +11,11 @@ without needing a controller stop command.
 independent implementation and conformance testing. Not tagged for production release
 yet.
 
-**June 2026 update:** NetBurner `MOD54415LC` now passes full `device_conformance`
-in LEAP Conformance Studio (including cyclic WRITE and cyclic EXCHANGE).
+**June 2026 update:** the active hardware lab is Intel **D945GSEJT**. The D945
+NetBoot server image now PXE-boots diskless Alpine LeapOS Device clients, and
+Conformance Studio can explicitly target selected discovered devices for
+compliance and I/O bench runs. NetBurner `MOD54415LC` also passes full
+`device_conformance` in LEAP Conformance Studio.
 
 LEAP targets private machine-cell networks on standard Ethernet switches. No managed
 switch firmware, VLANs, or special infrastructure required.
@@ -31,6 +34,7 @@ leap_cli/                           Windows host tools (Npcap)
   win_smoke/                        Single-process wire smoke
   conformance/                      Conformance CLI (`leap_conformance`)
 leap_studio_qt/                     LEAP Conformance Studio (Qt 6, Windows)
+NetbootServer/                      D945 NetBoot server Web UI + PXE image builder
 examples/
   linux_loopback/                   Linux AF_PACKET porting templates
   device_minimal/                   Learning / fuzz harness (not porting template)
@@ -46,6 +50,8 @@ docs/BUILD.md                       CMake build trees, clean workspace, CI paths
 ```
 
 Local build output (`build/`, `build-win/`, …) is **gitignored** — never commit it.
+Generated disk/PXE artifacts (`*.img`, `rtems-image/*`, build caches) are also
+gitignored; rebuild them locally when needed.
 
 ---
 
@@ -172,6 +178,42 @@ Manual CMake, Qt paths, and Npcap notes: [docs/BUILD.md](docs/BUILD.md),
 
 Run Npcap tools as **Administrator** on physical adapters.
 
+### D945 NetBoot Lab
+
+The current D945 lab path uses a D945GSEJT board as the NetBoot server and D945
+boards as PXE clients. The server image serves GRUB PXE, HTTP boot files, the
+Web UI, and a preloaded diskless Alpine LeapOS Device image.
+
+From WSL:
+
+```bash
+cd /mnt/d/LEAP_Protocol/NetbootServer/alpine-i386
+bash build-d945-lab.sh
+```
+
+Output:
+
+```text
+platforms/x86-32/D945GSEJT/LeapOS/rtems-image/leap-netboot-server-d945.img
+```
+
+Flash that raw image to CF/SD for the NetBoot server. Configure the lab router
+DHCP options:
+
+| Option | Value |
+| --- | --- |
+| 66 / next-server | `172.16.82.188` |
+| 67 / boot filename | `boot/grub/i386-pc/core.0` |
+
+The default client image is the bundled Alpine LeapOS Device PXE bundle
+(`leapdevice001`). It boots into RAM, loads `modloop` and `apkovl` from the
+NetBoot server, starts `leap-device` on `eth0`, and needs no local disk on the
+slave board.
+
+Docs: [NetbootServer/README.md](NetbootServer/README.md),
+[NetbootServer/docs/ROUTER-DHCP.md](NetbootServer/docs/ROUTER-DHCP.md), and
+[platforms/x86-32/D945GSEJT/LeapDevice-linux/alpine/README.md](platforms/x86-32/D945GSEJT/LeapDevice-linux/alpine/README.md).
+
 ---
 
 ## Platform ports
@@ -185,7 +227,7 @@ trees. Pair devices on the wire with `leap_linux_controller` or `leap_win_contro
 | Texas Instruments | BeagleBone (AM335x), LP-AM243 | [platforms/TI/README.md](platforms/TI/README.md) |
 | Espressif | GL-C-618WL, KC868-A16 (ESP-IDF) | [platforms/Espressif/README.md](platforms/Espressif/README.md) |
 | NetBurner | MOD54415LC (active port) | [platforms/NetBurner/README.md](platforms/NetBurner/README.md) |
-| x86-32 / RTEMS | D945GSEJT — LeapOS bootable device (active port) | [platforms/x86-32/README.md](platforms/x86-32/README.md) |
+| x86-32 / D945GSEJT | LeapOS bootable device + D945 NetBoot lab (active hardware path) | [platforms/x86-32/README.md](platforms/x86-32/README.md), [NetbootServer/README.md](NetbootServer/README.md) |
 
 ### ClearCore quick start
 
@@ -250,6 +292,8 @@ release readiness review.
 | [leap_studio_qt/README.md](leap_studio_qt/README.md) | Conformance Studio build and usage |
 | [leap_cli/win_l2/README.md](leap_cli/win_l2/README.md) | Windows Npcap examples |
 | [platforms/clearcore/README.md](platforms/clearcore/README.md) | ClearCore firmware setup |
+| [NetbootServer/README.md](NetbootServer/README.md) | D945 NetBoot server build, Web UI, and diskless PXE client flow |
+| [NetbootServer/docs/ROUTER-DHCP.md](NetbootServer/docs/ROUTER-DHCP.md) | Router DHCP options 66/67 for D945 PXE boot |
 
 ---
 
