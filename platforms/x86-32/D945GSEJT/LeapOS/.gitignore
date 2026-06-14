@@ -1,7 +1,9 @@
 # WSL build tree lives outside repo at ~/rtems — nothing to ignore there.
 
-# Generated boot artifacts (rebuild with LeapGateway-linux/alpine/mk-image.sh)
-rtems-image/leapos-gateway-alpine.img
+# Generated boot artifacts
+rtems-image/*
+!rtems-image/
+!rtems-image/README.txt
 
 # Editor / OS
 .DS_Store

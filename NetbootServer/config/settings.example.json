@@ -1,0 +1,6 @@
+{
+  "default_image_id": null,
+  "server_label": "LeapOS NetBoot Lab",
+  "http_boot_base": "/httpboot",
+  "http_boot_server": ""
+}

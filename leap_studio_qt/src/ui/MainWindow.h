@@ -101,7 +101,11 @@ private:
     QString conformanceForMac(const QString& mac) const;
     DiscoveryPeerRow deviceForExport() const;
     QString peerMacForConformance(bool* autoSelected = nullptr) const;
+    QString peerMacForTestTarget(const QString& operationName);
+    int selectedDiscoveryRow() const;
+    QString selectedDiscoveryMac() const;
     void applyDiscoveryRowToPeerMac(int row);
+    void updateSelectedDeviceLabel();
     qint64 lastSeenForMac(const QString& mac) const;
 
     static void leapLogSink(void* ctx, int is_error, const char* line);
@@ -114,6 +118,8 @@ private:
     QSpinBox*  cyclePeriodSpin_ = nullptr;
     QLabel* connectionStatus_ = nullptr;
     QTableWidget* discoveryTable_ = nullptr;
+    QCheckBox* useSelectedDeviceCheck_ = nullptr;
+    QLabel* selectedDeviceLabel_ = nullptr;
     QHash<QString, QString> conformanceByMac_;
     QHash<QString, qint64> peerLastSeenMs_;
     QVector<DiscoveryPeerRow> lastDiscoveryPeers_;

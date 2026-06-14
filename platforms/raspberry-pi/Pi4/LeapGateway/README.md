@@ -7,7 +7,7 @@ This Pi 4 port mirrors the x86-32 gateway role. Implementation is staged:
 | Stage | Delivery |
 | --- | --- |
 | **Now (scaffold)** | Alpine aarch64 SD image, stub `leap-gateway` daemon, static LEAP CLI tools |
-| **Next** | Port `leap-eip-gateway` from [x86-32 LeapGateway/src](../../x86-32/D945GSEJT/LeapGateway/src/) |
+| **Next** | Port gateway from [x86-32 LeapGateway/src](../../x86-32/D945GSEJT/LeapGateway/src/) (Alpine Linux reference) |
 | **Later** | Web UI + REST (`web/index.html` shared with x86) |
 
 ## Role

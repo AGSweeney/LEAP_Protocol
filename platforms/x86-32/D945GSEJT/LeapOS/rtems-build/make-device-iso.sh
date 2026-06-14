@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=env.sh
 source "$SCRIPT_DIR/env.sh"
 
-bash "$SCRIPT_DIR/stage-payload.sh" device
+bash "$SCRIPT_DIR/stage-payload.sh"
 
 grub-mkrescue \
     --compress=xz \

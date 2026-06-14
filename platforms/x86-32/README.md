@@ -35,7 +35,9 @@ Each target ships RTEMS projects under `<target>/`:
 
 | Tree | Build | Output |
 | --- | --- | --- |
-| `LeapOS/` | `rtems-build/build-all.sh` (WSL) | `leapos-device.*` / `leapos-gateway.*` boot images |
+| `LeapOS/` | `rtems-build/build-all.sh` (WSL) | `leapos-device.*` RTEMS boot images |
+| `LeapDevice-linux/` | `build-leap-device.sh` + `alpine/mk-image.sh` | `leapos-device-alpine.img` |
+| `LeapGateway-linux/` | `build-leap-gateway.sh` + `alpine/mk-image.sh` | `leapos-gateway-alpine.img` |
 | `LeapPort/` | `./waf` | `leap_d945gsejt.exe` (standalone app build) |
 
 1. Install RTEMS 6.x tool chain and pc386 BSP — see [D945GSEJT/LeapOS/docs/BUILD.md](D945GSEJT/LeapOS/docs/BUILD.md).

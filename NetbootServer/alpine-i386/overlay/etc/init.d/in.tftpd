@@ -1,0 +1,34 @@
+#!/sbin/openrc-run
+
+name="in.tftpd"
+description="TFTP server for PXE clients (lab router provides DHCP)"
+
+depend() {
+	need networking leap-netboot-dirs
+	after firewall
+}
+
+start_pre() {
+	if [ -x /opt/leap-netboot/scripts/render-pxe.sh ]; then
+		/opt/leap-netboot/scripts/render-pxe.sh || true
+	fi
+}
+
+start() {
+	local tftp_root="/var/lib/leap-netboot/tftp"
+
+	if [ ! -d "$tftp_root" ]; then
+		eerror "missing TFTP root: $tftp_root"
+		return 1
+	fi
+
+	ebegin "Starting tftpd"
+	/usr/sbin/in.tftpd -l -R 4096:32767 -s "$tftp_root"
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping tftpd"
+	start-stop-daemon --stop --exec /usr/sbin/in.tftpd
+	eend $?
+}

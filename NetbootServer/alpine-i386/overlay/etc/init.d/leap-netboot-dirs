@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+
+name="leap-netboot-dirs"
+description="LeapOS NetBoot directories and stale nginx config cleanup"
+
+depend() {
+	need localmount
+	before in.tftpd leap-netboot nginx
+}
+
+start() {
+	rm -f /etc/nginx/http.d/00-body-size.conf
+	mkdir -p /var/lib/leap-netboot/tftp/ipxe/by-mac
+	mkdir -p /var/lib/leap-netboot/tftp/images
+	mkdir -p /var/lib/leap-netboot/state
+	mkdir -p /var/lib/leap-netboot/incoming/tmp
+	mkdir -p /var/lib/leap-netboot/incoming/nginx-client
+	chmod 755 /var/lib/leap-netboot/tftp /var/lib/leap-netboot/tftp/ipxe /var/lib/leap-netboot/tftp/ipxe/by-mac
+	chmod 1777 /var/lib/leap-netboot/incoming/tmp /var/lib/leap-netboot/incoming/nginx-client
+}

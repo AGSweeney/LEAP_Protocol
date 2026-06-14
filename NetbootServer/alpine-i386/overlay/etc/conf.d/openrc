@@ -1,0 +1,2 @@
+# Headless serial console — avoid parallel OpenRC status lines interleaving on COM1.
+rc_parallel="NO"

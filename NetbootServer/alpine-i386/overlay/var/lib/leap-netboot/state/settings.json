@@ -1,0 +1,5 @@
+{
+  "default_image_id": null,
+  "server_label": "LeapOS NetBoot",
+  "http_boot_base": "/httpboot"
+}

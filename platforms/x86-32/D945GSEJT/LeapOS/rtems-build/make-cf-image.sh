@@ -1,39 +1,23 @@
 #!/bin/bash
-# Build raw MBR + FAT32 disk image for D945GSEJT CF-via-IDE boot.
+# Build raw MBR + FAT32 disk image for D945GSEJT CF-via-IDE boot (LeapPort device).
 # No sudo required — uses mtools + grub-mkimage (same host tools as ISO build).
-# Usage: make-cf-image.sh [device|gateway]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=env.sh
 source "$SCRIPT_DIR/env.sh"
 
-PROFILE="${1:-device}"
+IMG="$LEAPOS_DEVICE_IMG"
+GRUB_CFG="$SCRIPT_DIR/grub/leapos-device-grub.cfg"
+PAYLOAD="$LEAPOS_DEVICE_STAGING/leap-port.exe"
+PAYLOAD_NAME="leap-port.exe"
+
 IMAGE_MB="${IMAGE_MB:-128}"
 PART_START=2048
 PART_OFF=$((PART_START * 512))
 GRUB_DIR="${GRUB_DIR:-/usr/lib/grub/i386-pc}"
 GRUB_MODS="multiboot part_msdos biosdisk fat fshelp serial terminal gzio relocator"
-WORK="$RTEMS_ROOT/build/cf-image-work-${PROFILE}"
-
-case "$PROFILE" in
-device)
-	IMG="$LEAPOS_DEVICE_IMG"
-	GRUB_CFG="$SCRIPT_DIR/grub/leapos-device-grub.cfg"
-	PAYLOAD="$LEAPOS_DEVICE_STAGING/leap-port.exe"
-	PAYLOAD_NAME="leap-port.exe"
-	;;
-gateway)
-	IMG="$LEAPOS_GATEWAY_IMG"
-	GRUB_CFG="$SCRIPT_DIR/grub/leapos-gateway-grub.cfg"
-	PAYLOAD="$LEAPOS_GATEWAY_STAGING/leap-eip-gateway.exe"
-	PAYLOAD_NAME="leap-eip-gateway.exe"
-	;;
-*)
-	echo "Usage: $0 [device|gateway]" >&2
-	exit 1
-	;;
-esac
+WORK="$RTEMS_ROOT/build/cf-image-work-device"
 
 need_cmd() {
 	if ! command -v "$1" >/dev/null 2>&1; then
@@ -55,7 +39,7 @@ if [ ! -d "$GRUB_DIR" ] || [ ! -f "$GRUB_DIR/boot.img" ]; then
 	exit 1
 fi
 
-bash "$SCRIPT_DIR/stage-payload.sh" "$PROFILE"
+bash "$SCRIPT_DIR/stage-payload.sh"
 
 if [ ! -f "$PAYLOAD" ]; then
 	echo "error: payload not found: $PAYLOAD" >&2
@@ -78,36 +62,12 @@ mmd -i "$IMG@@${PART_OFF}" ::boot ::boot/grub ::boot/grub/i386-pc
 mcopy -i "$IMG@@${PART_OFF}" -s "$PAYLOAD" "::${PAYLOAD_NAME}"
 mcopy -i "$IMG@@${PART_OFF}" -s "$GRUB_CFG" ::boot/grub/grub.cfg
 
-if [ "$PROFILE" = "gateway" ]; then
-	cat > "$WORK/config.txt" <<'EOF'
-# LeapOS-Gateway configuration (editable via Web UI Save to disk)
-network.mode=single
-network.ifname=re0
-network.ipv4=192.168.1.2
-network.mask=255.255.255.0
-network.dhcp=0
-cyclic_ms=50
-mapping.begin=0
-mapping.enabled=0
-mapping.mac=00:00:00:00:00:00
-mapping.profile=0x00010001
-mapping.input.byte=0
-mapping.input.bit=0
-mapping.input.width=8
-mapping.output.byte=2
-mapping.output.bit=0
-mapping.output.width=8
-mapping.status.byte=4
-EOF
-	mcopy -i "$IMG@@${PART_OFF}" -s "$WORK/config.txt" ::config.txt
-fi
-
 cat > "$WORK/early.cfg" <<EOF
 serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1
 terminal_input serial console
 terminal_output serial console
 set root=(hd0,msdos1)
-multiboot /${PAYLOAD_NAME} --video=off --console=/dev/com1,115200 --printk=/dev/com1,115200 --ide=0,1 --ide-show
+multiboot /${PAYLOAD_NAME} --video=off --console=/dev/com1,115200 --printk=/dev/com1,115200
 boot
 EOF
 
@@ -129,6 +89,6 @@ dd if="$WORK/core.img" of="$IMG" conv=notrunc bs=512 seek=1 status=none
 bash "$SCRIPT_DIR/write-image-readme.sh"
 
 ls -lh "$IMG"
-echo "CF/IDE image ready ($PROFILE): $IMG"
+echo "CF/IDE image ready (device): $IMG"
 echo "Flash to CF with dd (raw block write, not ISO):"
 echo "  dd if=$IMG of=/dev/sdX bs=4M status=progress conv=fsync"

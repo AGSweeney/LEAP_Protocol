@@ -1,46 +1,41 @@
-# LeapOS-Gateway
+# LeapGateway — shared application sources
 
-**LeapOS-Gateway** (`leap-eip-gateway.exe`) is the Ethernet/IP bridge product for x86-32 LeapOS.
+Shared LEAP gateway application logic (HTTP Web UI, LEAP session hub, process
+data I/O, OpENer bridge). The **shipping gateway product** is Alpine Linux i386
+under [`../LeapGateway-linux/`](../LeapGateway-linux/).
 
 ## Role
 
 | Side | Protocol | Default (single NIC) |
 |------|----------|------------------------|
-| Plant / PLC | EtherNet/IP (OpENer — planned) | Same port as LEAP, IPv4 |
-| Cell | LEAP controller (DISC → MGMT → PD) | BPF EtherType `0x88B6` on `re0`/`em0` |
+| Plant / PLC | EtherNet/IP (OpENer) | Same port as LEAP, IPv4 |
+| Cell | LEAP controller (DISC → MGMT → PD) | BPF EtherType `0x88B6` |
 | Commissioning | HTTP Web UI | `http://<gateway-ip>:8080` |
 
 Single-NIC mode (default): one interface carries IPv4 (E/IP + Web UI) and LEAP raw L2.
 
-## Build
+## Build (Alpine gateway)
 
 From WSL:
 
 ```bash
-cd platforms/x86-32/D945GSEJT/LeapOS/rtems-build
-bash build-leap-eip-gateway.sh
-# or full image with Device + Gateway:
-bash build-all.sh all
+cd platforms/x86-32/D945GSEJT/LeapGateway-linux
+bash build-leap-gateway.sh
+sudo bash alpine/mk-image.sh
 ```
 
-Output: `LeapOS/rtems-image/leap-eip-gateway.exe`
+Output: `LeapOS/rtems-image/leapos-gateway-alpine.img`
 
-Gateway-only boot image:
-
-```bash
-bash build-all.sh iso-gateway
-# → LeapOS/rtems-image/leapos-gateway.iso
-```
-
-Device and Gateway each have their own ISO and CF image — no combined boot image.
+See [`../LeapGateway-linux/alpine/README.md`](../LeapGateway-linux/alpine/README.md)
+for QEMU boot and image details.
 
 ## Configuration
 
-Persisted key/value file (default path `/gateway/config.txt` on CF):
+Persisted key/value file (default path `/cf/config.txt` on the Alpine image):
 
 ```
 network.mode=single
-network.ifname=re0
+network.ifname=eth0
 network.ipv4=192.168.1.2
 network.mask=255.255.255.0
 cyclic_ms=50
@@ -73,11 +68,19 @@ Up to **16** mapping slots (`mapping.begin=0` … `15`). **Connect LEAP** bootst
 
 | Path | Purpose |
 |------|---------|
-| `src/gateway_init.c` | RTEMS Init, LEAP cyclic loop |
 | `src/gateway_http.c` | Web UI + REST |
-| `src/gateway_net.c` | NIC + IPv4 bring-up |
-| `web/index.html` | Full Web UI (embedded lite copy in firmware) |
+| `src/gateway_leap_session.c` | LEAP controller session hub |
+| `src/gateway_pd_io.c` | Process data exchange |
+| `src/gateway_global.c` | Runtime state + config reload |
+| `web/index.html` | Full Web UI (embedded in firmware) |
+
+Platform layer (Linux): [`../LeapGateway-linux/src/`](../LeapGateway-linux/src/)
 
 Shared transport: [`../LeapPort/src/leap_transport.c`](../LeapPort/src/leap_transport.c)
 
 Bridge logic: [`../../../../leap_core/src/bridge/`](../../../../leap_core/src/bridge/)
+
+## RTEMS device port
+
+The LEAP **device** firmware (`leap-port.exe`) is built from [`../LeapPort/`](../LeapPort/)
+via [`../LeapOS/rtems-build/`](../LeapOS/rtems-build/). This tree is gateway-only.

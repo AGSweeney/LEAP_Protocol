@@ -24,7 +24,7 @@ Plan **rtems-libbsd** + Realtek driver investigation, or a **PCI Intel NIC** for
 
 ## Boot media
 
-User flashes **`leapos-device.img`** or **`leapos-gateway.img`** (preferred for CF)
+User flashes **`leapos-device.img`** (preferred for CF) or **`leapos-device.iso`** (USB)
 or the matching **`.iso`** with **balenaEtcher** or `dd`.
 Each image contains one product only.
 This is appropriate — GRUB and RTEMS BSP messages appear on hardware, confirming
@@ -144,13 +144,8 @@ Crash location in source tree:
 | VGA text | `/dev/vgacons` | **Default** — use with `--video=off` on 945GSE |
 | Video off | `--video=off` | Required on 945GSE to skip broken VBE init |
 
-## Future hardware plan (LEAP gateway)
+## Gateway product (Alpine Linux)
 
-```
-eth0 (PCI Intel NIC)  →  LEAP raw L2 (isolated cell, no IP)
-eth1 (onboard RTL8111D) →  Plant network (needs libbsd + driver)
-        — OR swap roles once Realtek driver is working
-COM1                  →  Modbus RTU (optional)
-```
-
-Target LEAP cyclic period on N270: **50–100 ms** initially.
+The LEAP gateway ships as **Alpine i386 Linux** on the same D945GSEJT hardware
+([LeapGateway-linux/](../../LeapGateway-linux/)). It uses a single onboard NIC for
+IPv4 (EtherNet/IP + Web UI) and LEAP raw L2.

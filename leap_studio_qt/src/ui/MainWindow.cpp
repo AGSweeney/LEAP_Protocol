@@ -303,6 +303,14 @@ void MainWindow::buildDiscoveryTab(QWidget* page) {
     auto* locateBtn = makeButton(QStringLiteral("Locate peer"), page);
     connect(locateBtn, &QPushButton::clicked, this, &MainWindow::onLocate);
     actions->addWidget(locateBtn);
+    useSelectedDeviceCheck_ = new QCheckBox(QStringLiteral("Use selected device for tests"), page);
+    useSelectedDeviceCheck_->setChecked(true);
+    useSelectedDeviceCheck_->setToolTip(QStringLiteral(
+        "When checked, Conformance and I/O Performance run only against the selected Discovery row."));
+    actions->addWidget(useSelectedDeviceCheck_);
+    selectedDeviceLabel_ = new QLabel(QStringLiteral("Selected: none"), page);
+    selectedDeviceLabel_->setMinimumWidth(220);
+    actions->addWidget(selectedDeviceLabel_);
     actions->addStretch();
     layout->addLayout(actions);
 
@@ -325,6 +333,27 @@ void MainWindow::buildDiscoveryTab(QWidget* page) {
         &QTableWidget::cellDoubleClicked,
         this,
         &MainWindow::onDiscoveryRowActivated);
+    connect(discoveryTable_, &QTableWidget::itemSelectionChanged, this, [this]() {
+        const int row = selectedDiscoveryRow();
+        if (useSelectedDeviceCheck_ != nullptr && useSelectedDeviceCheck_->isChecked()) {
+            applyDiscoveryRowToPeerMac(row);
+            ioSessionConnected_ = false;
+            if (ioSessionButton_ != nullptr) {
+                ioSessionButton_->setText(QStringLiteral("Connect device"));
+                ioSessionButton_->setEnabled(true);
+            }
+            if (ioSessionStatus_ != nullptr) {
+                ioSessionStatus_->setText(QStringLiteral("Session: target changed"));
+            }
+        }
+        updateSelectedDeviceLabel();
+    });
+    connect(useSelectedDeviceCheck_, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked) {
+            applyDiscoveryRowToPeerMac(selectedDiscoveryRow());
+        }
+        updateSelectedDeviceLabel();
+    });
 }
 
 void MainWindow::buildConformanceTab(QWidget* page) {
@@ -691,6 +720,12 @@ int MainWindow::tabIndexByLabel(const QString& label) const {
 }
 
 void MainWindow::onRunIoBench() {
+    const QString peerMac = peerMacForTestTarget(QStringLiteral("I/O bench"));
+    if (peerMac.isEmpty()) {
+        showTab(tabIndexByLabel(QStringLiteral("Discovery")));
+        return;
+    }
+
     if (!ioSessionConnected_) {
         if (ioBenchSummary_ != nullptr) {
             ioBenchSummary_->setText(QStringLiteral("Connect I/O session before running bench."));
@@ -736,7 +771,7 @@ void MainWindow::onRunIoBench() {
         {},
         selectedAdapterPath(),
         selectedAdapterLabel(),
-        peerMacEdit_->text(),
+        peerMac,
         soakSec,
         cycleMs);
     ioBenchRunToken_ = adapter_->lastRunToken();
@@ -774,7 +809,19 @@ void MainWindow::onPrepareIoSession() {
         ioSessionButton_->setText(QStringLiteral("Connecting…"));
         ioSessionButton_->setEnabled(false);
     }
-    adapter_->prepareIoSession(selectedAdapterPath(), peerMacEdit_->text());
+    const QString peerMac = peerMacForTestTarget(QStringLiteral("I/O session"));
+    if (peerMac.isEmpty()) {
+        if (ioSessionButton_ != nullptr) {
+            ioSessionButton_->setText(QStringLiteral("Connect device"));
+            ioSessionButton_->setEnabled(true);
+        }
+        if (ioSessionStatus_ != nullptr) {
+            ioSessionStatus_->setText(QStringLiteral("Session: select target device"));
+        }
+        showTab(tabIndexByLabel(QStringLiteral("Discovery")));
+        return;
+    }
+    adapter_->prepareIoSession(selectedAdapterPath(), peerMac);
 }
 
 void MainWindow::onIoSessionReady(bool ok, const QString& detail) {
@@ -823,16 +870,10 @@ void MainWindow::onRunAll() {
     }
     resetDiagnosticsTrafficRates();
     unsigned cycPer = cyclePeriodSpin_ ? cyclePeriodSpin_->value() : 100u;
-    bool autoMac = false;
-    const QString peerMac = peerMacForConformance(&autoMac);
-    if (autoMac) {
-        appendLog(QStringLiteral(
-            "Conformance: using ClearCore MAC %1 from Discovery (Gateway also on segment)")
-                      .arg(peerMac));
-    } else if (peerMac.isEmpty() && lastDiscoveryPeers_.size() > 1u) {
-        appendLog(QStringLiteral(
-            "Conformance: %1 peers found — double-click ClearCore in Discovery or set Expected peer MAC")
-                      .arg(lastDiscoveryPeers_.size()));
+    const QString peerMac = peerMacForTestTarget(QStringLiteral("Conformance"));
+    if (peerMac.isEmpty()) {
+        showTab(tabIndexByLabel(QStringLiteral("Discovery")));
+        return;
     }
     adapter_->runScenario(selectedScenarioId(), {},
                           selectedAdapterPath(), selectedAdapterLabel(),
@@ -864,16 +905,10 @@ void MainWindow::onRunSelected() {
     runProgress_->setValue(0);
     resultsTable_->setRowCount(0);
     unsigned cycPer = cyclePeriodSpin_ ? cyclePeriodSpin_->value() : 100u;
-    bool autoMac = false;
-    const QString peerMac = peerMacForConformance(&autoMac);
-    if (autoMac) {
-        appendLog(QStringLiteral(
-            "Conformance: using ClearCore MAC %1 from Discovery (Gateway also on segment)")
-                      .arg(peerMac));
-    } else if (peerMac.isEmpty() && lastDiscoveryPeers_.size() > 1u) {
-        appendLog(QStringLiteral(
-            "Conformance: %1 peers found — double-click ClearCore in Discovery or set Expected peer MAC")
-                      .arg(lastDiscoveryPeers_.size()));
+    const QString peerMac = peerMacForTestTarget(QStringLiteral("Conformance"));
+    if (peerMac.isEmpty()) {
+        showTab(tabIndexByLabel(QStringLiteral("Discovery")));
+        return;
     }
     adapter_->runScenario(selectedScenarioId(), steps,
                           selectedAdapterPath(), selectedAdapterLabel(),
@@ -1022,6 +1057,13 @@ DiscoveryPeerRow MainWindow::deviceForExport() const {
         return {};
     }
 
+    if (useSelectedDeviceCheck_ != nullptr && useSelectedDeviceCheck_->isChecked()) {
+        const int row = selectedDiscoveryRow();
+        if (row >= 0 && row < lastDiscoveryPeers_.size()) {
+            return lastDiscoveryPeers_.at(row);
+        }
+    }
+
     const QString key =
         leap::studio::discovery::normalizeMacKey(peerMacEdit_->text());
     if (!key.isEmpty()) {
@@ -1102,6 +1144,10 @@ void MainWindow::refreshDiscoveryLastSeen() {
 
 void MainWindow::onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers) {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    QString selectedKey = leap::studio::discovery::normalizeMacKey(selectedDiscoveryMac());
+    if (selectedKey.isEmpty() && peerMacEdit_ != nullptr) {
+        selectedKey = leap::studio::discovery::normalizeMacKey(peerMacEdit_->text());
+    }
     for (const DiscoveryPeerRow& peer : peers) {
         peerLastSeenMs_[leap::studio::discovery::normalizeMacKey(peer.mac)] =
             nowMs;
@@ -1110,12 +1156,31 @@ void MainWindow::onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers) {
     lastDiscoveryPeers_ = peers;
     populateDiscoveryTable(peers);
 
+    int rowToSelect = -1;
+    if (!selectedKey.isEmpty()) {
+        for (int row = 0; row < peers.size(); ++row) {
+            if (leap::studio::discovery::normalizeMacKey(peers.at(row).mac) ==
+                selectedKey) {
+                rowToSelect = row;
+                break;
+            }
+        }
+    }
+    if (rowToSelect < 0 && peers.size() == 1) {
+        rowToSelect = 0;
+    }
+    if (rowToSelect >= 0 && discoveryTable_ != nullptr) {
+        discoveryTable_->selectRow(rowToSelect);
+    }
+
     if (peers.size() == 1) {
         const DiscoveryPeerRow& peer = peers.first();
         if (peerMacEdit_ != nullptr) {
             peerMacEdit_->setText(peer.mac);
         }
-    } else if (peers.size() > 1 && peerMacEdit_ != nullptr &&
+    } else if ((useSelectedDeviceCheck_ == nullptr ||
+                !useSelectedDeviceCheck_->isChecked()) &&
+               peers.size() > 1 && peerMacEdit_ != nullptr &&
                peerMacEdit_->text().trimmed().isEmpty()) {
         static constexpr uint32_t kClearCoreProduct = 0x434C4301u;
         for (const DiscoveryPeerRow& peer : peers) {
@@ -1130,6 +1195,7 @@ void MainWindow::onDiscoveryPeers(const QVector<DiscoveryPeerRow>& peers) {
         }
     }
 
+    updateSelectedDeviceLabel();
     setStatusText(QStringLiteral("Discovery: %1 peer(s)").arg(peers.size()));
 }
 
@@ -1148,6 +1214,38 @@ void MainWindow::applyDiscoveryRowToPeerMac(int row) {
         return;
     }
     peerMacEdit_->setText(lastDiscoveryPeers_.at(row).mac);
+}
+
+int MainWindow::selectedDiscoveryRow() const {
+    if (discoveryTable_ == nullptr || discoveryTable_->selectedItems().isEmpty()) {
+        return -1;
+    }
+    const int row = discoveryTable_->currentRow();
+    return (row >= 0 && row < lastDiscoveryPeers_.size()) ? row : -1;
+}
+
+QString MainWindow::selectedDiscoveryMac() const {
+    const int row = selectedDiscoveryRow();
+    if (row < 0 || row >= lastDiscoveryPeers_.size()) {
+        return {};
+    }
+    return lastDiscoveryPeers_.at(row).mac;
+}
+
+void MainWindow::updateSelectedDeviceLabel() {
+    if (selectedDeviceLabel_ == nullptr) {
+        return;
+    }
+
+    if (useSelectedDeviceCheck_ != nullptr && !useSelectedDeviceCheck_->isChecked()) {
+        selectedDeviceLabel_->setText(QStringLiteral("Target: expected MAC field"));
+        return;
+    }
+
+    const QString mac = selectedDiscoveryMac();
+    selectedDeviceLabel_->setText(
+        mac.isEmpty() ? QStringLiteral("Selected: none")
+                      : QStringLiteral("Selected: %1").arg(mac));
 }
 
 QString MainWindow::peerMacForConformance(bool* autoSelected) const {
@@ -1177,6 +1275,40 @@ QString MainWindow::peerMacForConformance(bool* autoSelected) const {
     }
 
     return QString();
+}
+
+QString MainWindow::peerMacForTestTarget(const QString& operationName) {
+    if (useSelectedDeviceCheck_ != nullptr && useSelectedDeviceCheck_->isChecked()) {
+        const QString mac = selectedDiscoveryMac();
+        if (mac.isEmpty()) {
+            const QString detail =
+                QStringLiteral("%1: select a device row in Discovery first")
+                    .arg(operationName);
+            appendLog(detail);
+            setStatusText(detail);
+            updateSelectedDeviceLabel();
+            return {};
+        }
+        if (peerMacEdit_ != nullptr) {
+            peerMacEdit_->setText(mac);
+        }
+        appendLog(QStringLiteral("%1: target device %2").arg(operationName, mac));
+        return mac;
+    }
+
+    bool autoMac = false;
+    const QString peerMac = peerMacForConformance(&autoMac);
+    if (autoMac) {
+        appendLog(QStringLiteral(
+            "%1: using discovered MAC %2").arg(operationName, peerMac));
+    } else if (peerMac.isEmpty() && lastDiscoveryPeers_.size() > 1u) {
+        appendLog(QStringLiteral(
+            "%1: %2 peers found — select a Discovery row or set Expected peer MAC")
+                      .arg(operationName)
+                      .arg(lastDiscoveryPeers_.size()));
+        setStatusText(QStringLiteral("%1 target is ambiguous").arg(operationName));
+    }
+    return peerMac;
 }
 
 void MainWindow::onConformanceRows(const QStringList& rows, quint64 runToken) {
@@ -1326,12 +1458,20 @@ void MainWindow::onDiscover() {
 
 void MainWindow::onIdentify() {
     showTab(1);
-    adapter_->identifyPeer(selectedAdapterPath(), peerMacEdit_->text());
+    const QString peerMac = peerMacForTestTarget(QStringLiteral("Identify"));
+    if (peerMac.isEmpty()) {
+        return;
+    }
+    adapter_->identifyPeer(selectedAdapterPath(), peerMac);
 }
 
 void MainWindow::onLocate() {
     showTab(1);
-    adapter_->locatePeer(selectedAdapterPath(), peerMacEdit_->text(), 1500u);
+    const QString peerMac = peerMacForTestTarget(QStringLiteral("Locate"));
+    if (peerMac.isEmpty()) {
+        return;
+    }
+    adapter_->locatePeer(selectedAdapterPath(), peerMac, 1500u);
 }
 
 void MainWindow::onStartMonitor() {

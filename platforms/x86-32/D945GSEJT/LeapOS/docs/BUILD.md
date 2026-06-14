@@ -1,20 +1,18 @@
 # LeapOS build guide
 
-Build **bootable RTEMS 6.2 images** for Intel **D945GSEJT + Atom N270** from WSL2
+Build **bootable RTEMS 6.2 device images** for Intel **D945GSEJT + Atom N270** from WSL2
 (Ubuntu) or native Linux. Output artifacts land in `rtems-image/`.
 
-## What you get
+The LEAP **gateway** product is Alpine Linux — build it from
+[LeapGateway-linux/](../../LeapGateway-linux/) (`leapos-gateway-alpine.img`).
 
-Each boot image contains **one product only** (Device or Gateway).
+## What you get
 
 | Artifact | Use |
 | --- | --- |
 | `leapos-device.img` | **LeapOS-Device** CF/IDE image |
 | `leapos-device.iso` | **LeapOS-Device** USB ISO |
-| `leapos-gateway.img` | **LeapOS-Gateway** CF/IDE image |
-| `leapos-gateway.iso` | **LeapOS-Gateway** USB ISO |
 | `leap-port.exe` | Device ELF |
-| `leap-eip-gateway.exe` | Gateway ELF |
 | `net-probe.exe` | Network probe ELF (QEMU / dev; not on boot images) |
 
 ## Prerequisites
@@ -69,15 +67,12 @@ powershell -ExecutionPolicy Bypass -File platforms/x86-32/D945GSEJT/LeapOS/rtems
 ### Partial builds
 
 ```bash
-bash build-all.sh leap-port      # leap-port.exe only
-bash build-all.sh gateway        # leap-eip-gateway.exe only
+bash build-all.sh device         # leap-port.exe only
 bash build-all.sh net-probe      # net-probe.exe only
 bash build-all.sh iso-device     # leapos-device.iso
-bash build-all.sh iso-gateway    # leapos-gateway.iso
-bash build-all.sh iso            # both ISOs
-bash build-all.sh cf-device      # leapos-device.img (sudo)
-bash build-all.sh cf-gateway     # leapos-gateway.img (sudo)
-bash build-all.sh cf             # both CF images (sudo)
+bash build-all.sh iso            # alias for iso-device
+bash build-all.sh cf-device      # leapos-device.img
+bash build-all.sh cf             # alias for cf-device
 bash build-runonce.sh            # net-probe ELF with run-once BSP (no ISO)
 ```
 
@@ -95,10 +90,10 @@ See `rtems-image/README.txt` after each build.
 
 **D945GSEJT lab setup:**
 
-1. Flash **`leapos-device.img`** or **`leapos-gateway.img`** to CF (preferred), or the matching `.iso`.
+1. Flash **`leapos-device.img`** to CF (preferred), or **`leapos-device.iso`** for USB.
 2. BIOS: CF/IDE first boot, legacy BIOS, LBA on, disable TCO watchdog if available.
 3. Serial **COM1 @ 115200 8N1** — GRUB and RTEMS log on serial (VGA unreliable on 945GSE).
-4. Device image boots `leap-port.exe`; gateway image boots `leap-eip-gateway.exe`.
+4. Device image boots `leap-port.exe`.
 
 Expected success:
 
@@ -119,16 +114,15 @@ LEAP full stack listening on re0 (DISC/DIR/MGMT/PD/DIAG)
 | `build-leap-port.sh` | Build `leap-port.exe` (LEAP device) in rtems-libbsd |
 | `build-net-probe.sh` | Build `net-probe.exe` (network bring-up probe) |
 | `build-net.sh` | LEAP device ISO (leap-port + run-once BSP) |
-| `build-leap-eip-gateway.sh` | Build `leap-eip-gateway.exe` (LeapOS-Gateway) |
-| `stage-payload.sh` | Stage device or gateway payload + GRUB cfg |
+| `stage-payload.sh` | Stage device payload + GRUB cfg |
 | `make-device-iso.sh` | Produce `leapos-device.iso` |
-| `make-gateway-iso.sh` | Produce `leapos-gateway.iso` |
-| `make-cf-image.sh` | Produce `leapos-device.img` or `leapos-gateway.img` |
-| `build-all.sh` | Orchestrate full pipeline |
+| `make-cf-image.sh` | Produce `leapos-device.img` |
+| `build-all.sh` | Orchestrate device pipeline |
 | `build-runonce.sh` | BSP run-once + net-probe ELF |
 | `build-all.ps1` | Windows → WSL wrapper |
-| `grub/leapos-device-grub.cfg` | Device-only GRUB menu |
-| `grub/leapos-gateway-grub.cfg` | Gateway-only GRUB menu |
+| `grub/leapos-device-grub.cfg` | Device GRUB menu |
+
+Gateway (Alpine Linux): [LeapGateway-linux/](../../LeapGateway-linux/)
 
 ## QEMU smoke test (host)
 

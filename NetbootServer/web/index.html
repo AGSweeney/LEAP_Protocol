@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LeapOS NetBoot</title>
+  <style>
+    :root {
+      --bg: #f5f7f9;
+      --bg-2: #e9eef2;
+      --panel: #ffffff;
+      --panel-2: #f3f6f8;
+      --text: #1c1f23;
+      --muted: #5c6a76;
+      --accent: #cc0000;
+      --accent-2: #003b5c;
+      --border: #d8e0e6;
+      --ok: #2e7d32;
+      --warn: #e65100;
+      --danger: #c62828;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Gill Sans MT", "Tahoma", sans-serif;
+      background: linear-gradient(180deg, var(--bg), var(--bg-2));
+      color: var(--text);
+      line-height: 1.5;
+      letter-spacing: 0.15px;
+    }
+    header {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    h1 { margin: 0; font-size: 2rem; font-weight: 700; color: var(--accent-2); }
+    .sub {
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+    main { max-width: 1180px; margin: 0 auto 56px; padding: 24px; }
+    section {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 16px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+    }
+    .grid { display: grid; gap: 1rem; }
+    @media (min-width: 720px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.25rem; }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+    input[type="checkbox"] { width: auto; margin-right: 6px; }
+    button {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:not(.secondary):not(.danger) {
+      border-color: transparent;
+      background: linear-gradient(180deg, #e10000, #b30000);
+      color: #fff;
+    }
+    button.secondary { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    button.danger { border-color: transparent; background: var(--danger); color: #fff; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; background: #fff; margin-top: 10px; }
+    th, td { text-align: left; padding: 8px; border: 1px solid var(--border); vertical-align: middle; }
+    th { background: #eef3f7; color: #40515f; font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; }
+    .pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: #eef3f7;
+      color: var(--muted);
+    }
+    .pill.default { background: #e8f5e9; color: var(--ok); border: 1px solid #a5d6a7; }
+    .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .stat {
+      min-width: 110px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      text-align: center;
+    }
+    .stat strong { display: block; font-size: 1.45rem; color: var(--accent-2); line-height: 1; }
+    .stat span { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.7px; }
+    .notice {
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      background: #fff3e0;
+      border-left: 3px solid var(--warn);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: end; }
+    .row > * { flex: 1; min-width: 140px; }
+    .actions { display: flex; gap: 0.4rem; }
+    .hint { color: var(--muted); font-size: 0.78rem; line-height: 1.5; }
+    .muted { color: var(--muted); }
+    code {
+      background: #eef3f7;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
+    #toast {
+      position: fixed; bottom: 1rem; right: 1rem;
+      padding: 0.75rem 1rem; border-radius: 6px;
+      background: #fff; border: 1px solid var(--border);
+      display: none; max-width: 320px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+    }
+    #toast.show { display: block; }
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="title">LeapOS NetBoot</h1>
+      <div class="sub">PXE/iPXE server — DHCP on lab router</div>
+    </div>
+    <button type="button" class="secondary" id="btn-refresh">Refresh</button>
+  </header>
+
+  <main>
+    <div class="notice">
+      Configure your router with DHCP option <strong>66</strong> (this server’s IP) and
+      option <strong>67</strong> (<code>ipxe.pxe</code> recommended). See
+      <code>NetbootServer/docs/ROUTER-DHCP.md</code> in the repo.
+    </div>
+
+    <section>
+      <h2>Status</h2>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section>
+      <h2>Netbooted devices</h2>
+      <p class="hint" style="margin-top:0">
+        Devices report here from the Alpine PXE image after boot. Use <strong>Name / Map</strong>
+        to assign a friendly name, notes, or a per-MAC image override.
+      </p>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>MAC</th>
+              <th>Friendly name</th>
+              <th>IP</th>
+              <th>Hostname</th>
+              <th>Image</th>
+              <th>Boots</th>
+              <th>Last seen</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="booted-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Images</h2>
+      <form id="upload-form" class="grid grid-2" style="margin-bottom:1rem;">
+        <div id="rtems-upload">
+          <label for="file">Payload file</label>
+          <input type="file" id="file" name="file" accept=".exe,.bin,.img">
+        </div>
+        <div id="alpine-upload" style="display:none;">
+          <label for="alpine-bundle">Alpine bundle (.tar.gz)</label>
+          <input type="file" id="alpine-bundle" name="file" accept=".tar.gz,.tgz,.tar">
+          <p class="hint" style="margin:0.35rem 0 0;font-size:0.85rem;color:var(--muted);">
+            Upload <code>leap-device-alpine-pxe.tar.gz</code> from
+            <code>make-pxe-device-alpine.sh</code>, or pick the three files below.
+          </p>
+          <label for="alpine-vmlinuz" style="margin-top:0.65rem;">vmlinuz (optional)</label>
+          <input type="file" id="alpine-vmlinuz" name="vmlinuz">
+          <label for="alpine-initramfs" style="margin-top:0.5rem;">initramfs (optional)</label>
+          <input type="file" id="alpine-initramfs" name="initramfs">
+          <label for="alpine-modloop" style="margin-top:0.5rem;">modloop (optional)</label>
+          <input type="file" id="alpine-modloop" name="modloop">
+        </div>
+        <div>
+          <label for="img-name">Display name</label>
+          <input type="text" id="img-name" name="name" placeholder="LeapOS device build">
+        </div>
+        <div>
+          <label for="img-type">Type</label>
+          <select id="img-type" name="type">
+            <option value="rtems-multiboot">RTEMS Multiboot (leap-port.exe)</option>
+            <option value="alpine-linux">Alpine Linux (kernel + initrd + modloop)</option>
+          </select>
+        </div>
+        <div>
+          <label for="kernel-args">Kernel args</label>
+          <input type="text" id="kernel-args" name="kernel_args"
+            value="--video=off --console=/dev/com1,115200 --printk=/dev/com1,115200">
+        </div>
+        <div class="row" style="align-items:center;">
+          <label style="display:flex;gap:0.4rem;align-items:center;color:var(--text);">
+            <input type="checkbox" id="set-default" name="set_default" style="width:auto;">
+            Set as default image
+          </label>
+          <button type="submit">Upload image</button>
+        </div>
+      </form>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="images-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Test devices</h2>
+      <form id="device-form" class="grid grid-2" style="margin-bottom:1rem;">
+        <div>
+          <label for="dev-mac">MAC address</label>
+          <input type="text" id="dev-mac" placeholder="24:15:10:b0:5f:bc" required>
+        </div>
+        <div>
+          <label for="dev-label">Label</label>
+          <input type="text" id="dev-label" placeholder="bench-01">
+        </div>
+        <div>
+          <label for="dev-image">Assigned image</label>
+          <select id="dev-image"><option value="">(use default)</option></select>
+        </div>
+        <div>
+          <label for="dev-notes">Notes</label>
+          <input type="text" id="dev-notes" placeholder="optional">
+        </div>
+        <div><button type="submit">Add / update device</button></div>
+      </form>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>MAC</th>
+              <th>Label</th>
+              <th>Image</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="devices-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Settings</h2>
+      <form id="settings-form" class="grid grid-2">
+        <div>
+          <label for="server-label">Server label</label>
+          <input type="text" id="server-label" name="server_label">
+        </div>
+        <div>
+          <label for="default-image">Default image</label>
+          <select id="default-image" name="default_image_id">
+            <option value="">(none)</option>
+          </select>
+        </div>
+        <div>
+          <label for="http-boot-server">PXE HTTP server IP</label>
+          <input type="text" id="http-boot-server" name="http_boot_server" placeholder="172.16.82.170">
+        </div>
+        <div><button type="submit">Save settings</button></div>
+      </form>
+    </section>
+  </main>
+
+  <footer>LeapOS NetBoot - PXE image console | UI aligned with LeapOS-Gateway</footer>
+
+  <div id="toast"></div>
+
+  <script>
+    const API = '/api/v1';
+    let state = { images: {}, devices: {}, settings: {}, status: {}, booted: [] };
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    function fmtBytes(n) {
+      if (!n) return '—';
+      const u = ['B', 'KiB', 'MiB', 'GiB'];
+      let i = 0, v = n;
+      while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+      return v.toFixed(i ? 1 : 0) + ' ' + u[i];
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(API + path, opts);
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (_) {}
+      if (!res.ok) {
+        if (res.status === 413) {
+          throw new Error(
+            'Upload too large (HTTP 413). Ensure leap-netboot.conf has client_max_body_size 512m ' +
+            'and remove /etc/nginx/http.d/00-body-size.conf if present.'
+          );
+        }
+        if (res.status === 502) {
+          throw new Error(
+            'Bad gateway (HTTP 502): leap-netboot API not responding. On the server: ' +
+            'rc-service leap-netboot status; tail -30 /var/log/leap-netboot.log'
+          );
+        }
+        throw new Error((data && data.error) || res.statusText);
+      }
+      return data;
+    }
+
+    function imageOptions(selected) {
+      return Object.values(state.images).map(img =>
+        `<option value="${img.id}" ${img.id === selected ? 'selected' : ''}>${esc(img.name)}</option>`
+      ).join('');
+    }
+
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c =>
+        ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    }
+
+    function render() {
+      const def = state.settings.default_image_id;
+      document.getElementById('title').textContent =
+        state.settings.server_label || state.status.server_label || 'LeapOS NetBoot';
+
+      document.getElementById('stats').innerHTML = `
+        <div class="stat"><strong>${state.status.image_count ?? 0}</strong><span>Images</span></div>
+        <div class="stat"><strong>${state.status.device_count ?? 0}</strong><span>Devices</span></div>
+        <div class="stat"><strong>${state.status.booted_device_count ?? state.booted.length ?? 0}</strong><span>Netbooted</span></div>
+        <div class="stat"><strong>${state.status.disk_free_mb ?? '—'} MiB</strong><span>Free disk</span></div>
+      `;
+
+      document.getElementById('booted-body').innerHTML = (state.booted || [])
+        .map(dev => `
+          <tr>
+            <td><code>${esc(dev.mac)}</code></td>
+            <td>${esc(dev.label || '—')}</td>
+            <td>${esc(dev.ip || '—')}</td>
+            <td>${esc(dev.hostname || '—')}</td>
+            <td>${esc(dev.image_name || dev.image_id || '—')}</td>
+            <td>${esc(dev.boot_count || 0)}</td>
+            <td>${esc((dev.last_seen || '').replace('T', ' ').replace('+00:00', ' UTC') || '—')}</td>
+            <td class="actions">
+              <button type="button" class="secondary" data-map-booted="${esc(dev.mac)}">Name / Map</button>
+            </td>
+          </tr>`).join('') ||
+        '<tr><td colspan="8" class="muted">No PXE boot reports yet. Rebuild/reflash with the reporting apkovl, then boot a slave.</td></tr>';
+
+      document.getElementById('images-body').innerHTML = Object.values(state.images)
+        .sort((a, b) => (b.created || '').localeCompare(a.created || ''))
+        .map(img => `
+          <tr>
+            <td>${esc(img.name)} ${img.id === def ? '<span class="pill default">default</span>' : ''}</td>
+            <td><span class="pill">${esc(img.type)}</span></td>
+            <td>${fmtBytes(img.size_bytes)}</td>
+            <td>${esc((img.created || '').replace('T', ' ').replace('Z', ' UTC'))}</td>
+            <td class="actions">
+              <button type="button" class="secondary" data-set-default="${img.id}">Default</button>
+              <button type="button" class="danger" data-del-image="${img.id}">Delete</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No images yet</td></tr>';
+
+      document.getElementById('devices-body').innerHTML = Object.values(state.devices)
+        .sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+        .map(dev => {
+          const img = state.images[dev.image_id];
+          const imgLabel = img ? img.name : (dev.image_id ? dev.image_id : '(default)');
+          return `
+          <tr>
+            <td><code>${esc(dev.mac)}</code></td>
+            <td>${esc(dev.label)}</td>
+            <td>${esc(imgLabel)}</td>
+            <td>${esc((dev.updated || '').replace('T', ' ').replace('Z', ''))}</td>
+            <td class="actions">
+              <button type="button" class="secondary" data-edit-mac="${esc(dev.mac)}">Edit</button>
+              <button type="button" class="danger" data-del-mac="${esc(dev.mac)}">Remove</button>
+            </td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="5" style="color:var(--muted)">No devices registered</td></tr>';
+
+      const opts = '<option value="">(use default)</option>' + imageOptions();
+      document.getElementById('dev-image').innerHTML = opts;
+      document.getElementById('default-image').innerHTML =
+        '<option value="">(none)</option>' + imageOptions(def);
+      document.getElementById('server-label').value = state.settings.server_label || '';
+      document.getElementById('default-image').value = def || '';
+      document.getElementById('http-boot-server').value = state.settings.http_boot_server || '';
+    }
+
+    async function loadAll() {
+      const [status, images, devices, settings, booted] = await Promise.all([
+        api('/status'), api('/images'), api('/devices'), api('/settings'), api('/booted-devices'),
+      ]);
+      state = { status, images, devices, settings, booted: booted.devices || [] };
+      render();
+    }
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const type = document.getElementById('img-type').value;
+      const fd = new FormData();
+      fd.set('type', type);
+      fd.set('name', document.getElementById('img-name').value.trim());
+      fd.set('kernel_args', document.getElementById('kernel-args').value.trim());
+      fd.set('set_default', document.getElementById('set-default').checked ? '1' : '0');
+
+      if (type === 'alpine-linux') {
+        const bundle = document.getElementById('alpine-bundle').files[0];
+        const vmlinuz = document.getElementById('alpine-vmlinuz').files[0];
+        const initramfs = document.getElementById('alpine-initramfs').files[0];
+        const modloop = document.getElementById('alpine-modloop').files[0];
+        if (vmlinuz && initramfs && modloop) {
+          fd.set('vmlinuz', vmlinuz);
+          fd.set('initramfs', initramfs);
+          fd.set('modloop', modloop);
+          if (!fd.get('name')) fd.set('name', vmlinuz.name.replace(/^vmlinuz.*/, 'LeapOS device Alpine'));
+        } else if (bundle) {
+          fd.set('file', bundle);
+          if (!fd.get('name')) fd.set('name', bundle.name.replace(/\.(tar\.gz|tgz|tar)$/i, ''));
+        } else {
+          toast('Pick leap-device-alpine-pxe.tar.gz or all three Alpine files');
+          return;
+        }
+      } else {
+        const file = document.getElementById('file').files[0];
+        if (!file) {
+          toast('Choose a payload file');
+          return;
+        }
+        fd.set('file', file);
+        if (!fd.get('name')) fd.set('name', file.name);
+      }
+
+      try {
+        await api('/images', { method: 'POST', body: fd });
+        e.target.reset();
+        syncUploadTypeUi();
+        toast('Image uploaded');
+        await loadAll();
+      } catch (err) { toast(err.message); }
+    });
+
+    const RTEMS_KERNEL_ARGS =
+      '--video=off --console=/dev/com1,115200 --printk=/dev/com1,115200';
+    const ALPINE_KERNEL_ARGS =
+      'ip=dhcp modules=loop,squashfs,sd-mod,ext4,r8169 earlyprintk=serial,ttyS0,115200 console=tty1 console=ttyS0,115200n8';
+
+    function syncUploadTypeUi() {
+      const alpine = document.getElementById('img-type').value === 'alpine-linux';
+      document.getElementById('rtems-upload').style.display = alpine ? 'none' : 'block';
+      document.getElementById('alpine-upload').style.display = alpine ? 'block' : 'none';
+      document.getElementById('file').required = !alpine;
+      document.getElementById('kernel-args').value = alpine ? ALPINE_KERNEL_ARGS : RTEMS_KERNEL_ARGS;
+    }
+
+    document.getElementById('img-type').addEventListener('change', syncUploadTypeUi);
+    syncUploadTypeUi();
+
+    document.getElementById('device-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const mac = document.getElementById('dev-mac').value.trim();
+      const body = {
+        mac,
+        label: document.getElementById('dev-label').value.trim() || mac,
+        notes: document.getElementById('dev-notes').value.trim(),
+        image_id: document.getElementById('dev-image').value || null,
+      };
+      try {
+        await api('/devices/' + encodeURIComponent(mac), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        toast('Device saved');
+        e.target.reset();
+        await loadAll();
+      } catch (err) { toast(err.message); }
+    });
+
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        server_label: document.getElementById('server-label').value.trim(),
+        default_image_id: document.getElementById('default-image').value || null,
+        http_boot_server: document.getElementById('http-boot-server').value.trim(),
+      };
+      try {
+        await api('/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        toast('Settings saved');
+        await loadAll();
+      } catch (err) { toast(err.message); }
+    });
+
+    document.body.addEventListener('click', async (e) => {
+      const delImg = e.target.closest('[data-del-image]');
+      if (delImg) {
+        if (!confirm('Delete this image?')) return;
+        try {
+          await api('/images/' + delImg.dataset.delImage, { method: 'DELETE' });
+          toast('Image deleted');
+          await loadAll();
+        } catch (err) { toast(err.message); }
+        return;
+      }
+      const setDef = e.target.closest('[data-set-default]');
+      if (setDef) {
+        try {
+          await api('/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ default_image_id: setDef.dataset.setDefault }),
+          });
+          toast('Default image updated');
+          await loadAll();
+        } catch (err) { toast(err.message); }
+        return;
+      }
+      const delMac = e.target.closest('[data-del-mac]');
+      if (delMac) {
+        if (!confirm('Remove device?')) return;
+        try {
+          await api('/devices/' + encodeURIComponent(delMac.dataset.delMac), { method: 'DELETE' });
+          toast('Device removed');
+          await loadAll();
+        } catch (err) { toast(err.message); }
+        return;
+      }
+      const editMac = e.target.closest('[data-edit-mac]');
+      if (editMac) {
+        const dev = state.devices[editMac.dataset.editMac];
+        if (!dev) return;
+        document.getElementById('dev-mac').value = dev.mac;
+        document.getElementById('dev-label').value = dev.label || '';
+        document.getElementById('dev-notes').value = dev.notes || '';
+        document.getElementById('dev-image').value = dev.image_id || '';
+      }
+      const mapBooted = e.target.closest('[data-map-booted]');
+      if (mapBooted) {
+        const mac = mapBooted.dataset.mapBooted;
+        const dev = state.devices[mac] || {};
+        const booted = (state.booted || []).find(row => row.mac === mac) || {};
+        document.getElementById('dev-mac').value = mac;
+        document.getElementById('dev-label').value = dev.label || booted.hostname || mac;
+        document.getElementById('dev-notes').value = dev.notes || '';
+        document.getElementById('dev-image').value = dev.image_id || booted.image_id || '';
+        document.getElementById('dev-label').focus();
+        toast('Edit friendly name, notes, or assigned image, then save device');
+      }
+    });
+
+    document.getElementById('btn-refresh').addEventListener('click', () => loadAll().catch(e => toast(e.message)));
+    loadAll().catch(e => toast(e.message));
+  </script>
+</body>
+</html>

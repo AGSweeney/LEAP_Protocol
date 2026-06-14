@@ -1,0 +1,6 @@
+#!/bin/sh
+mkdir -p /var/lib/leap-netboot/tftp/ipxe/by-mac
+mkdir -p /var/lib/leap-netboot/tftp/images
+mkdir -p /var/lib/leap-netboot/state
+mkdir -p /var/lib/leap-netboot/incoming
+chmod 755 /var/lib/leap-netboot/tftp /var/lib/leap-netboot/tftp/ipxe /var/lib/leap-netboot/tftp/ipxe/by-mac

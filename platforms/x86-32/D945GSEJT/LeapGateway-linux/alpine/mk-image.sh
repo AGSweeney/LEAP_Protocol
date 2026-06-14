@@ -21,6 +21,7 @@ IMAGE_MB="${IMAGE_MB:-auto}"
 IMAGE_MIN_MB="${IMAGE_MIN_MB:-160}"
 IMAGE_MARGIN_MB="${IMAGE_MARGIN_MB:-32}"
 PART_START=2048
+PART_ALIGN=2048
 WORK="$SCRIPT_DIR/build-work"
 ROOT="$WORK/rootfs"
 MINIROOT="$CACHE/alpine-minirootfs-${ALPINE_RELEASE}-x86.tar.gz"
@@ -65,7 +66,51 @@ need_cmd() {
 #   mke2fs -d packs the rootfs into an ext4 partition file in userspace,
 #   GRUB boot.img + core.img are dd'd raw (same method as RTEMS make-cf-image.sh).
 # This is required on WSL2, whose kernel has no loop module.
-need_cmd wget tar sfdisk rsync chroot mke2fs grub-mkimage dd
+need_cmd wget tar sfdisk rsync chroot mke2fs tune2fs grub-mkimage dd wc
+
+image_part_sectors() {
+	local img="$1" sectors=""
+
+	sectors="$(sfdisk --list --bytes -o Start,Sectors "$img" 2>/dev/null |
+		awk -v start="$PART_START" 'NR > 1 && $1 == start { print $2; exit }')"
+	if [ -n "$sectors" ]; then
+		echo "$sectors"
+		return 0
+	fi
+
+	sfdisk -l "$img" 2>/dev/null |
+		awk -v start="$PART_START" '$3 == start { print $5; exit }'
+}
+
+verify_disk_image() {
+	local img="$1" expect_part_sectors="$2" expect_fs_blocks="$3"
+	local img_bytes part_sectors fs_blocks part_img_bytes
+
+	img_bytes="$(wc -c < "$img" | tr -d ' ')"
+	if [ "$img_bytes" -ne "$IMAGE_BYTES" ]; then
+		echo "error: $img is ${img_bytes} bytes, expected ${IMAGE_BYTES}" >&2
+		exit 1
+	fi
+
+	part_sectors="$(image_part_sectors "$img")"
+	if [ -z "$part_sectors" ] || [ "$part_sectors" -ne "$expect_part_sectors" ]; then
+		echo "error: partition size mismatch in $img (got ${part_sectors:-?}, want ${expect_part_sectors})" >&2
+		sfdisk -l "$img" >&2 || true
+		exit 1
+	fi
+
+	part_img_bytes="$(wc -c < "$PART_IMG" | tr -d ' ')"
+	if [ "$part_img_bytes" -gt "$PART_BYTES" ]; then
+		echo "error: ext4 blob (${part_img_bytes} bytes) exceeds partition (${PART_BYTES} bytes)" >&2
+		exit 1
+	fi
+
+	fs_blocks="$(tune2fs -l "$PART_IMG" 2>/dev/null | awk '/^Block count:/{print $3; exit}')"
+	if [ -z "$fs_blocks" ] || [ "$fs_blocks" -gt "$expect_fs_blocks" ]; then
+		echo "error: ext4 block count (${fs_blocks:-?}) exceeds partition allowance (${expect_fs_blocks})" >&2
+		exit 1
+	fi
+}
 
 GRUB_DIR="${GRUB_DIR:-/usr/lib/grub/i386-pc}"
 GRUB_MODS="biosdisk part_msdos ext2 linux serial terminal echo gzio"
@@ -205,25 +250,16 @@ if [ "$IMAGE_MB" = "auto" ]; then
 	echo "Auto image size: ${IMAGE_MB} MiB (min=${IMAGE_MIN_MB}, margin=${IMAGE_MARGIN_MB})"
 fi
 
-echo "Creating ${IMAGE_MB} MiB disk image ..."
-mkdir -p "$IMAGE_DIR"
-rm -f "$IMG"
-truncate -s "${IMAGE_MB}M" "$IMG"
-
-echo "label: dos
-unit: sectors
-start=${PART_START}, size=-, type=83, bootable" | sfdisk "$IMG"
-
 IMAGE_BYTES=$((IMAGE_MB * 1024 * 1024))
 IMAGE_SECTORS=$((IMAGE_BYTES / 512))
-PART_SECTORS=$((IMAGE_SECTORS - PART_START))
+PART_SECTORS=$(( (IMAGE_SECTORS - PART_START) / PART_ALIGN * PART_ALIGN ))
 PART_BYTES=$((PART_SECTORS * 512))
 PART_KB=$((PART_BYTES / 1024))
 PART_MIB=$((PART_KB / 1024))
-# Stage partition + GRUB scratch files on native Linux fs (fast, avoids DrvFS quirks).
+FS_BLOCKS=$((PART_BYTES / 4096))
 LINUX_WORK="${ALPINE_LINUX_WORK:-/tmp/leap-alpine-build-${USER:-user}}"
 PART_IMG="$LINUX_WORK/partition.ext4"
-mkdir -p "$LINUX_WORK"
+mkdir -p "$LINUX_WORK" "$IMAGE_DIR"
 
 if [ "$ROOT_KB" -gt $((PART_KB * 95 / 100)) ]; then
 	echo "error: rootfs ($((ROOT_KB / 1024)) MiB) too large for ${PART_MIB} MiB partition" >&2
@@ -231,6 +267,18 @@ if [ "$ROOT_KB" -gt $((PART_KB * 95 / 100)) ]; then
 	du -sh "$ROOT"/* 2>/dev/null | sort -h | tail -8 >&2
 	exit 1
 fi
+
+echo "Creating ${IMAGE_MB} MiB disk image (${IMAGE_SECTORS} sectors, partition ${PART_SECTORS} sectors) ..."
+rm -f "$IMG"
+truncate -s "$IMAGE_BYTES" "$IMG"
+
+# size=- lets sfdisk pick CHS geometry and can cap sda1 far below the disk
+# (e.g. 245 MiB image with only ~159 MiB partition). Use an explicit LBA size.
+printf '%s\n' \
+	'label: dos' \
+	'unit: sectors' \
+	"start=${PART_START}, size=${PART_SECTORS}, type=83, bootable" |
+	sfdisk --force "$IMG" >/dev/null
 
 # Last console= wins as primary /dev/console — keep ttyS0 last so OpenRC and
 # boot messages land on COM1 (headless board, QEMU -nographic).
@@ -304,13 +352,14 @@ EOF
 # Legacy extlinux dir is no longer used for boot; drop it if present.
 rm -rf "$ROOT/boot/extlinux" "$ROOT/boot/ldlinux.sys"
 
-FS_BLOCKS=$((PART_BYTES / 4096))
-echo "Packing rootfs with mke2fs ext4 (${PART_MIB} MiB, staging on ${LINUX_WORK}, no loop mount) ..."
+echo "Packing rootfs with mke2fs ext4 (${PART_MIB} MiB, ${FS_BLOCKS} blocks, staging on ${LINUX_WORK}) ..."
 rm -f "$PART_IMG"
 mke2fs -q -t ext4 -b 4096 -L LEAPGW -d "$ROOT" "$PART_IMG" "$FS_BLOCKS"
 
-echo "Writing partition into disk image (seek sector ${PART_START}) ..."
-dd if="$PART_IMG" of="$IMG" bs=512 seek="$PART_START" conv=notrunc status=none
+echo "Writing partition into disk image (seek sector ${PART_START}, count ${PART_SECTORS}) ..."
+dd if="$PART_IMG" of="$IMG" bs=512 seek="$PART_START" count="$PART_SECTORS" \
+	conv=notrunc status=none
+verify_disk_image "$IMG" "$PART_SECTORS" "$FS_BLOCKS"
 
 echo "Embedding GRUB (boot.img + core.img, no loop mount) ..."
 cat > "$LINUX_WORK/early.cfg" <<EOF
@@ -338,8 +387,10 @@ fi
 
 dd if="$GRUB_DIR/boot.img" of="$IMG" conv=notrunc bs=446 count=1 status=none
 dd if="$LINUX_WORK/core.img" of="$IMG" conv=notrunc bs=512 seek=1 status=none
+verify_disk_image "$IMG" "$PART_SECTORS" "$FS_BLOCKS"
 
 ls -lh "$IMG"
+echo "Partition: ${PART_SECTORS} sectors (${PART_MIB} MiB), ext4 blocks: ${FS_BLOCKS}"
 echo ""
 echo "Done: $IMG"
 echo "Flash with Etcher or:"

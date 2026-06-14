@@ -1,5 +1,5 @@
 /*
- * gateway_main_linux.c — LeapOS-Gateway Linux entry (replaces gateway_init.c).
+ * gateway_main_linux.c — LeapOS-Gateway Linux entry point.
  *
  * Same structure as the RTEMS Init task: load config, bring up networking,
  * init session hub + HTTP, start the LEAP session thread, then poll HTTP

@@ -1,0 +1,5 @@
+#!ipxe
+# Placeholder — run /opt/leap-netboot/scripts/fetch-ipxe.sh to install ipxe.pxe
+# at the TFTP root, or use GRUB PXE (boot/grub/i386-pc/core.0) via DHCP option 67.
+echo Configure router DHCP option 67 or upload ipxe.pxe
+shell

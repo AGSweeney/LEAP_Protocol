@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build LeapOS leap-port.exe (LEAP discovery MVP) inside rtems-libbsd.
+# Build LeapOS leap-port.exe inside rtems-libbsd.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -63,29 +63,28 @@ REGISTER_LINE="        self.addTest(mm.generator['test']('$TEST_NAME', [$SOURCE_
 
 echo "Using libbsd source: $LIBBSD_SRC"
 
-mkdir -p "$LIBBSD_SRC/$TEST_DIR"
+bash "$LEAP_PORT_DIR/scripts/gen_build_info.sh"
+
+mkdir -p "$LIBBSD_SRC/$TEST_DIR/leap"
 
 cp "$LEAP_PORT_DIR/src/init.c" "$LIBBSD_SRC/$TEST_DIR/init.c"
 cp "$LEAP_PORT_DIR/src/leap_transport.c" "$LIBBSD_SRC/$TEST_DIR/leap_transport.c"
 cp "$LEAP_PORT_DIR/src/leap_board.c" "$LIBBSD_SRC/$TEST_DIR/leap_board.c"
 cp "$LEAP_PORT_DIR/src/leap_time.c" "$LIBBSD_SRC/$TEST_DIR/leap_time.c"
 cp "$LEAP_PORT_DIR/src/leap_config.h" "$LIBBSD_SRC/$TEST_DIR/leap_config.h"
-cp "$LEAP_PORT_DIR/src/leap_board.h" "$LIBBSD_SRC/$TEST_DIR/leap_board.h"
 cp "$LEAP_PORT_DIR/src/leap_transport.h" "$LIBBSD_SRC/$TEST_DIR/leap_transport.h"
+cp "$LEAP_PORT_DIR/src/leap_board.h" "$LIBBSD_SRC/$TEST_DIR/leap_board.h"
 cp "$LEAP_PORT_DIR/src/leap_time.h" "$LIBBSD_SRC/$TEST_DIR/leap_time.h"
 
-cp "$REPO_ROOT/leap_core/inc/leap/"*.h "$LIBBSD_SRC/$TEST_DIR/"
+cp -r "$REPO_ROOT/leap_core/inc/leap/." "$LIBBSD_SRC/$TEST_DIR/leap/"
 cp "$LEAP_PORT_DIR/generated/leap_build_info_gen.h" \
-	"$LIBBSD_SRC/$TEST_DIR/leap_build_info_gen.h"
-if [ -d "$REPO_ROOT/leap_core/inc/leap/conformance" ]; then
-	cp -r "$REPO_ROOT/leap_core/inc/leap/conformance" \
-		"$LIBBSD_SRC/$TEST_DIR/conformance"
-fi
+	"$LIBBSD_SRC/$TEST_DIR/leap/leap_build_info_gen.h"
 
-# libbsd tests compile with the source directory as an include root; flatten
-# leap/*.h includes so nested headers resolve (GCC searches from the includer).
-find "$LIBBSD_SRC/$TEST_DIR" \( -name '*.c' -o -name '*.h' \) -exec \
-	sed -i 's/#include "leap\//#include "/g' {} +
+# libbsd tests compile with -Itestsuite/include — not the per-test directory.
+mkdir -p "$LIBBSD_SRC/testsuite/include/leap"
+cp -r "$REPO_ROOT/leap_core/inc/leap/." "$LIBBSD_SRC/testsuite/include/leap/"
+cp "$LEAP_PORT_DIR/generated/leap_build_info_gen.h" \
+	"$LIBBSD_SRC/testsuite/include/leap/leap_build_info_gen.h"
 
 for src in "${LEAP_CORE_SOURCES[@]}"; do
 	case "$src" in
@@ -105,13 +104,7 @@ for src in "${LEAP_CORE_SOURCES[@]}"; do
 	cp "$REPO_ROOT/leap_core/$from" "$LIBBSD_SRC/$TEST_DIR/${src}.c"
 done
 
-find "$LIBBSD_SRC/$TEST_DIR" -name '*.c' -exec \
-	sed -i 's/#include "leap\//#include "/g' {} +
-
-if grep -q "$TEST_NAME" "$LIBBSD_PY"; then
-	echo "Updating $TEST_NAME source list in libbsd.py"
-	sed -i "s#^[[:space:]]*self.addTest(mm.generator\\['test'\\]('$TEST_NAME'.*\$#$REGISTER_LINE#" "$LIBBSD_PY"
-else
+if ! grep -q "$TEST_NAME" "$LIBBSD_PY"; then
 	echo "Registering $TEST_NAME in libbsd.py"
 	sed -i "/self.addTest(mm.generator\['test'\]('leapos-net-probe'/a\\$REGISTER_LINE" "$LIBBSD_PY"
 fi

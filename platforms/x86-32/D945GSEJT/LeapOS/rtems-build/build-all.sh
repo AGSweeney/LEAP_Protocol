@@ -1,5 +1,6 @@
 #!/bin/bash
-# LeapOS boot-image pipeline — separate Device and Gateway products only.
+# LeapOS boot-image pipeline — LeapPort device only.
+# Gateway product: LeapGateway-linux/ (Alpine i386 Linux).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,11 +16,6 @@ MODE="${1:-all}"
 
 bash "$SCRIPT_DIR/check-deps.sh"
 
-build_cf_images() {
-	bash "$SCRIPT_DIR/make-cf-image.sh" device
-	bash "$SCRIPT_DIR/make-cf-image.sh" gateway
-}
-
 case "$MODE" in
     net-probe)
         bash "$SCRIPT_DIR/build-net-probe.sh"
@@ -29,58 +25,29 @@ case "$MODE" in
         bash "$SCRIPT_DIR/build-leap-port.sh"
         echo "LeapOS-Device (leap-port.exe) — done"
         ;;
-    gateway)
-        bash "$SCRIPT_DIR/build-leap-eip-gateway.sh"
-        echo "LeapOS-Gateway (leap-eip-gateway.exe) — done"
-        ;;
-    iso)
-        bash "$SCRIPT_DIR/build-leap-port.sh"
-        bash "$SCRIPT_DIR/build-leap-eip-gateway.sh"
-        bash "$SCRIPT_DIR/make-device-iso.sh"
-        bash "$SCRIPT_DIR/make-gateway-iso.sh"
-        ;;
-    iso-device|device-iso)
+    iso|iso-device|device-iso)
         bash "$SCRIPT_DIR/build-leap-port.sh"
         bash "$SCRIPT_DIR/make-device-iso.sh"
         ;;
-    iso-gateway|gateway-iso)
-        bash "$SCRIPT_DIR/build-leap-eip-gateway.sh"
-        bash "$SCRIPT_DIR/make-gateway-iso.sh"
-        ;;
-    cf)
+    cf|cf-device)
         bash "$SCRIPT_DIR/build-leap-port.sh"
-        bash "$SCRIPT_DIR/build-leap-eip-gateway.sh"
-        build_cf_images
-        ;;
-    cf-device)
-        bash "$SCRIPT_DIR/build-leap-port.sh"
-        bash "$SCRIPT_DIR/make-cf-image.sh" device
-        ;;
-    cf-gateway)
-        bash "$SCRIPT_DIR/build-leap-eip-gateway.sh"
-        bash "$SCRIPT_DIR/make-cf-image.sh" gateway
+        bash "$SCRIPT_DIR/make-cf-image.sh"
         ;;
     all)
         bash "$SCRIPT_DIR/build-leap-port.sh"
-        bash "$SCRIPT_DIR/build-leap-eip-gateway.sh"
         bash "$SCRIPT_DIR/build-net-probe.sh"
         bash "$SCRIPT_DIR/make-device-iso.sh"
-        bash "$SCRIPT_DIR/make-gateway-iso.sh"
-        build_cf_images
+        bash "$SCRIPT_DIR/make-cf-image.sh"
         echo ""
         echo "LeapOS boot artifacts:"
         ls -lh "$LEAPOS_IMAGE_DIR"/leapos-device.iso \
-               "$LEAPOS_IMAGE_DIR"/leapos-gateway.iso \
                "$LEAPOS_IMAGE_DIR"/leapos-device.img \
-               "$LEAPOS_IMAGE_DIR"/leapos-gateway.img \
                "$LEAPOS_IMAGE_DIR"/leap-port.exe \
-               "$LEAPOS_IMAGE_DIR"/leap-eip-gateway.exe \
                "$LEAPOS_IMAGE_DIR"/net-probe.exe 2>/dev/null || true
         ;;
     *)
-        echo "Usage: $0 [all|device|gateway|net-probe|iso|iso-device|iso-gateway|cf|cf-device|cf-gateway]" >&2
-        echo "  iso-device  = leapos-device.iso only" >&2
-        echo "  iso-gateway = leapos-gateway.iso only" >&2
+        echo "Usage: $0 [all|device|net-probe|iso|iso-device|cf|cf-device]" >&2
+        echo "  Gateway images: see LeapGateway-linux/ (Alpine Linux)" >&2
         exit 1
         ;;
 esac

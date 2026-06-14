@@ -1,0 +1,25 @@
+#!/sbin/openrc-run
+
+name="leap-netboot"
+description="LeapOS NetBoot management API"
+command="/usr/bin/python3"
+command_args="/opt/leap-netboot/server/leap_netbootd.py"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/leap-netboot.log"
+error_log="/var/log/leap-netboot.log"
+
+depend() {
+	need localmount networking
+	before nginx
+}
+
+start_pre() {
+	checkpath -d -m 0755 /var/lib/leap-netboot/tftp/ipxe/by-mac
+	checkpath -d -m 0755 /var/lib/leap-netboot/tftp/images
+	checkpath -d -m 0755 /var/lib/leap-netboot/state
+	checkpath -d -m 0755 /var/lib/leap-netboot/incoming
+	if [ -x /opt/leap-netboot/scripts/render-pxe.sh ]; then
+		/opt/leap-netboot/scripts/render-pxe.sh || true
+	fi
+}

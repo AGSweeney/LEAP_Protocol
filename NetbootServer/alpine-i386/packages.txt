@@ -1,0 +1,19 @@
+# Alpine i386 — LeapOS NetBoot Server for D945GSEJT (Atom N270)
+alpine-base
+busybox-openrc
+e2fsprogs
+e2fsprogs-extra
+linux-firmware-none
+linux-firmware-rtl_nic
+linux-lts
+mkinitfs
+nginx
+python3
+rsync
+tftp-hpa
+util-linux
+iproute2
+curl
+ca-certificates
+tzdata
+openssh

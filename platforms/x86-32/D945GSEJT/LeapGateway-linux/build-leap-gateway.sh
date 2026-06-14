@@ -3,9 +3,8 @@
 # as a static i386 Linux binary and install it into the Alpine overlay as
 # /usr/sbin/leap-gateway (replacing the shell stub).
 #
-# Shares the RTEMS gateway sources in ../LeapGateway/src — the platform layer
-# (transport, net, storage, main) lives in ./src and shadows the RTEMS headers
-# via include-path ordering.
+# Shares application sources in ../LeapGateway/src — the Linux platform layer
+# (transport, net, storage, main) lives in ./src.
 #
 # Host: WSL/Ubuntu. Needs: sudo apt install -y gcc-multilib python3
 set -euo pipefail

@@ -1,0 +1,16 @@
+alpine-base
+busybox-openrc
+e2fsprogs
+grub-bios
+linux-virt
+mkinitfs
+nginx
+openssh
+python3
+rsync
+tftp-hpa
+util-linux
+iproute2
+curl
+ca-certificates
+tzdata

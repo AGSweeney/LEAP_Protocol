@@ -1,0 +1,13 @@
+# Alpine i386 — LEAP device appliance
+alpine-base
+busybox-openrc
+e2fsprogs
+e2fsprogs-extra
+syslinux
+util-linux
+linux-firmware-none
+linux-firmware-rtl_nic
+linux-lts
+mkinitfs
+openrc
+libgpiod

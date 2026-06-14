@@ -1,0 +1,10 @@
+kernel/drivers/block/loop.ko*
+kernel/fs/squashfs/*.ko*
+kernel/lib/decompress_unxz.ko*
+kernel/lib/xz/*.ko*
+kernel/crypto/*.ko*
+kernel/drivers/net/r8169.ko*
+kernel/drivers/net/phy/*.ko*
+kernel/drivers/net/mdio/*.ko*
+kernel/drivers/net/ethernet/realtek/*.ko*
+kernel/net/packet/af_packet.ko*

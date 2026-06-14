@@ -1,0 +1,2 @@
+# BusyBox ntpd: run as an NTP client and step clock at startup.
+NTPD_OPTS="-N -p pool.ntp.org"

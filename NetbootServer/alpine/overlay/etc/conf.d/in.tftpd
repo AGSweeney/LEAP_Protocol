@@ -1,0 +1,3 @@
+# TFTP root for PXE clients (DHCP is on the lab router).
+INTFTPD_PATH="/var/lib/leap-netboot/tftp"
+INTFTPD_OPTS="-R 4096:32767 -s ${INTFTPD_PATH}"

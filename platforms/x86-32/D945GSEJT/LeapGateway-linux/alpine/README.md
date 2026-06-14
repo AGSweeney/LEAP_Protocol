@@ -13,8 +13,8 @@ sudo apt install -y \
 sudo update-binfmts --enable qemu-i386 2>/dev/null || true
 ```
 
-Boot chain is **GRUB i386-pc** (`boot.img` + embedded `core.img`), same as the RTEMS
-CF images. Image assembly is **loop-free**: `mke2fs -d` packs the rootfs into
+Boot chain is **GRUB i386-pc** (`boot.img` + embedded `core.img`), same style as the
+LeapPort RTEMS CF images. Image assembly is **loop-free**: `mke2fs -d` packs the rootfs into
 an ext4 partition image in userspace, so it works on WSL2 (whose kernel has no
 `loop` module).
 
@@ -48,11 +48,11 @@ fill the available CF/USB/HDD/QEMU disk, then stamps
 
 ## Gateway daemon (the real port)
 
-`/usr/sbin/leap-gateway` is the **full gateway** ported from the RTEMS build —
-LEAP session hub (multi-peer bootstrap + cyclic PD), EIP bridge state, embedded
-Web UI on **:8080/:80**, REST API, and config persistence to `/cf/config.txt`.
-It shares the RTEMS sources in `../LeapGateway/src/`; the Linux platform layer
-(AF_PACKET transport, pthread session thread, POSIX main) lives in `../src/`.
+`/usr/sbin/leap-gateway` is the **full gateway** — LEAP session hub (multi-peer
+bootstrap + cyclic PD), EIP bridge state, embedded Web UI on **:8080/:80**, REST
+API, and config persistence to `/cf/config.txt`. Application logic lives in
+`../LeapGateway/src/`; the Linux platform layer (AF_PACKET transport, pthread
+session thread, POSIX main) lives in `../src/`.
 
 Rebuild after changing gateway sources or `web/index.html`:
 

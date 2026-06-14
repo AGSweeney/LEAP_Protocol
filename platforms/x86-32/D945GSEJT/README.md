@@ -36,8 +36,11 @@ What runs today:
 
 | Path | Purpose |
 | --- | --- |
-| [LeapOS/](LeapOS/) | RTEMS boot image build (hello PoC → future LeapOS rootfs) |
+| [LeapOS/](LeapOS/) | RTEMS boot image build (LeapPort device) |
 | [LeapPort/](LeapPort/) | LEAP device stack RTEMS application |
+| [LeapDevice-linux/](LeapDevice-linux/) | LEAP device product (Alpine Linux i386) |
+| [LeapGateway/](LeapGateway/) | Shared gateway application sources |
+| [LeapGateway-linux/](LeapGateway-linux/) | LEAP gateway product (Alpine Linux i386) |
 | `LeapPort/src/init.c` | RTEMS `Init` task, device stack main loop |
 | `LeapPort/src/leap_transport.*` | libbsd raw Ethernet (BPF) on `re0` |
 | `LeapPort/src/leap_board.*` | LPT-port digital I/O (8 out / 5 in) |
@@ -52,9 +55,18 @@ Build a bootable CF/IDE or USB image before LeapPort is integrated:
 ```bash
 cd platforms/x86-32/D945GSEJT/LeapOS/rtems-build
 bash build-all.sh
-# → rtems-image/leapos-device.img + leapos-device.iso (Device)
-# → rtems-image/leapos-gateway.img + leapos-gateway.iso (Gateway)
+# → rtems-image/leapos-device.img + leapos-device.iso (RTEMS)
 ```
+
+Alpine Linux device (alternative):
+
+```bash
+cd platforms/x86-32/D945GSEJT/LeapDevice-linux
+bash build-leap-device.sh && sudo bash alpine/mk-image.sh
+# → rtems-image/leapos-device-alpine.img
+```
+
+Gateway (Alpine Linux): [LeapGateway-linux/](LeapGateway-linux/) → `leapos-gateway-alpine.img`.
 
 Full instructions: [LeapOS/docs/BUILD.md](LeapOS/docs/BUILD.md).
 

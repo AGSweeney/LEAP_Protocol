@@ -1,0 +1,3 @@
+#!/bin/sh
+# Ensure onboard RTL8111 (r8169) is up before OpenRC networking.
+modprobe r8169 2>/dev/null || true
