@@ -9,6 +9,7 @@
 #include "leap_test_frame.h"
 
 #include "leap/leap_dir_device.h"
+#include "leap/leap_dir_controller_capabilities.h"
 #include "leap/leap_disc_device.h"
 #include "leap/leap_mgmt_device.h"
 #include "leap/leap_protocol.h"
@@ -130,6 +131,7 @@ TEST(test_dir_read_directory_returns_tlvs)
     uint8_t               frame[TEST_DIR_BUF_SIZE];
     size_t                frame_length = 0u;
     const LeapReadDirectoryReply* reply_hdr;
+    LeapDirControllerCapabilities caps;
 
     dir_setup(&dir, &disc, &mgmt);
     leap_mgmt_device_on_profile_selected(&mgmt);
@@ -159,6 +161,17 @@ TEST(test_dir_read_directory_returns_tlvs)
 
     reply_hdr = (const LeapReadDirectoryReply*)result.payload;
     ASSERT_TRUE(reply_hdr->returned_bytes > 0u);
+
+    leap_dir_controller_capabilities_init(&caps);
+    ASSERT_EQ_INT(
+        leap_dir_controller_parse_directory_tlvs(
+            result.payload + sizeof(LeapReadDirectoryReply),
+            result.payload_length - sizeof(LeapReadDirectoryReply),
+            &caps),
+        LEAP_DIR_CTRL_OK);
+    ASSERT_EQ_U16((uint16_t)caps.endpoint_count, 2u);
+    ASSERT_EQ_U16(caps.endpoints[0].endpoint_id, LEAP_ENDPOINT_DIGITAL_OUTPUTS);
+    ASSERT_EQ_U16(caps.endpoints[1].endpoint_id, LEAP_ENDPOINT_DIGITAL_INPUTS);
 }
 
 TEST(test_dir_select_profile_rejects_unknown_profile)

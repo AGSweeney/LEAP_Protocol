@@ -225,6 +225,7 @@ trees. Pair devices on the wire with `leap_linux_controller` or `leap_win_contro
 | --- | --- | --- |
 | ClearCore | Teknic ClearCore + lwIP raw hook | [platforms/clearcore/README.md](platforms/clearcore/README.md) |
 | Texas Instruments | BeagleBone (AM335x), LP-AM243 | [platforms/TI/README.md](platforms/TI/README.md) |
+| STM | STM32F746G-Discovery (simulated 8x8 LEAP Device scaffold) | [platforms/STM/README.md](platforms/STM/README.md) |
 | Espressif | GL-C-618WL, KC868-A16 (ESP-IDF) | [platforms/Espressif/README.md](platforms/Espressif/README.md) |
 | NetBurner | MOD54415LC (active port) | [platforms/NetBurner/README.md](platforms/NetBurner/README.md) |
 | x86-32 / D945GSEJT | LeapOS bootable device + D945 NetBoot lab (active hardware path) | [platforms/x86-32/README.md](platforms/x86-32/README.md), [NetbootServer/README.md](NetbootServer/README.md) |
