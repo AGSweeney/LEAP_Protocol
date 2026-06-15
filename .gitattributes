@@ -1,0 +1,4 @@
+*.sh text eol=lf
+platforms/Cavium_Octeon_II_CN6120-800SCP/** text eol=lf
+platforms/**/overlay/etc/init.d/* text eol=lf
+platforms/**/overlay/usr/sbin/* text eol=lf
