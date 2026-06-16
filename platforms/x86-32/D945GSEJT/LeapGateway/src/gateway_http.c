@@ -90,6 +90,43 @@ http_peer_is_owned_live(const uint8_t peer_mac[6])
 }
 
 static int
+http_peer_is_configured_mapping(const uint8_t peer_mac[6])
+{
+    unsigned i;
+
+    if (peer_mac == NULL || http_mac_is_zero(peer_mac) != 0)
+    {
+        return 0;
+    }
+
+    for (i = 0u; i < g_gateway.config.bridge.mapping_count; ++i)
+    {
+        const LeapEipBridgeMapping* map = &g_gateway.config.bridge.mappings[i];
+
+        if (http_mac_is_zero(map->leap_mac) != 0)
+        {
+            continue;
+        }
+
+        if (memcmp(map->leap_mac, peer_mac, 6) == 0)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int
+http_peer_exclude_from_discover(const uint8_t peer_mac[6])
+{
+    return (http_peer_is_owned_live(peer_mac) != 0 ||
+            http_peer_is_configured_mapping(peer_mac) != 0)
+               ? 1
+               : 0;
+}
+
+static int
 http_set_nonblocking(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
@@ -330,7 +367,7 @@ append_peer_json(char* buf, size_t cap, size_t* used)
             continue;
         }
 
-        if (http_peer_is_owned_live(peer->mac) != 0)
+        if (http_peer_exclude_from_discover(peer->mac) != 0)
         {
             continue;
         }
