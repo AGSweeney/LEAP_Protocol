@@ -1103,6 +1103,16 @@ gateway_retry_down_mappings(LeapGatewayRuntime* gw)
 
 
 
+    if (gw->leap_session.connect_suppressed != 0)
+
+    {
+
+        return;
+
+    }
+
+
+
     mapping_count = gw->config.bridge.mapping_count;
 
     if (mapping_count == 0u || mapping_count > LEAP_CTRL_MAX_PEERS)
@@ -1402,6 +1412,30 @@ leap_gateway_leap_session_disconnect(LeapGatewayRuntime* gw)
 
 void
 
+leap_gateway_leap_session_request_disconnect(LeapGatewayRuntime* gw)
+
+{
+
+    if (gw == NULL)
+
+    {
+
+        return;
+
+    }
+
+
+
+    leap_gateway_leap_session_disconnect(gw);
+
+    gw->leap_session.connect_suppressed = 1;
+
+}
+
+
+
+void
+
 leap_gateway_leap_session_request_connect(LeapGatewayRuntime* gw)
 
 {
@@ -1415,6 +1449,8 @@ leap_gateway_leap_session_request_connect(LeapGatewayRuntime* gw)
     }
 
 
+
+    gw->leap_session.connect_suppressed = 0;
 
     gw->leap_session.connect_pending = 1;
 
@@ -1445,6 +1481,8 @@ leap_gateway_leap_session_request_auto_connect(LeapGatewayRuntime* gw)
     }
 
 
+
+    gw->leap_session.connect_suppressed = 0;
 
     for (i = 0u; i < gw->config.bridge.mapping_count; ++i)
 

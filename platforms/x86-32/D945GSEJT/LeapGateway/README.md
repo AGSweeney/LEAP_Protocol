@@ -61,7 +61,9 @@ Up to **16** mapping slots (`mapping.begin=0` … `15`). **Connect LEAP** bootst
 | GET | `/api/v1/config` |
 | PUT | `/api/v1/config` |
 | POST | `/api/v1/config/apply` |
-| POST | `/api/v1/leap/discover?scan_ms=1000` |
+| POST | `/api/v1/leap/discover` (3 s scan; skipped while owner sessions active) |
+| POST | `/api/v1/leap/disconnect` |
+| POST | `/api/v1/leap/connect` |
 | GET | `/api/v1/leap/peers` |
 
 ## Source layout

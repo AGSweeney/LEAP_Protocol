@@ -18,6 +18,8 @@
     <p class="lead">Discover LEAP devices, map EtherNet/IP assemblies, and manage gateway configuration.</p>
     <div class="nav-bar">
       <button class="button primary" type="button" id="scan">Scan LEAP</button>
+      <button class="button" type="button" id="disconnect">Disconnect LEAP</button>
+      <button class="button" type="button" id="connect">Connect LEAP</button>
       <button class="button primary" type="button" id="save">Save &amp; Apply</button>
       <button class="button" type="button" id="reload">Discard edits</button>
       <button class="button" type="button" id="reboot">Reboot gateway</button>
@@ -189,9 +191,21 @@
   </div>
 
   <footer class="footer">
-    LeapOS-Gateway - LEAP / EtherNet/IP Bridge | UI v5 (CDG console)
+    LeapOS-Gateway - LEAP / EtherNet/IP Bridge | UI v7 (CDG console)
     <br>(c) 2026 Adam G. Sweeney | Vanfab, Inc | Van Voorst Lumber Company
   </footer>
+
+  <div id="confirm_modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-cancel></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="confirm_title">
+      <h3 id="confirm_title">Remove mapping?</h3>
+      <p id="confirm_body" class="hint"></p>
+      <div class="card-toolbar" style="justify-content:flex-end;margin-top:16px">
+        <button class="button" type="button" id="confirm_cancel">Cancel</button>
+        <button class="button primary" type="button" id="confirm_ok">Remove mapping</button>
+      </div>
+    </div>
+  </div>
 </div>
 <script>
 const LEAP_STATES = {
@@ -220,12 +234,82 @@ const mappingDefaults = {
 
 let mappings = [];
 let selectedMappingIdx = -1;
+let scanInProgress = false;
+let lastStatus = {};
 
 function $(id) { return document.getElementById(id); }
 
 function isZeroMac(mac) {
   const m = (mac || '').trim().toLowerCase().replace(/-/g, ':');
   return m === '' || m === '00:00:00:00:00:00';
+}
+
+function hasEnabledMappings() {
+  return mappings.some(m => m.enabled && !isZeroMac(m.mac));
+}
+
+function updateLeapControls(status = lastStatus) {
+  lastStatus = status || {};
+  const canScan = !!lastStatus.leap_can_scan && !scanInProgress;
+  const sessionActive = !!lastStatus.leap_session_active;
+  const suppressed = !!lastStatus.connect_suppressed;
+  const discovering = !!lastStatus.discover_active || scanInProgress;
+
+  $('scan').disabled = !canScan;
+  $('scan').title = canScan
+    ? 'Broadcast LEAP HELLO for about 3 seconds'
+    : (sessionActive
+      ? 'Disconnect LEAP before scanning for new devices'
+      : (discovering ? 'Scan already in progress' : 'Scan unavailable'));
+
+  $('disconnect').disabled = !sessionActive || discovering;
+  $('disconnect').title = sessionActive
+    ? 'Release LEAP owner sessions so you can scan for new devices'
+    : 'No active LEAP session';
+
+  $('connect').disabled = !suppressed || discovering || !hasEnabledMappings();
+  $('connect').title = suppressed
+    ? 'Reconnect to enabled mapped peers'
+    : (hasEnabledMappings()
+      ? 'LEAP connect is already allowed (use after Disconnect)'
+      : 'Add and enable at least one mapping first');
+}
+
+function openConfirmModal(title, body, okLabel) {
+  return new Promise(resolve => {
+    const modal = $('confirm_modal');
+    $('confirm_title').textContent = title;
+    $('confirm_body').textContent = body;
+    $('confirm_ok').textContent = okLabel;
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+
+    const cleanup = (result) => {
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+      $('confirm_ok').onclick = null;
+      $('confirm_cancel').onclick = null;
+      modal.querySelector('[data-modal-cancel]').onclick = null;
+      resolve(result);
+    };
+
+    $('confirm_ok').onclick = () => cleanup(true);
+    $('confirm_cancel').onclick = () => cleanup(false);
+    modal.querySelector('[data-modal-cancel]').onclick = () => cleanup(false);
+  });
+}
+
+function removeMappingAt(idx) {
+  mappings.splice(idx, 1);
+  if (selectedMappingIdx === idx) {
+    loadMappingIntoForm(-1);
+  } else if (selectedMappingIdx > idx) {
+    selectedMappingIdx -= 1;
+  }
+  renderMappingTable();
+  $('config_preview').textContent = buildConfigText();
+  showMsg('Mapping removed.');
+  updateLeapControls(lastStatus);
 }
 
 function defaultMapping(index) {
@@ -341,17 +425,18 @@ function renderMappingTable() {
     };
   });
   tbody.querySelectorAll('.remove-mapping').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = async () => {
       const idx = Number(btn.dataset.idx);
-      mappings.splice(idx, 1);
-      if (selectedMappingIdx === idx) {
-        loadMappingIntoForm(-1);
-      } else if (selectedMappingIdx > idx) {
-        selectedMappingIdx -= 1;
+      const m = mappings[idx];
+      const label = m.mac || '(unset MAC)';
+      const ok = await openConfirmModal(
+        'Remove mapping?',
+        `Remove mapping for ${label}? Saved mappings on the gateway are unchanged until you Save & Apply.`,
+        'Remove mapping'
+      );
+      if (ok) {
+        removeMappingAt(idx);
       }
-      renderMappingTable();
-      $('config_preview').textContent = buildConfigText();
-      showMsg('Mapping removed.');
     };
   });
 
@@ -623,9 +708,12 @@ async function loadStatus() {
   const r = await fetch('/api/v1/status');
   const data = await r.json();
   updateStatusCard(data);
+  updateLeapControls(data);
 
   if (data.storage_ready === false) {
     showMsg('Config volume not mounted - Save & Apply needs CF/IDE boot with writable /cf.', true);
+  } else if (data.connect_suppressed && !data.leap_session_active) {
+    showMsg('LEAP disconnected - scan for new devices, then Save & Apply or Connect LEAP.');
   } else if (data.leap_session_active) {
     showMsg(`LEAP owner session active (${data.leap_phase})`);
   } else if (data.leap_phase && data.leap_phase !== 'IDLE' && data.leap_phase !== 'Idle') {
@@ -784,26 +872,86 @@ $('map_cancel').onclick = () => {
 };
 
 $('scan').onclick = async () => {
-  showMsg('Scanning LEAP network...');
-  const r = await fetch('/api/v1/leap/discover', { method: 'POST' });
-  const scan = await r.json();
-  if (scan.skipped) {
-    await loadPeers();
-    showMsg('Scan skipped while gateway owns LEAP devices. Stop mappings or reboot before scanning for new hardware.', true);
+  if ($('scan').disabled) {
     return;
   }
-  const deadline = Date.now() + (Number(scan.scan_ms) || 2500) + 1500;
-  let data = { discover_active: true };
 
-  while (data.discover_active && Date.now() < deadline) {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    data = await loadPeers();
-  }
+  scanInProgress = true;
+  updateLeapControls(lastStatus);
 
-  if (data.discover_active) {
+  try {
+    showMsg('Scanning LEAP network (about 3 seconds)...');
+    const r = await fetch('/api/v1/leap/discover', { method: 'POST' });
+    const scan = await r.json();
+    if (scan.skipped) {
+      await loadStatus();
+      await loadPeers();
+      showMsg('Scan skipped while gateway owns LEAP devices. Disconnect LEAP first.', true);
+      return;
+    }
+
+    const scanMs = Number(scan.scan_ms) || 3000;
+    const deadline = Date.now() + scanMs + 500;
+    let discoverActive = true;
+
+    while (discoverActive && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const statusR = await fetch('/api/v1/status');
+      const status = await statusR.json();
+      updateStatusCard(status);
+      updateLeapControls(status);
+      const peerData = await loadPeers();
+      discoverActive = !!peerData.discover_active || !!status.discover_active;
+    }
+
+    await loadStatus();
     await loadPeers();
+    showMsg('Scan complete.');
+  } catch (e) {
+    showMsg(e.message, true);
+  } finally {
+    scanInProgress = false;
+    updateLeapControls(lastStatus);
   }
-  showMsg('Scan complete.');
+};
+
+$('disconnect').onclick = async () => {
+  if ($('disconnect').disabled) {
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/v1/leap/disconnect', { method: 'POST' });
+    const text = await r.text();
+    if (!r.ok) {
+      throw new Error(text || 'Disconnect failed');
+    }
+    showMsg('LEAP disconnected. You can scan for new devices.');
+    await loadStatus();
+    await loadPeers();
+    await loadIo().catch(() => {});
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+};
+
+$('connect').onclick = async () => {
+  if ($('connect').disabled) {
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/v1/leap/connect', { method: 'POST' });
+    const text = await r.text();
+    if (!r.ok) {
+      throw new Error(text || 'Connect failed');
+    }
+    showMsg('LEAP connect requested.');
+    await loadStatus();
+    await loadIo().catch(() => {});
+  } catch (e) {
+    showMsg(e.message, true);
+  }
 };
 
 $('reload').onclick = async () => {
@@ -867,6 +1015,7 @@ loadStatus();
 loadPeers();
 loadIo().catch(() => {});
 startIoPoll();
+setInterval(() => loadStatus().catch(() => {}), 2000);
 </script>
 </body>
 </html>

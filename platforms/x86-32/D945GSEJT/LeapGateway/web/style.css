@@ -301,6 +301,46 @@ input[type="checkbox"] {
 	margin: 0 4px 0 0;
 }
 
+.button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.modal {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+}
+
+.modal.hidden {
+	display: none;
+}
+
+.modal-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(28, 31, 35, 0.45);
+}
+
+.modal-panel {
+	position: relative;
+	width: min(420px, 100%);
+	background: var(--panel);
+	border: 1px solid var(--stroke);
+	border-radius: 10px;
+	padding: 20px 24px;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.modal-panel h3 {
+	margin: 0 0 8px;
+	font-size: 18px;
+}
+
 .hint {
 	color: var(--muted);
 	font-size: 12px;

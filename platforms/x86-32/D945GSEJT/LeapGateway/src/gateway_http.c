@@ -660,6 +660,17 @@ handle_request(int client_fd, const char* request)
         return;
     }
 
+    if (strcmp(method, "POST") == 0 && strcmp(path, "/api/v1/leap/disconnect") == 0)
+    {
+        leap_gateway_leap_session_request_disconnect(&g_gateway);
+        http_reply_cstr(
+            client_fd,
+            200,
+            "application/json",
+            "{\"ok\":true,\"disconnected\":true,\"connect_suppressed\":true}");
+        return;
+    }
+
     if (strcmp(method, "POST") == 0 && strcmp(path, "/api/v1/config/apply") == 0)
     {
         if (!leap_gateway_storage_ready())
@@ -709,9 +720,10 @@ handle_request(int client_fd, const char* request)
             g_http_body,
             sizeof(g_http_body),
             "{\"product\":\"LeapOS-Gateway\",\"ifname\":\"%s\",\"ipv4\":\"%s\","
-            "\"http_port\":%u,\"ui_version\":6,\"eip_ok\":%s,\"storage_ready\":%s,"
+            "\"http_port\":%u,\"ui_version\":7,\"eip_ok\":%s,\"storage_ready\":%s,"
             "\"config_path\":\"%s\",\"leap_comm_ok\":%s,\"leap_phase\":\"%s\","
-            "\"leap_session_active\":%s,\"leap_op_peers\":%u,\"mappings\":%u}",
+            "\"leap_session_active\":%s,\"leap_op_peers\":%u,\"mappings\":%u,"
+            "\"discover_active\":%s,\"leap_can_scan\":%s,\"connect_suppressed\":%s}",
             g_gateway.bound_ifname,
             g_gateway.config.network.ipv4_addr,
             (unsigned)LEAP_GATEWAY_HTTP_PORT,
@@ -726,7 +738,14 @@ handle_request(int client_fd, const char* request)
             phase_text,
             leap_gateway_leap_session_active(&g_gateway) ? "true" : "false",
             leap_controller_session_hub_count_op_peers(&g_gateway.session_hub),
-            g_gateway.config.bridge.mapping_count);
+            g_gateway.config.bridge.mapping_count,
+            g_gateway.discover_active ? "true" : "false",
+            (leap_gateway_leap_session_active(&g_gateway) == 0 &&
+             g_gateway.discover_active == 0 &&
+             g_gateway.discover_pending_ms <= 0)
+                ? "true"
+                : "false",
+            g_gateway.leap_session.connect_suppressed ? "true" : "false");
         http_reply_cstr(client_fd, 200, "application/json", g_http_body);
         return;
     }
@@ -743,13 +762,14 @@ handle_request(int client_fd, const char* request)
             return;
         }
 
-        g_gateway.discover_pending_ms = 1500;
+        g_gateway.discover_pending_ms = LEAP_GATEWAY_DISCOVER_SCAN_MS;
         g_gateway.discover_active = 1;
-        http_reply_cstr(
-            client_fd,
-            200,
-            "application/json",
-            "{\"ok\":true,\"scan_ms\":1500}");
+        (void)snprintf(
+            g_http_body,
+            sizeof(g_http_body),
+            "{\"ok\":true,\"scan_ms\":%d}",
+            LEAP_GATEWAY_DISCOVER_SCAN_MS);
+        http_reply_cstr(client_fd, 200, "application/json", g_http_body);
         return;
     }
 

@@ -115,14 +115,32 @@ Or run **device_conformance** in LEAP Conformance Studio once transport is live.
 ## I/O wiring
 
 The LPT1 port at base `0x378` provides **8 outputs and 5 physical inputs** (set the
-BIOS parallel port to SPP / bi-directional). The LEAP 8×8 profile
+BIOS parallel port to SPP / bi-directional). Pin numbers below are the **D945GSEJT
+on-board 26-pin parallel header** (Table 19, Standard/SPP). The LEAP 8×8 profile
 (`LEAP_PROFILE_DIGITAL_IO_8X8`) is filled by mirroring 3 outputs into the spare
 input bits:
 
-- **Outputs D0–D7** → LPT data register (DB25 pins 2–9 / 26-pin IDC header pins 3,5,7,9,11,13,15,17).
-- **Inputs 0–4** ← the 5 LPT status lines (ACK, BUSY, PAPER-OUT, SELECT, ERROR).
-- **Inputs 5–7** ← mirrored from outputs D0–D2 (no physical inputs; keeps the data lines output-only).
-- Ground: any DB25 pin 18–25 / IDC even pins 10–24.
+| LEAP | Signal | Header pin |
+|------|--------|------------|
+| D0 | PD0 | 3 |
+| D1 | PD1 | 5 |
+| D2 | PD2 | 7 |
+| D3 | PD3 | 9 |
+| D4 | PD4 | 11 |
+| D5 | PD5 | 13 |
+| D6 | PD6 | 15 |
+| D7 | PD7 | 17 |
+| in0 | ACK# | 19 |
+| in1 | BUSY | 21 |
+| in2 | PERROR | 23 |
+| in3 | SELECT | 25 |
+| in4 | FAULT# | 4 |
+| in5 | (mirrored D0) | 3 |
+| in6 | (mirrored D1) | 5 |
+| in7 | (mirrored D2) | 7 |
+
+- **Inputs 5–7** are software mirrors of D0–D2 (not physical reads; keeps data lines output-only).
+- **Ground:** even header pins 10, 12, 14, 16, 18, 20, 22, 24.
 
 ## Notes
 

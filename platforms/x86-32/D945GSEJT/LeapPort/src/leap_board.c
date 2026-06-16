@@ -1,9 +1,9 @@
 /*
  * leap_board.c — D945GSEJT digital I/O over the LPT1 (parallel) port.
  *
- * Outputs D0..D7 drive the LPT data register (DB25 pins 2..9 / IDC header
- * pins 3,5,7,9,11,13,15,17). Inputs are read from the LPT status register and
- * the upper input bits are mirrored from the outputs to fill the 8x8 profile.
+ * D945GSEJT 26-pin parallel header (Table 19, Standard/SPP) — see leap_board.h.
+ * Outputs D0..D7 drive PD0..PD7 on header pins 3,5,7,9,11,13,15,17.
+ * Five physical inputs come from the status register; in5..in7 mirror D0..D2.
  *
  * Copyright (c) 2026 Adam G. Sweeney <agsweeney@gmail.com>
  * SPDX-License-Identifier: MIT
@@ -38,12 +38,12 @@ static uint16_t leap_board_read_native_inputs(void)
     const uint8_t status = leap_lpt_in8(LEAP_LPT_STATUS_PORT);
     uint16_t inputs = 0u;
 
-    /* 5 physical status inputs from pins 10, 11, 12, 13, 15. */
-    inputs |= (uint16_t)(((status >> 6) & 0x1u) << 0);       /* pin 10 (ACK) */
-    inputs |= (uint16_t)((((status >> 7) ^ 0x1u) & 0x1u) << 1); /* pin 11 (BUSY, inverted) */
-    inputs |= (uint16_t)(((status >> 5) & 0x1u) << 2);       /* pin 12 (PAPER OUT) */
-    inputs |= (uint16_t)(((status >> 4) & 0x1u) << 3);       /* pin 13 (SELECT) */
-    inputs |= (uint16_t)(((status >> 3) & 0x1u) << 4);       /* pin 15 (ERROR) */
+    /* 5 physical status inputs — header pins 19, 21, 23, 25, 4. */
+    inputs |= (uint16_t)(((status >> LEAP_LPT_STATUS_ACK_BIT) & 0x1u) << 0);    /* pin 19 ACK# */
+    inputs |= (uint16_t)((((status >> LEAP_LPT_STATUS_BUSY_BIT) ^ 0x1u) & 0x1u) << 1); /* pin 21 BUSY */
+    inputs |= (uint16_t)(((status >> LEAP_LPT_STATUS_PERROR_BIT) & 0x1u) << 2); /* pin 23 PERROR */
+    inputs |= (uint16_t)(((status >> LEAP_LPT_STATUS_SELECT_BIT) & 0x1u) << 3); /* pin 25 SELECT */
+    inputs |= (uint16_t)(((status >> LEAP_LPT_STATUS_FAULT_BIT) & 0x1u) << 4);  /* pin 4 FAULT# */
 
     return inputs;
 }

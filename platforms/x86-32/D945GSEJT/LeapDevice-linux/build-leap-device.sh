@@ -26,8 +26,16 @@ for cmd in gcc; do
 	fi
 done
 
-if ! echo 'int main(void){return 0;}' | gcc -m32 -static -x c - -o /tmp/leap-m32-check 2>/dev/null; then
-	echo "error: gcc cannot link -m32 -static — install: sudo apt install -y gcc-multilib" >&2
+M32_CFLAGS=(-m32 -march=i686 -mtune=generic)
+if [ ! -d /usr/include/i386-linux-gnu ] && [ -d /usr/include/x86_64-linux-gnu ]; then
+	# Ubuntu/WSL multilib: gcc -m32 looks for i386-linux-gnu headers that are not
+	# installed as a separate tree; the 32-bit stubs live under x86_64-linux-gnu.
+	M32_CFLAGS+=(-I/usr/include/x86_64-linux-gnu)
+fi
+
+if ! echo '#include <errno.h>
+int main(void){return errno;}' | gcc "${M32_CFLAGS[@]}" -static -x c - -o /tmp/leap-m32-check 2>/dev/null; then
+	echo "error: gcc cannot build -m32 -static — install: sudo apt install -y gcc-multilib libc6-dev-i386" >&2
 	exit 1
 fi
 rm -f /tmp/leap-m32-check
@@ -35,7 +43,7 @@ rm -f /tmp/leap-m32-check
 echo "=== Regenerating build info ==="
 bash "$LEAPPORT_DIR/scripts/gen_build_info.sh"
 
-CFLAGS="-m32 -march=i686 -mtune=generic -O2 -Wall"
+CFLAGS="${M32_CFLAGS[*]} -O2 -Wall"
 LDFLAGS="-m32 -static"
 
 INCLUDES=(

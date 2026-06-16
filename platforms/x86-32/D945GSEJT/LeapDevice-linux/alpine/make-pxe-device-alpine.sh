@@ -181,6 +181,44 @@ if [ -d /sys/class/net/eth0 ]; then
 		udhcpc -i eth0 -q -t 5 -n 2>/dev/null || true
 	fi
 fi
+
+# Report boot to the NetBoot server (boot count + inventory in Web UI).
+if [ -r /proc/cmdline ] && [ -r /sys/class/net/eth0/address ]; then
+	_nb_mac=$(tr 'A-Z' 'a-z' < /sys/class/net/eth0/address)
+	_nb_ip=$(ip -4 addr show dev eth0 2>/dev/null | awk '/inet / {print $2; exit}' | cut -d/ -f1)
+	_nb_host=$(hostname 2>/dev/null || echo leapos-device)
+	_nb_server=""
+	_nb_image=""
+	for _nb_arg in $(cat /proc/cmdline); do
+		case "$_nb_arg" in
+		modloop=http://*)
+			_nb_rest=${_nb_arg#modloop=http://}
+			_nb_server=${_nb_rest%%/*}
+			_nb_path=${_nb_rest#*/}
+			case "$_nb_path" in
+			httpboot/images/*)
+				_nb_image=${_nb_path#httpboot/images/}
+				_nb_image=${_nb_image%%/*}
+				;;
+			esac
+			;;
+		apkovl=http://*)
+			if [ -z "$_nb_server" ]; then
+				_nb_rest=${_nb_arg#apkovl=http://}
+				_nb_server=${_nb_rest%%/*}
+			fi
+			;;
+		esac
+	done
+	if [ -n "$_nb_mac" ] && [ -n "$_nb_server" ]; then
+		_nb_url="http://${_nb_server}/api/v1/boot-event?mac=${_nb_mac}"
+		[ -n "$_nb_ip" ] && _nb_url="${_nb_url}&ip=${_nb_ip}"
+		[ -n "$_nb_host" ] && _nb_url="${_nb_url}&hostname=${_nb_host}"
+		[ -n "$_nb_image" ] && _nb_url="${_nb_url}&image_id=${_nb_image}"
+		wget -q -T 10 -O /dev/null "$_nb_url" 2>/dev/null || true
+	fi
+fi
+
 if [ -x /usr/sbin/leap-device ]; then
 	/usr/sbin/leap-device &
 fi
