@@ -522,6 +522,7 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_BAD_LENGTH;
         }
 
+        memset(result->payload, 0, sizeof(LeapReadDirectoryReply));
         reply_length = leap_dir_build_directory_tlvs(
             dir,
             result->payload + sizeof(LeapReadDirectoryReply),
@@ -532,7 +533,6 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_ERROR;
         }
 
-        memset(result->payload, 0, sizeof(LeapReadDirectoryReply) + reply_length);
         dir_hdr = (LeapReadDirectoryReply*)result->payload;
         dir_hdr->returned_bytes = (uint16_t)reply_length;
         dir_hdr->total_bytes    = (uint16_t)reply_length;
@@ -555,6 +555,7 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
         }
 
         req = (const LeapReadObjectRequest*)result->frame.payload;
+        memset(result->payload, 0, sizeof(LeapReadObjectReply));
         object_bytes = leap_dir_read_object_bytes(
             dir,
             req->object_id,
@@ -569,7 +570,6 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_ERROR;
         }
 
-        memset(result->payload, 0, sizeof(LeapReadObjectReply) + object_bytes);
         obj_hdr = (LeapReadObjectReply*)result->payload;
         obj_hdr->object_id    = req->object_id;
         obj_hdr->offset       = req->offset;
