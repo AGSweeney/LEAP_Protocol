@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<list key="installedFeatures">
+		<item value="nbeclipse.core:1.0.0.202508112306"/>
+		<item value="org.eclipse.cdt.gdb:10.6.0.202201122357"/>
+		<item value="org.eclipse.cdt.gnu.build:10.6.0.202201122357"/>
+		<item value="org.eclipse.cdt.gnu.debug:10.6.0.202201122357"/>
+		<item value="org.eclipse.cdt.gnu.dsf:10.6.0.202201260824"/>
+		<item value="org.eclipse.cdt.native:10.6.0.202203091838"/>
+		<item value="org.eclipse.cdt.platform:10.6.0.202203091838"/>
+		<item value="org.eclipse.cdt:10.6.0.202203091838"/>
+		<item value="org.eclipse.emf.common:2.25.0.v20220123-0838"/>
+		<item value="org.eclipse.emf.ecore:2.27.0.v20220123-0838"/>
+		<item value="org.eclipse.help:2.3.900.v20220308-0310"/>
+		<item value="org.eclipse.platform:4.23.0.v20220308-0722"/>
+		<item value="org.eclipse.rcp:4.23.0.v20220308-0722"/>
+		<item value="org.eclipse.tm.terminal.connector.ssh.feature:10.6.0.202201122357"/>
+		<item value="org.eclipse.tm.terminal.control.feature:10.6.0.202202251626"/>
+		<item value="org.eclipse.tm.terminal.feature:10.6.0.202201121907"/>
+		<item value="org.eclipse.tm.terminal.view.feature:10.6.0.202201122357"/>
+	</list>
+	<section name="NewWizardAction">
+		<item key="NewWizardSelectionPage.STORE_SELECTED_ID" value="nbeclipse.core.wizard.NetBurner"/>
+		<list key="NewWizardSelectionPage.STORE_EXPANDED_CATEGORIES_ID">
+			<item value="nbeclipse.core.wizard"/>
+		</list>
+	</section>
+	<section name="CleanDialogSettings">
+		<item key="TOGGLE_SELECTED" value="false"/>
+		<item key="DIALOG_WIDTH" value="500"/>
+		<item key="DIALOG_HEIGHT" value="389"/>
+		<item key="DIALOG_FONT_NAME" value="1|Segoe UI|9.0|0|WINDOWS|1|-12|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI"/>
+	</section>
+	<section name="ExternalProjectImportWizard">
+		<item key="WizardProjectsImportPage.STORE_NESTED_PROJECTS" value="false"/>
+		<item key="WizardProjectsImportPage.STORE_COPY_PROJECT_ID" value="false"/>
+		<item key="WizardProjectsImportPage.STORE_ARCHIVE_SELECTED" value="false"/>
+		<item key="WizardProjectsImportPage.STORE_CLOSE_CREATED_PROJECTS_ID" value="false"/>
+		<item key="WizardProjectsImportPage.STORE_HIDE_CONFLICTING_PROJECTS_ID" value="false"/>
+		<list key="WizardProjectsImportPage.STORE_DIRECTORIES">
+			<item value="D:\LEAP_Protocol\platforms\NetBurner\LeapGateway"/>
+		</list>
+		<list key="WizardProjectsImportPage.STORE_ARCHIVES">
+			<item value=""/>
+		</list>
+	</section>
+</section>

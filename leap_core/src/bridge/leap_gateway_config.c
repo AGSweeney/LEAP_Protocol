@@ -45,6 +45,75 @@ parse_hex_u32(const char* text, uint32_t* out)
 }
 
 static void
+copy_truncated(char* dst, size_t dst_size, const char* src)
+{
+    size_t len;
+
+    if (dst == NULL || dst_size == 0u)
+    {
+        return;
+    }
+
+    if (src == NULL)
+    {
+        dst[0] = '\0';
+        return;
+    }
+
+    len = strlen(src);
+    if (len >= dst_size)
+    {
+        len = dst_size - 1u;
+    }
+    memcpy(dst, src, len);
+    dst[len] = '\0';
+}
+
+static FILE*
+open_config_file(const char* path, const char* mode)
+{
+#if defined(_MSC_VER)
+    FILE* fp = NULL;
+
+    if (fopen_s(&fp, path, mode) != 0)
+    {
+        return NULL;
+    }
+    return fp;
+#else
+    return fopen(path, mode);
+#endif
+}
+
+static char*
+skip_config_space(char* text)
+{
+    while (text != NULL && (*text == ' ' || *text == '\t'))
+    {
+        ++text;
+    }
+    return text;
+}
+
+static void
+trim_config_space(char* text)
+{
+    size_t len;
+
+    if (text == NULL)
+    {
+        return;
+    }
+
+    len = strlen(text);
+    while (len > 0u && (text[len - 1u] == ' ' || text[len - 1u] == '\t'))
+    {
+        text[len - 1u] = '\0';
+        --len;
+    }
+}
+
+static void
 trim_newline(char* line)
 {
     size_t len;
@@ -73,22 +142,13 @@ leap_gateway_config_defaults(LeapGatewayConfig* config)
     memset(config, 0, sizeof(*config));
     config->version = 1u;
     config->cyclic_ms = 50u;
-    strncpy(
-        config->config_path,
-        "/cf/config.txt",
-        sizeof(config->config_path) - 1u);
+    copy_truncated(config->config_path, sizeof(config->config_path), "/cf/config.txt");
 
     config->network.mode = LEAP_GATEWAY_NIC_SINGLE;
     config->network.auto_ifname = 1;
-    strncpy(config->network.ifname, "re0", sizeof(config->network.ifname) - 1u);
-    strncpy(
-        config->network.ipv4_addr,
-        "192.168.1.2",
-        sizeof(config->network.ipv4_addr) - 1u);
-    strncpy(
-        config->network.ipv4_mask,
-        "255.255.255.0",
-        sizeof(config->network.ipv4_mask) - 1u);
+    copy_truncated(config->network.ifname, sizeof(config->network.ifname), "re0");
+    copy_truncated(config->network.ipv4_addr, sizeof(config->network.ipv4_addr), "192.168.1.2");
+    copy_truncated(config->network.ipv4_mask, sizeof(config->network.ipv4_mask), "255.255.255.0");
     config->network.dhcp = 0;
 
     config->bridge.input_assembly_id = 100u;
@@ -222,37 +282,37 @@ apply_config_kv(
         }
         else
         {
-            strncpy(config->network.ifname, value, sizeof(config->network.ifname) - 1u);
+            copy_truncated(config->network.ifname, sizeof(config->network.ifname), value);
             config->network.auto_ifname = 0;
         }
     }
     else if (strcmp(key, "network.leap_ifname") == 0)
     {
-        strncpy(
+        copy_truncated(
             config->network.leap_ifname,
-            value,
-            sizeof(config->network.leap_ifname) - 1u);
+            sizeof(config->network.leap_ifname),
+            value);
     }
     else if (strcmp(key, "network.eip_ifname") == 0)
     {
-        strncpy(
+        copy_truncated(
             config->network.eip_ifname,
-            value,
-            sizeof(config->network.eip_ifname) - 1u);
+            sizeof(config->network.eip_ifname),
+            value);
     }
     else if (strcmp(key, "network.ipv4") == 0)
     {
-        strncpy(
+        copy_truncated(
             config->network.ipv4_addr,
-            value,
-            sizeof(config->network.ipv4_addr) - 1u);
+            sizeof(config->network.ipv4_addr),
+            value);
     }
     else if (strcmp(key, "network.mask") == 0)
     {
-        strncpy(
+        copy_truncated(
             config->network.ipv4_mask,
-            value,
-            sizeof(config->network.ipv4_mask) - 1u);
+            sizeof(config->network.ipv4_mask),
+            value);
     }
     else if (strcmp(key, "network.dhcp") == 0)
     {
@@ -276,13 +336,13 @@ apply_config_kv(
             }
             memset(active, 0, sizeof(*active));
             active->profile_id = LEAP_PROFILE_DIGITAL_IO_8X8;
-            active->input.assembly_byte = index;
+            active->input.assembly_byte = (uint16_t)index;
             active->input.bit = 0u;
             active->input.width_bits = 8u;
-            active->output.assembly_byte = index + 2u;
+            active->output.assembly_byte = (uint16_t)(index + 2u);
             active->output.bit = 0u;
             active->output.width_bits = 8u;
-            active->status_assembly_byte = index + 4u;
+            active->status_assembly_byte = (uint16_t)(index + 4u);
             active->status_width_bytes = 2u;
         }
         else
@@ -346,19 +406,27 @@ parse_config_line(
     LeapEipBridgeMapping** active_inout,
     char*                  line)
 {
-    char key[64];
-    char value[160];
+    char* key;
+    char* value;
+    char* equals;
 
     trim_newline(line);
-    if (line[0] == '\0' || line[0] == '#')
+    key = skip_config_space(line);
+    if (key == NULL || key[0] == '\0' || key[0] == '#')
     {
         return 0;
     }
 
-    if (sscanf(line, " %63[^=]= %159[^\n]", key, value) != 2)
+    equals = strchr(key, '=');
+    if (equals == NULL)
     {
         return 0;
     }
+
+    *equals = '\0';
+    trim_config_space(key);
+    value = skip_config_space(equals + 1);
+    trim_config_space(value);
 
     return apply_config_kv(config, active_inout, key, value);
 }
@@ -376,9 +444,9 @@ leap_gateway_config_load_file(LeapGatewayConfig* config, const char* path)
     }
 
     leap_gateway_config_defaults(config);
-    strncpy(config->config_path, path, sizeof(config->config_path) - 1u);
+    copy_truncated(config->config_path, sizeof(config->config_path), path);
 
-    fp = fopen(path, "r");
+    fp = open_config_file(path, "r");
     if (fp == NULL)
     {
         return -1;
@@ -639,7 +707,7 @@ leap_gateway_config_save_file(
         return -1;
     }
 
-    fp = fopen(path, "w");
+    fp = open_config_file(path, "w");
     if (fp == NULL)
     {
         return -1;

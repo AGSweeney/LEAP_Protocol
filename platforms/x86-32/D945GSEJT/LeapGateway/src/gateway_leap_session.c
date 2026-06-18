@@ -80,6 +80,11 @@ static unsigned g_bootstrap_rr_index;
 
 static rtems_id         g_leap_session_task = RTEMS_INVALID_ID;
 
+#elif defined(NETBURNER_GATEWAY)
+
+extern void nb_gateway_session_sleep_ms(unsigned ms);
+extern int  nb_gateway_leap_session_start_worker(void);
+
 #else
 
 static pthread_t        g_leap_session_thread;
@@ -95,6 +100,8 @@ gateway_session_sleep_ms(unsigned ms)
 {
 #if defined(__rtems__)
     rtems_task_wake_after(RTEMS_MILLISECONDS_TO_TICKS(ms));
+#elif defined(NETBURNER_GATEWAY)
+    nb_gateway_session_sleep_ms(ms);
 #else
     usleep(ms * 1000u);
 #endif
@@ -128,10 +135,12 @@ mapping_slot_enabled(const LeapGatewayRuntime* gw, unsigned slot)
 
 
 
+    leap_gateway_runtime_lock();
     if (gw == NULL || slot >= gw->config.bridge.mapping_count)
 
     {
 
+        leap_gateway_runtime_unlock();
         return 0;
 
     }
@@ -140,7 +149,11 @@ mapping_slot_enabled(const LeapGatewayRuntime* gw, unsigned slot)
 
     map = &gw->config.bridge.mappings[slot];
 
-    return (map->enabled && !mapping_mac_is_zero(map->leap_mac)) ? 1 : 0;
+    {
+        int enabled = (map->enabled && !mapping_mac_is_zero(map->leap_mac)) ? 1 : 0;
+        leap_gateway_runtime_unlock();
+        return enabled;
+    }
 
 }
 
@@ -460,6 +473,7 @@ gateway_sync_bridge_from_pd(
 
     stats = leap_pd_controller_stats(&stack->pd);
 
+    leap_gateway_runtime_lock();
     (void)leap_eip_bridge_peer_outputs(&g_gateway.bridge, mapping_index, &outputs);
 
     leap_eip_bridge_update_peer_io(
@@ -475,6 +489,7 @@ gateway_sync_bridge_from_pd(
         LEAP_DIO_STATUS_OK,
 
         comm_ok);
+    leap_gateway_runtime_unlock();
 
 
 
@@ -518,13 +533,16 @@ gateway_sync_pd_outputs_from_bridge(LeapGatewayRuntime* gw, unsigned mapping_ind
 
 
 
+    leap_gateway_runtime_lock();
     if (leap_eip_bridge_peer_outputs(&gw->bridge, mapping_index, &outputs) != 0)
 
     {
 
+        leap_gateway_runtime_unlock();
         return;
 
     }
+    leap_gateway_runtime_unlock();
 
 
 
@@ -568,6 +586,7 @@ gateway_mark_mapping_down(
 
 
 
+    leap_gateway_runtime_lock();
     peer = &gw->bridge.peer_io[mapping_index];
 
     inputs = peer->digital_inputs;
@@ -589,6 +608,7 @@ gateway_mark_mapping_down(
         status,
 
         0);
+    leap_gateway_runtime_unlock();
 
 
 
@@ -650,13 +670,27 @@ gateway_push_dirty_outputs(LeapGatewayRuntime* gw, const LeapPdControllerIo* pd_
 
 
 
-    if (gw == NULL || !gw->bridge.outputs_dirty)
+    if (gw == NULL)
 
     {
 
         return;
 
     }
+
+
+
+    leap_gateway_runtime_lock();
+    if (!gw->bridge.outputs_dirty)
+
+    {
+
+        leap_gateway_runtime_unlock();
+        return;
+
+    }
+    gw->bridge.outputs_dirty = 0;
+    leap_gateway_runtime_unlock();
 
 
 
@@ -702,13 +736,16 @@ gateway_push_dirty_outputs(LeapGatewayRuntime* gw, const LeapPdControllerIo* pd_
 
 
 
+        leap_gateway_runtime_lock();
         if (leap_eip_bridge_peer_outputs(&gw->bridge, i, &outputs) != 0)
 
         {
 
+            leap_gateway_runtime_unlock();
             continue;
 
         }
+        leap_gateway_runtime_unlock();
 
 
 
@@ -719,8 +756,6 @@ gateway_push_dirty_outputs(LeapGatewayRuntime* gw, const LeapPdControllerIo* pd_
     }
 
 
-
-    gw->bridge.outputs_dirty = 0;
 
 }
 
@@ -1346,6 +1381,31 @@ gateway_run_pending_discover(void)
         leap_rtems_uptime_str(),
 
         g_gateway.peer_table.count);
+#if defined(NETBURNER_GATEWAY)
+    {
+        LeapRtemsTransportStats stats;
+        memset(&stats, 0, sizeof(stats));
+        leap_rtems_transport_get_stats(&stats);
+        printf(
+            LEAP_TS_FMT
+            "Gateway: LEAP transport stats tx=%lu tx_fail=%lu rx_cb=%lu rx=%lu "
+            "rx_other=%lu rx_wrong_if=%lu rx_drop=%lu bound_if=%ld last_if=%ld "
+            "wrong_if=%ld last=0x%04X other=0x%04X\n",
+            leap_rtems_uptime_str(),
+            (unsigned long)stats.tx_frames,
+            (unsigned long)stats.tx_failures,
+            (unsigned long)stats.rx_callbacks,
+            (unsigned long)stats.rx_matches,
+            (unsigned long)stats.rx_nonmatches,
+            (unsigned long)stats.rx_wrong_interface,
+            (unsigned long)stats.rx_drops,
+            (long)stats.bound_interface,
+            (long)stats.last_rx_interface,
+            (long)stats.last_wrong_interface,
+            (unsigned)stats.last_rx_ethertype,
+            (unsigned)stats.last_nonmatch_ethertype);
+    }
+#endif
     g_gateway.discover_active = 0;
 
 }
@@ -1395,6 +1455,7 @@ leap_gateway_leap_session_disconnect(LeapGatewayRuntime* gw)
     gw->leap_session.op_peer_count   = 0u;
 
     gw->leap_session.connect_pending = 0;
+    gw->leap_session.disconnect_pending = 0;
 
     gw->leap_session.last_status     = LEAP_CTRL_STACK_OK;
 
@@ -1404,7 +1465,9 @@ leap_gateway_leap_session_disconnect(LeapGatewayRuntime* gw)
 
     memset(gw->leap_session.reconnect_ticks, 0, sizeof(gw->leap_session.reconnect_ticks));
 
+    leap_gateway_runtime_lock();
     gw->bridge.leap_comm_ok          = 0;
+    leap_gateway_runtime_unlock();
 
 }
 
@@ -1426,8 +1489,8 @@ leap_gateway_leap_session_request_disconnect(LeapGatewayRuntime* gw)
 
 
 
-    leap_gateway_leap_session_disconnect(gw);
-
+    gw->leap_session.disconnect_pending = 1;
+    gw->leap_session.connect_pending = 0;
     gw->leap_session.connect_suppressed = 1;
 
 }
@@ -1451,6 +1514,7 @@ leap_gateway_leap_session_request_connect(LeapGatewayRuntime* gw)
 
 
     gw->leap_session.connect_suppressed = 0;
+    gw->leap_session.disconnect_pending = 0;
 
     gw->leap_session.connect_pending = 1;
 
@@ -1630,7 +1694,9 @@ leap_gateway_leap_session_connect(LeapGatewayRuntime* gw)
 
     {
 
+        leap_gateway_runtime_lock();
         gw->bridge.leap_comm_ok = 0;
+        leap_gateway_runtime_unlock();
 
     }
 
@@ -1650,8 +1716,11 @@ leap_gateway_leap_session_connect(LeapGatewayRuntime* gw)
 
 
 
+#if defined(NETBURNER_GATEWAY)
+void
+#else
 static void
-
+#endif
 gateway_leap_session_loop(void)
 
 {
@@ -1682,6 +1751,14 @@ gateway_leap_session_loop(void)
 
             break;
 
+        }
+
+
+
+        if (g_gateway.leap_session.disconnect_pending != 0)
+        {
+            g_gateway.leap_session.disconnect_pending = 0;
+            leap_gateway_leap_session_disconnect(&g_gateway);
         }
 
 
@@ -1878,7 +1955,9 @@ gateway_leap_session_loop(void)
 
 
 
+            leap_gateway_runtime_lock();
             g_gateway.bridge.leap_comm_ok = any_comm_ok;
+            leap_gateway_runtime_unlock();
 
 
 
@@ -1924,7 +2003,7 @@ leap_gateway_leap_session_task(rtems_task_argument ignored)
 
 }
 
-#else
+#elif !defined(NETBURNER_GATEWAY)
 
 static void*
 
@@ -1950,7 +2029,11 @@ leap_gateway_leap_session_start_task(void)
 
 {
 
-#if !defined(__rtems__)
+#if defined(NETBURNER_GATEWAY)
+
+    return nb_gateway_leap_session_start_worker();
+
+#elif !defined(__rtems__)
 
     if (g_leap_session_thread_started)
 

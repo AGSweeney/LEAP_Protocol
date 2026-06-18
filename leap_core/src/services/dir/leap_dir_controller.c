@@ -7,6 +7,8 @@
 
 #include "leap/leap_dir_controller.h"
 
+#include "../../leap_wire.h"
+
 #include <string.h>
 
 size_t leap_dir_controller_build_select_profile(
@@ -15,17 +17,14 @@ size_t leap_dir_controller_build_select_profile(
     uint32_t profile_id,
     uint32_t profile_flags)
 {
-    LeapSelectProfileRequest* req;
-
     if (payload == NULL || payload_capacity < sizeof(LeapSelectProfileRequest))
     {
         return 0u;
     }
 
     memset(payload, 0, sizeof(LeapSelectProfileRequest));
-    req = (LeapSelectProfileRequest*)payload;
-    req->requested_profile_id = profile_id;
-    req->profile_flags        = profile_flags;
+    leap_wire_write_le32(payload + 0, profile_id);
+    leap_wire_write_le32(payload + 4, profile_flags);
 
     return sizeof(LeapSelectProfileRequest);
 }
@@ -35,8 +34,6 @@ LeapDirControllerStatus leap_dir_controller_on_profile_reply(
     size_t                         payload_length,
     LeapDirControllerProfileInfo* info)
 {
-    const LeapProfileReply* reply;
-
     if (payload == NULL || info == NULL)
     {
         return LEAP_DIR_CTRL_ERROR;
@@ -47,10 +44,9 @@ LeapDirControllerStatus leap_dir_controller_on_profile_reply(
         return LEAP_DIR_CTRL_BAD_LENGTH;
     }
 
-    reply = (const LeapProfileReply*)payload;
-    info->active_profile_id = reply->active_profile_id;
-    info->endpoint_count    = reply->endpoint_count;
-    info->profile_flags     = reply->profile_flags;
+    info->active_profile_id = leap_wire_read_le32(payload + 0);
+    info->endpoint_count    = leap_wire_read_le16(payload + 4);
+    info->profile_flags     = leap_wire_read_le16(payload + 6);
 
     return LEAP_DIR_CTRL_OK;
 }
@@ -61,17 +57,14 @@ size_t leap_dir_controller_build_read_directory(
     uint32_t start_object_id,
     uint16_t max_bytes)
 {
-    LeapReadDirectoryRequest* req;
-
     if (payload == NULL || payload_capacity < sizeof(LeapReadDirectoryRequest))
     {
         return 0u;
     }
 
     memset(payload, 0, sizeof(LeapReadDirectoryRequest));
-    req = (LeapReadDirectoryRequest*)payload;
-    req->start_object_id = start_object_id;
-    req->max_bytes       = max_bytes;
+    leap_wire_write_le32(payload + 4, start_object_id);
+    leap_wire_write_le16(payload + 8, max_bytes);
 
     return sizeof(LeapReadDirectoryRequest);
 }
@@ -83,18 +76,15 @@ size_t leap_dir_controller_build_read_object(
     uint32_t offset,
     uint32_t length)
 {
-    LeapReadObjectRequest* req;
-
     if (payload == NULL || payload_capacity < sizeof(LeapReadObjectRequest))
     {
         return 0u;
     }
 
     memset(payload, 0, sizeof(LeapReadObjectRequest));
-    req = (LeapReadObjectRequest*)payload;
-    req->object_id = object_id;
-    req->offset    = offset;
-    req->length    = length;
+    leap_wire_write_le32(payload + 0, object_id);
+    leap_wire_write_le32(payload + 4, offset);
+    leap_wire_write_le32(payload + 8, length);
 
     return sizeof(LeapReadObjectRequest);
 }

@@ -22,6 +22,7 @@ static LeapLogSinkFn        g_log_sink_fn         = NULL;
 static void*                g_log_sink_ctx        = NULL;
 static uint64_t             g_log_origin_us       = 0u;
 static int                  g_log_origin_valid    = 0;
+static int                  g_log_stdout_enabled  = 1;
 
 const char* leap_log_security_event_name(LeapLogSecurityEvent event)
 {
@@ -53,6 +54,11 @@ void leap_log_reset_origin(void)
 void leap_log_set_monotonic_us_fn(LeapLogMonotonicUsFn fn)
 {
     g_log_monotonic_us_fn = fn;
+}
+
+void leap_log_set_stdout_enabled(int enabled)
+{
+    g_log_stdout_enabled = (enabled != 0) ? 1 : 0;
 }
 
 void leap_log_set_sink(LeapLogSinkFn fn, void* ctx)
@@ -146,6 +152,11 @@ void leap_log_vfprintf(FILE* stream, const char* fmt, va_list args)
     int    written;
 
     if (stream == NULL)
+    {
+        return;
+    }
+
+    if (stream == stdout && g_log_stdout_enabled == 0)
     {
         return;
     }

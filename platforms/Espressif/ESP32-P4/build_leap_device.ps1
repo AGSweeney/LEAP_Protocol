@@ -14,7 +14,11 @@ if (-not $env:IDF_PATH) {
 $ProjectDir = $PSScriptRoot
 Push-Location $ProjectDir
 try {
-    if (-not (Test-Path "sdkconfig")) {
+    $TargetConfig = 'CONFIG_IDF_TARGET="esp32p4"'
+    $NeedsTargetConfig = -not (Test-Path "sdkconfig") -or
+        -not (Select-String -Path "sdkconfig" -SimpleMatch $TargetConfig -Quiet)
+
+    if ($NeedsTargetConfig) {
         & idf.py set-target esp32p4
         if ($LASTEXITCODE -ne 0) { throw "idf.py set-target failed" }
     }

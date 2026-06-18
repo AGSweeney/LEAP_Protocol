@@ -15,6 +15,8 @@
 
 #include "leap/leap_log.h"
 
+#include "../../leap_wire.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -731,7 +733,7 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
             return LEAP_PD_CTRL_STOPPED;
         }
 
-        leap_log_printf(
+        leap_log_eprintf(
             "PD EXCHANGE wait: timeout peer=%02x:%02x:%02x:%02x:%02x:%02x seq=%u\n",
             peer_mac[0],
             peer_mac[1],
@@ -763,13 +765,13 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
 
     if (reply_length == sizeof(LeapErrorPayload))
     {
-        const LeapErrorPayload* err = (const LeapErrorPayload*)reply;
+        uint16_t status_code = leap_wire_read_le16(reply + 0);
 
-        if (err->status_code != (uint16_t)LEAP_STATUS_OK)
+        if (status_code != (uint16_t)LEAP_STATUS_OK)
         {
-            leap_log_printf(
+            leap_log_eprintf(
                 "PD EXCHANGE error reply: status=0x%04X peer=%02x:%02x:%02x:%02x:%02x:%02x seq=%u\n",
-                (unsigned)err->status_code,
+                (unsigned)status_code,
                 peer_mac[0],
                 peer_mac[1],
                 peer_mac[2],
@@ -802,7 +804,6 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
         LeapExchangeStatus             reply_status;
         LeapPdCommonStatus             validate_status;
         const uint8_t*                 read_data;
-        const LeapProfileDigital16x16* inputs;
         uint64_t                       recv_now_us;
 
         if (pd->config.validate_exchange_reply != 0)
@@ -839,7 +840,7 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
 
         if (validate_status == LEAP_PD_COMMON_SEQUENCE_MISMATCH)
         {
-            leap_log_printf(
+            leap_log_eprintf(
                 "PD EXCHANGE reply rejected: sequence mismatch len=%u expected=%u\n",
                 (unsigned)reply_length,
                 (unsigned)sent_process_sequence);
@@ -848,7 +849,7 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
         }
         else if (validate_status == LEAP_PD_COMMON_STALE_FRAME)
         {
-            leap_log_printf(
+            leap_log_eprintf(
                 "PD EXCHANGE reply rejected: stale frame len=%u expected=%u\n",
                 (unsigned)reply_length,
                 (unsigned)sent_process_sequence);
@@ -857,7 +858,7 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
         }
         else if (validate_status != LEAP_PD_COMMON_OK)
         {
-            leap_log_printf(
+            leap_log_eprintf(
                 "PD EXCHANGE reply rejected: validate=%d len=%u expected=%u\n",
                 (int)validate_status,
                 (unsigned)reply_length,
@@ -868,10 +869,9 @@ static LeapPdControllerStatus leap_pd_ctrl_wait_exchange_reply(
                  sizeof(LeapExchangeHeader) + read_payload_size + read_payload_size)
         {
             read_data = reply + sizeof(LeapExchangeHeader) + read_payload_size;
-            inputs    = (const LeapProfileDigital16x16*)read_data;
 
             pd->stats.exchange_replies++;
-            pd->stats.last_digital_inputs = inputs->digital_inputs;
+            pd->stats.last_digital_inputs = leap_wire_read_le16(read_data + 0);
         }
     }
 

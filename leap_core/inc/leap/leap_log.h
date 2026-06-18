@@ -53,6 +53,8 @@ void leap_log_reset_origin(void);
  */
 void leap_log_set_monotonic_us_fn(LeapLogMonotonicUsFn fn);
 
+void leap_log_set_stdout_enabled(int enabled);
+
 void leap_log_set_sink(LeapLogSinkFn fn, void* ctx);
 
 uint64_t leap_log_monotonic_us(void);

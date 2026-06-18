@@ -12,6 +12,47 @@
 
 LeapGatewayRuntime g_gateway;
 
+static void
+gateway_copy_truncated(char* dst, size_t dst_size, const char* src)
+{
+    size_t len;
+
+    if (dst == NULL || dst_size == 0u)
+    {
+        return;
+    }
+
+    if (src == NULL)
+    {
+        dst[0] = '\0';
+        return;
+    }
+
+    len = strlen(src);
+    if (len >= dst_size)
+    {
+        len = dst_size - 1u;
+    }
+    memcpy(dst, src, len);
+    dst[len] = '\0';
+}
+
+#if defined(__GNUC__)
+__attribute__((weak))
+#endif
+void
+leap_gateway_runtime_lock(void)
+{
+}
+
+#if defined(__GNUC__)
+__attribute__((weak))
+#endif
+void
+leap_gateway_runtime_unlock(void)
+{
+}
+
 void
 leap_gateway_runtime_init(void)
 {
@@ -37,18 +78,22 @@ leap_gateway_runtime_apply_config(const LeapGatewayConfig* config)
         return -1;
     }
 
-    strncpy(path, g_gateway.config.config_path, sizeof(path) - 1u);
-    path[sizeof(path) - 1u] = '\0';
+    gateway_copy_truncated(path, sizeof(path), g_gateway.config.config_path);
 
+    leap_gateway_runtime_lock();
     g_gateway.config = *config;
     if (path[0] != '\0')
     {
-        strncpy(g_gateway.config.config_path, path, sizeof(g_gateway.config.config_path) - 1u);
+        gateway_copy_truncated(
+            g_gateway.config.config_path,
+            sizeof(g_gateway.config.config_path),
+            path);
     }
 
     leap_eip_bridge_set_config(&g_gateway.bridge, &g_gateway.config.bridge);
     g_gateway.config_dirty = 1;
     g_gateway.leap_session.connect_pending = 1;
+    leap_gateway_runtime_unlock();
     return 0;
 }
 

@@ -1,20 +1,25 @@
-# LeapGateway — NetBurner
+# LeapGateway — NetBurner MOD54417
 
-**LeapGateway-Embedded** ports for NetBurner modules (LEAP controller + EtherNet/IP
-bridge + commissioning Web UI). Firmware builds in **NNDK** inside each target folder —
-not in the repo-root CMake trees.
+NetBurner foundation for the embedded **LEAP Gateway** on MOD5441X hardware (MOD54415 / MOD54417).
 
-> **Naming:** Embedded gateway firmware uses **LeapGateway** / **LeapGateway-Embedded**.
-> The **LeapOS-Gateway** name is reserved for the Linux appliance images (x86, Pi).
+## Status
 
-Shared application logic lives under
-[`../../x86-32/D945GSEJT/LeapGateway/src/`](../../x86-32/D945GSEJT/LeapGateway/src/).
-Use the active NetBurner **device** port for raw L2 transport patterns:
+**In progress** — networking shell is ready in [`MOD54417_Gateway/`](MOD54417_Gateway/). LEAP gateway logic is to be ported from the x86 LeapGateway sources.
 
-[`../MOD54415LC/`](../MOD54415LC/)
+| Piece | Location |
+| --- | --- |
+| Network Web UI + HTTP API (retained from external reference) | [`MOD54417_Gateway/`](MOD54417_Gateway/) |
+| Planned LEAP cell controller gateway | [`MOD54417/`](MOD54417/) (reserved) |
+| NetBurner LEAP transport / NNDK layout | [`../MOD54415LC/LeapPort/`](../MOD54415LC/LeapPort/) |
+| Wire + bridge logic | [`../../../../leap_core/`](../../../../leap_core/) |
 
-## Targets
+## Build
 
-| Module | Path | Status |
-| --- | --- | --- |
-| MOD54417 | [MOD54417/](MOD54417/) | planned — LeapGateway-Embedded |
+1. Open the **LeapGateway** NBEclipse workspace (this directory).
+2. Import **MOD54417_Gateway** if it is not already in the workspace.
+3. Clean + Build **Release**.
+4. Flash the MOD54417 target board.
+
+See [`MOD54417_Gateway/README.md`](MOD54417_Gateway/README.md) for commissioning,
+AutoUpdate first-flash, and API details. Build workflow matches the existing device
+port — see [`../MOD54415LC/README.md`](../MOD54415LC/README.md).

@@ -7,6 +7,8 @@
 
 #include "leap/leap_mgmt_controller.h"
 
+#include "../../leap_wire.h"
+
 #include <string.h>
 
 #define LEAP_MGMT_CTRL_DEFAULT_LEASE_US     5000000u
@@ -142,7 +144,8 @@ size_t leap_mgmt_controller_build_open_session(
     uint32_t                   watchdog_us,
     uint16_t                   extra_open_flags)
 {
-    LeapOpenSessionRequest* req;
+    uint32_t requested_lease_us;
+    uint32_t requested_watchdog_us;
 
     if (ctx == NULL || payload == NULL ||
         payload_capacity < sizeof(LeapOpenSessionRequest))
@@ -158,13 +161,14 @@ size_t leap_mgmt_controller_build_open_session(
     }
 
     memset(payload, 0, sizeof(LeapOpenSessionRequest));
-    req = (LeapOpenSessionRequest*)payload;
-    memcpy(req->controller_mac, ctx->config.controller_mac, LEAP_MGMT_CONTROLLER_MAC_LEN);
-    req->open_flags                 =
-        (uint16_t)(LEAP_OPEN_FLAG_REQUEST_OWNER | extra_open_flags);
-    req->requested_lease_time_us    = (lease_us != 0u) ? lease_us : ctx->config.default_lease_us;
-    req->requested_watchdog_time_us =
+    requested_lease_us = (lease_us != 0u) ? lease_us : ctx->config.default_lease_us;
+    requested_watchdog_us =
         (watchdog_us != 0u) ? watchdog_us : ctx->config.default_watchdog_us;
+    memcpy(payload + 0, ctx->config.controller_mac, LEAP_MGMT_CONTROLLER_MAC_LEN);
+    leap_wire_write_le16(payload + 6, (uint16_t)(LEAP_OPEN_FLAG_REQUEST_OWNER | extra_open_flags));
+    leap_wire_write_le32(payload + 8, requested_lease_us);
+    leap_wire_write_le32(payload + 12, requested_watchdog_us);
+    leap_wire_write_le32(payload + 16, 0u);
 
     return sizeof(LeapOpenSessionRequest);
 }
@@ -175,8 +179,6 @@ LeapMgmtControllerStatus leap_mgmt_controller_on_open_session_reply(
     size_t                     payload_length,
     LeapMgmtControllerEvent*   event)
 {
-    const LeapOpenSessionReply* reply;
-
     leap_mgmt_ctrl_clear_event(event);
 
     if (ctx == NULL || payload == NULL)
@@ -191,12 +193,11 @@ LeapMgmtControllerStatus leap_mgmt_controller_on_open_session_reply(
         return LEAP_MGMT_CTRL_BAD_LENGTH;
     }
 
-    reply = (const LeapOpenSessionReply*)payload;
-    ctx->session_id          = reply->assigned_session_id;
-    ctx->granted_lease_us    = reply->granted_lease_time_us;
-    ctx->granted_watchdog_us = reply->granted_watchdog_time_us;
-    ctx->session_flags       = reply->session_flags;
-    ctx->peer_device_state   = (LeapState_u16)reply->current_state;
+    ctx->session_id          = leap_wire_read_le32(payload + 0);
+    ctx->granted_lease_us    = leap_wire_read_le32(payload + 4);
+    ctx->granted_watchdog_us = leap_wire_read_le32(payload + 8);
+    ctx->session_flags       = leap_wire_read_le16(payload + 12);
+    ctx->peer_device_state   = (LeapState_u16)leap_wire_read_le16(payload + 14);
     ctx->state               = LEAP_MGMT_CTRL_SESSION_OPEN;
 
     if (event != NULL)
@@ -214,8 +215,6 @@ size_t leap_mgmt_controller_build_set_state(
     size_t                     payload_capacity,
     LeapState_u16              requested_state)
 {
-    LeapSetStateRequest* req;
-
     if (ctx == NULL || payload == NULL ||
         payload_capacity < sizeof(LeapSetStateRequest))
     {
@@ -233,8 +232,8 @@ size_t leap_mgmt_controller_build_set_state(
     }
 
     memset(payload, 0, sizeof(LeapSetStateRequest));
-    req = (LeapSetStateRequest*)payload;
-    req->requested_state = (uint16_t)requested_state;
+    leap_wire_write_le16(payload + 0, (uint16_t)requested_state);
+    leap_wire_write_le16(payload + 2, 0u);
 
     return sizeof(LeapSetStateRequest);
 }
@@ -245,8 +244,6 @@ LeapMgmtControllerStatus leap_mgmt_controller_on_state_reply(
     size_t                     payload_length,
     LeapMgmtControllerEvent*   event)
 {
-    const LeapStateReply* reply;
-
     leap_mgmt_ctrl_clear_event(event);
 
     if (ctx == NULL || payload == NULL)
@@ -261,8 +258,7 @@ LeapMgmtControllerStatus leap_mgmt_controller_on_state_reply(
         return LEAP_MGMT_CTRL_BAD_LENGTH;
     }
 
-    reply = (const LeapStateReply*)payload;
-    ctx->peer_device_state = (LeapState_u16)reply->current_state;
+    ctx->peer_device_state = (LeapState_u16)leap_wire_read_le16(payload + 2);
 
     if (event != NULL)
     {
@@ -270,7 +266,7 @@ LeapMgmtControllerStatus leap_mgmt_controller_on_state_reply(
         event->peer_device_state   = ctx->peer_device_state;
     }
 
-    if (reply->current_state == (uint16_t)LEAP_STATE_OP)
+    if (ctx->peer_device_state == (uint16_t)LEAP_STATE_OP)
     {
         ctx->state = LEAP_MGMT_CTRL_OP;
         if (event != NULL)
@@ -287,8 +283,6 @@ size_t leap_mgmt_controller_build_heartbeat(
     uint8_t*                   payload,
     size_t                     payload_capacity)
 {
-    LeapHeartbeatPayload* hb;
-
     if (ctx == NULL || payload == NULL ||
         payload_capacity < sizeof(LeapHeartbeatPayload))
     {
@@ -301,9 +295,8 @@ size_t leap_mgmt_controller_build_heartbeat(
     }
 
     memset(payload, 0, sizeof(LeapHeartbeatPayload));
-    hb = (LeapHeartbeatPayload*)payload;
-    hb->latest_process_sequence   = ctx->latest_process_sequence;
-    hb->current_controller_state  = (uint16_t)LEAP_STATE_OP;
+    leap_wire_write_le32(payload + 0, ctx->latest_process_sequence);
+    leap_wire_write_le16(payload + 12, (uint16_t)LEAP_STATE_OP);
 
     return sizeof(LeapHeartbeatPayload);
 }
@@ -314,8 +307,6 @@ size_t leap_mgmt_controller_build_owner_release(
     size_t                     payload_capacity,
     uint32_t                   safe_profile_id)
 {
-    LeapOwnerReleaseRequest* rel;
-
     if (ctx == NULL || payload == NULL ||
         payload_capacity < sizeof(LeapOwnerReleaseRequest))
     {
@@ -328,8 +319,7 @@ size_t leap_mgmt_controller_build_owner_release(
     }
 
     memset(payload, 0, sizeof(LeapOwnerReleaseRequest));
-    rel = (LeapOwnerReleaseRequest*)payload;
-    rel->requested_safe_profile_id = safe_profile_id;
+    leap_wire_write_le32(payload + 4, safe_profile_id);
 
     return sizeof(LeapOwnerReleaseRequest);
 }
@@ -339,8 +329,6 @@ LeapMgmtControllerStatus leap_mgmt_controller_on_mgmt_reply(
     const LeapFrameView*         view,
     LeapMgmtControllerEvent*   event)
 {
-    const LeapErrorPayload* err;
-
     leap_mgmt_ctrl_clear_event(event);
 
     if (ctx == NULL || view == NULL)
@@ -369,9 +357,11 @@ LeapMgmtControllerStatus leap_mgmt_controller_on_mgmt_reply(
             return LEAP_MGMT_CTRL_BAD_LENGTH;
         }
 
-        err = (const LeapErrorPayload*)view->payload;
         ctx->state = LEAP_MGMT_CTRL_STATE_FAULT;
-        leap_mgmt_ctrl_set_error(event, LEAP_MGMT_CTRL_ERROR_STATUS, err->status_code);
+        leap_mgmt_ctrl_set_error(
+            event,
+            LEAP_MGMT_CTRL_ERROR_STATUS,
+            (LeapStatusCode_u16)leap_wire_read_le16(view->payload + 0));
         return LEAP_MGMT_CTRL_ERROR_STATUS;
     }
 
