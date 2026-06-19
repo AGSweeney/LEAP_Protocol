@@ -1,7 +1,9 @@
 LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/arch=x86_64
 LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/name=Local
 LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/os=win32
-configDescList=org.eclipse.launchbar.core.descriptorType.default\:BurnerGateway Configuration
+configDescList=org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:BurnerGateway Configuration
 eclipse.preferences.version=1
+org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:BurnerGateway\ Configuration/activeLaunchMode=run
+org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:BurnerGateway\ Configuration/activeLaunchTarget=null\:---
 org.eclipse.launchbar.core.descriptorType.default\:BurnerGateway\ Configuration/activeLaunchMode=run
 org.eclipse.launchbar.core.descriptorType.default\:BurnerGateway\ Configuration/activeLaunchTarget=org.eclipse.launchbar.core.launchTargetType.local\:Local

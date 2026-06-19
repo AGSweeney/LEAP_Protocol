@@ -1,0 +1,556 @@
+<!--
+  LEAP Gateway
+
+  Copyright (c) 2026 Adam G. Sweeney
+
+  SPDX-License-Identifier: MIT
+  See the LICENSE file in the repository root for full license text.
+-->
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="style.css">
+<title>LEAP Gateway - Network</title>
+</head>
+<body>
+<div class="app">
+  <div class="header-card">
+    <div class="brand">
+      <div>
+        <a href="/" class="nav-link"><- Back to Home</a>
+        <h1>Network Configuration</h1>
+        <p class="subtitle">Plant and LEAP port setup</p>
+      </div>
+      <div class="header-actions">
+        <button class="button help-btn" type="button" onclick="openPageHelp()">Help</button>
+        <img class="logo" src="LeapOS_Logo.png" alt="LeapOS Gateway">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="topologySection" style="display:none;">
+      <h2>Fixed dual-port topology (MOD54417)</h2>
+      <p class="hint">
+        This gateway uses <b>independent Ethernet ports</b>. Bridging both ports is not supported.
+      </p>
+      <ul class="hint" style="margin:0;padding-left:1.2rem">
+        <li><b>Port 1 (Plant Network)</b>  - PLC / EtherNet/IP and this web UI. Connect to your plant subnet.</li>
+        <li><b>Port 2 (LEAP Network)</b>  - LEAP devices only. Keep LEAP peers on a separate subnet or direct cable.</li>
+      </ul>
+    </div>
+
+    <div id="interfacePanels"></div>
+
+    <div class="actions">
+      <button class="button" type="button" onclick="loadNetworkConfig()">Refresh</button>
+      <button class="button" type="button" onclick="saveNetworkConfig(false)">Save to Flash</button>
+      <button class="button primary" type="button" onclick="saveNetworkConfig(true)">Save & Reboot</button>
+    </div>
+    <p id="status" class="hint"></p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rebootWaitModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="rebootWaitTitle" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="rebootWaitTitle">Gateway Rebooting</h2>
+    </div>
+    <div class="modal-content">
+      <p class="hint" id="rebootWaitMessage">
+        Settings saved. The gateway is rebooting. This page will refresh when the device is back online
+        (up to 30 seconds).
+      </p>
+      <div class="reboot-progress-wrap">
+        <div class="reboot-progress-track">
+          <div class="reboot-progress-bar" id="rebootProgressBar"></div>
+        </div>
+        <p class="reboot-progress-label" id="rebootProgressLabel">30 seconds remaining</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var gNetworkState = {
+  dualEthernetSupported: false,
+  plantPort: 1,
+  leapPort: 2,
+  interfaces: []
+};
+
+function setStatus(msg, isError) {
+  var el = document.getElementById("status");
+  el.textContent = msg;
+  el.style.color = isError ? "#b00020" : "#2e7d32";
+}
+
+function getModeValue(modeObj) {
+  if (typeof modeObj === "string") {
+    return modeObj;
+  }
+  if (modeObj && typeof modeObj === "object" && modeObj.value) {
+    return modeObj.value;
+  }
+  return modeObj || "DHCP";
+}
+
+function readText(data, key, fallback) {
+  if (Object.prototype.hasOwnProperty.call(data, key)) {
+    return data[key];
+  }
+  return fallback;
+}
+
+function parseIpv4(text) {
+  var parts = String(text || "").trim().split(".");
+  if (parts.length !== 4) {
+    return null;
+  }
+  var out = [];
+  for (var i = 0; i < 4; i++) {
+    if (!/^\d{1,3}$/.test(parts[i])) {
+      return null;
+    }
+    var n = Number(parts[i]);
+    if (n < 0 || n > 255) {
+      return null;
+    }
+    out.push(n);
+  }
+  return out;
+}
+
+function fieldId(ifNumber, name) {
+  return "if" + ifNumber + "_" + name;
+}
+
+function getInterfaceListForUi() {
+  if (!gNetworkState.interfaces || !gNetworkState.interfaces.length) {
+    return [{ interface: 1, port: 1, role: "plant", portLabel: "Port 1 - Plant Network", name: "Ethernet0" }];
+  }
+
+  if (gNetworkState.dualEthernetSupported) {
+    if (gNetworkState.interfaces.length >= 2) {
+      return gNetworkState.interfaces;
+    }
+
+    var first = gNetworkState.interfaces[0];
+    return [first, {
+      interface: 2,
+      port: 2,
+      role: "leap",
+      portLabel: "Port 2 - LEAP Network",
+      name: "Ethernet1",
+      mode: "DHCP",
+      staticAddr: "",
+      staticMask: "",
+      staticGate: "",
+      staticDNS1: "",
+      staticDNS2: "",
+      activeAddr: "0.0.0.0",
+      autoIPAddr: "0.0.0.0"
+    }];
+  }
+
+  return gNetworkState.interfaces;
+}
+
+function getPanelTitle(iface) {
+  if (iface.portLabel) {
+    return iface.portLabel;
+  }
+  if (iface.role === "plant") {
+    return "Port 1 - Plant Network";
+  }
+  if (iface.role === "leap") {
+    return "Port 2 - LEAP Network";
+  }
+  return iface.name || ("Interface " + iface.interface);
+}
+
+function getPanelSubtitle(iface) {
+  var parts = [];
+  if (iface.name) {
+    parts.push(iface.name);
+  }
+  if (iface.role === "plant") {
+    parts.push("EtherNet/IP and web UI");
+  } else if (iface.role === "leap") {
+    parts.push("LEAP devices only");
+  }
+  return parts.join(" | ");
+}
+
+function updateInterfaceFieldVisibility(ifNumber) {
+  var mode = document.getElementById(fieldId(ifNumber, "mode"));
+  if (!mode) {
+    return;
+  }
+  var showStatic = (mode.value === "Static" || mode.value === "DHCP w Fallback");
+  var panel = document.getElementById("ifPanel" + ifNumber);
+  if (!panel) {
+    return;
+  }
+  var rows = panel.querySelectorAll(".static-only");
+  for (var i = 0; i < rows.length; i++) {
+    rows[i].style.display = showStatic ? "grid" : "none";
+  }
+}
+
+function applyStaticIpDefaults(ifNumber) {
+  var ipEl = document.getElementById(fieldId(ifNumber, "ip"));
+  var maskEl = document.getElementById(fieldId(ifNumber, "mask"));
+  var gatewayEl = document.getElementById(fieldId(ifNumber, "gateway"));
+  if (!ipEl || !maskEl || !gatewayEl) {
+    return;
+  }
+
+  var ipParts = parseIpv4(ipEl.value);
+  if (!ipParts) {
+    return;
+  }
+
+  var defaultMask = "255.255.255.0";
+  var defaultGateway = ipParts[0] + "." + ipParts[1] + "." + ipParts[2] + ".1";
+
+  if (!maskEl.value.trim() || maskEl.dataset.autoDefault === "1") {
+    maskEl.value = defaultMask;
+    maskEl.dataset.autoDefault = "1";
+  }
+  if (!gatewayEl.value.trim() || gatewayEl.dataset.autoDefault === "1") {
+    gatewayEl.value = defaultGateway;
+    gatewayEl.dataset.autoDefault = "1";
+  }
+}
+
+function markManualDefaultField(evt) {
+  evt.target.dataset.autoDefault = "0";
+}
+
+function renderInterfacePanel(iface) {
+  var ifNumber = iface.interface;
+  var active = readText(iface, "activeAddr", "0.0.0.0");
+  var autoIp = readText(iface, "autoIPAddr", "0.0.0.0");
+  var activeHint = "Active IP: " + (active || "0.0.0.0");
+  if (autoIp && autoIp !== "0.0.0.0") {
+    activeHint += " | AutoIP: " + autoIp;
+  }
+
+  var panelTitle = getPanelTitle(iface);
+  var panelSubtitle = getPanelSubtitle(iface);
+
+  return (
+    '<div class="card interface-panel" id="ifPanel' + ifNumber + '">' +
+      '<h2>' + panelTitle + ' IPv4 Settings</h2>' +
+      '<p class="hint">' + panelSubtitle + '</p>' +
+      '<p class="hint">' + activeHint + '</p>' +
+      '<div class="row">' +
+        '<label for="' + fieldId(ifNumber, "mode") + '">Mode</label>' +
+        '<select id="' + fieldId(ifNumber, "mode") + '" onchange="updateInterfaceFieldVisibility(' + ifNumber + ')">' +
+          '<option value="DHCP">DHCP</option>' +
+          '<option value="DHCP w Fallback">DHCP w Fallback</option>' +
+          '<option value="Static">Static</option>' +
+          '<option value="Disabled">Disabled</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="row static-only">' +
+        '<label for="' + fieldId(ifNumber, "ip") + '">Static IP</label>' +
+        '<input id="' + fieldId(ifNumber, "ip") + '" type="text" placeholder="172.16.82.164">' +
+      '</div>' +
+      '<div class="row static-only">' +
+        '<label for="' + fieldId(ifNumber, "mask") + '">Mask</label>' +
+        '<input id="' + fieldId(ifNumber, "mask") + '" type="text" placeholder="255.255.255.0">' +
+      '</div>' +
+      '<div class="row static-only">' +
+        '<label for="' + fieldId(ifNumber, "gateway") + '">Gateway</label>' +
+        '<input id="' + fieldId(ifNumber, "gateway") + '" type="text" placeholder="172.16.82.1">' +
+      '</div>' +
+      '<div class="row static-only">' +
+        '<label for="' + fieldId(ifNumber, "dns1") + '">DNS 1</label>' +
+        '<input id="' + fieldId(ifNumber, "dns1") + '" type="text" placeholder="172.16.82.1">' +
+      '</div>' +
+      '<div class="row static-only">' +
+        '<label for="' + fieldId(ifNumber, "dns2") + '">DNS 2</label>' +
+        '<input id="' + fieldId(ifNumber, "dns2") + '" type="text" placeholder="0.0.0.0">' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function populateInterfacePanel(iface) {
+  var ifNumber = iface.interface;
+  document.getElementById(fieldId(ifNumber, "mode")).value = getModeValue(iface.mode);
+  document.getElementById(fieldId(ifNumber, "ip")).value = readText(iface, "staticAddr", "");
+  document.getElementById(fieldId(ifNumber, "mask")).value = readText(iface, "staticMask", "");
+  document.getElementById(fieldId(ifNumber, "gateway")).value = readText(iface, "staticGate", "");
+  document.getElementById(fieldId(ifNumber, "dns1")).value = readText(iface, "staticDNS1", "");
+  document.getElementById(fieldId(ifNumber, "dns2")).value = readText(iface, "staticDNS2", "");
+
+  var loadedMask = document.getElementById(fieldId(ifNumber, "mask")).value.trim();
+  var loadedGateway = document.getElementById(fieldId(ifNumber, "gateway")).value.trim();
+  var loadedGatewayParts = parseIpv4(loadedGateway);
+  document.getElementById(fieldId(ifNumber, "mask")).dataset.autoDefault =
+    (!loadedMask || loadedMask === "0.0.0.0" || loadedMask === "255.255.255.0") ? "1" : "0";
+  document.getElementById(fieldId(ifNumber, "gateway")).dataset.autoDefault =
+    (!loadedGateway || loadedGateway === "0.0.0.0" || (loadedGatewayParts && loadedGatewayParts[3] === 1)) ? "1" : "0";
+
+  applyStaticIpDefaults(ifNumber);
+  updateInterfaceFieldVisibility(ifNumber);
+}
+
+function bindInterfacePanelEvents(ifNumber) {
+  var ipEl = document.getElementById(fieldId(ifNumber, "ip"));
+  var maskEl = document.getElementById(fieldId(ifNumber, "mask"));
+  var gatewayEl = document.getElementById(fieldId(ifNumber, "gateway"));
+  if (ipEl) {
+    ipEl.addEventListener("input", function() { applyStaticIpDefaults(ifNumber); });
+  }
+  if (maskEl) {
+    maskEl.addEventListener("input", markManualDefaultField);
+  }
+  if (gatewayEl) {
+    gatewayEl.addEventListener("input", markManualDefaultField);
+  }
+}
+
+function updateInterfaceLayout() {
+  var interfaces = getInterfaceListForUi();
+  var container = document.getElementById("interfacePanels");
+  container.innerHTML = interfaces.map(renderInterfacePanel).join("");
+  for (var i = 0; i < interfaces.length; i++) {
+    populateInterfacePanel(interfaces[i]);
+    bindInterfacePanelEvents(interfaces[i].interface);
+  }
+}
+
+function updateTopologyVisibility() {
+  document.getElementById("topologySection").style.display =
+    gNetworkState.dualEthernetSupported ? "block" : "none";
+}
+
+function modeNeedsStatic(mode) {
+  return mode === "Static" || mode === "DHCP w Fallback";
+}
+
+function appendInterfaceSaveParams(params, ifNumber, usePrefixedKeys) {
+  var prefix = usePrefixedKeys ? ("if" + ifNumber + "_") : "";
+  var mode = document.getElementById(fieldId(ifNumber, "mode")).value;
+  params.set(prefix + "mode", mode);
+  if (!modeNeedsStatic(mode)) {
+    return;
+  }
+  params.set(prefix + "ip", document.getElementById(fieldId(ifNumber, "ip")).value.trim());
+  params.set(prefix + "mask", document.getElementById(fieldId(ifNumber, "mask")).value.trim());
+  params.set(prefix + "gateway", document.getElementById(fieldId(ifNumber, "gateway")).value.trim());
+  params.set(prefix + "dns1", document.getElementById(fieldId(ifNumber, "dns1")).value.trim());
+  params.set(prefix + "dns2", document.getElementById(fieldId(ifNumber, "dns2")).value.trim());
+}
+
+async function loadNetworkConfig() {
+  try {
+    const response = await fetch("/api/network/config");
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    const data = await response.json();
+    gNetworkState.dualEthernetSupported = !!data.dualEthernetSupported;
+    gNetworkState.plantPort = data.plantPort || 1;
+    gNetworkState.leapPort = data.leapPort || 2;
+    gNetworkState.interfaces = Array.isArray(data.interfaces) && data.interfaces.length
+      ? data.interfaces
+      : [{
+          interface: data.interface || 1,
+          port: data.interface || 1,
+          role: "plant",
+          portLabel: "Port 1 - Plant Network",
+          name: data.name || "Ethernet0",
+          mode: data.mode,
+          staticAddr: data.staticAddr,
+          staticMask: data.staticMask,
+          staticGate: data.staticGate,
+          staticDNS1: data.staticDNS1,
+          staticDNS2: data.staticDNS2,
+          activeAddr: data.activeAddr,
+          autoIPAddr: data.autoIPAddr
+        }];
+
+    updateTopologyVisibility();
+    updateInterfaceLayout();
+
+    var statusParts = [];
+    for (var i = 0; i < gNetworkState.interfaces.length; i++) {
+      var iface = gNetworkState.interfaces[i];
+      var label = getPanelTitle(iface);
+      var line = label + ": " + (iface.activeAddr || "0.0.0.0");
+      if (iface.autoIPAddr && iface.autoIPAddr !== "0.0.0.0") {
+        line += " (AutoIP " + iface.autoIPAddr + ")";
+      }
+      statusParts.push(line);
+    }
+    setStatus("Loaded current network configuration. " + statusParts.join(" | "), false);
+  } catch (err) {
+    setStatus("Failed to load config: " + err.message, true);
+  }
+}
+
+async function saveNetworkConfig(reboot) {
+  var params = new URLSearchParams();
+  var interfaces = getInterfaceListForUi();
+  var usePrefixedKeys = interfaces.length > 1;
+
+  for (var i = 0; i < interfaces.length; i++) {
+    appendInterfaceSaveParams(params, interfaces[i].interface, usePrefixedKeys);
+  }
+
+  params.set("reboot", reboot ? "1" : "0");
+
+  setActionsEnabled(false);
+
+  if (reboot) {
+    startRebootWaitModal();
+  }
+
+  try {
+    const response = await fetch("/api/network/config/save?" + params.toString());
+    if (!response.ok) {
+      var errText = "";
+      try {
+        var errData = await response.json();
+        errText = errData && errData.error ? (": " + errData.error) : "";
+      } catch (ignore) {}
+      if (reboot) {
+        stopRebootWaitModal();
+      }
+      throw new Error("HTTP " + response.status + errText);
+    }
+
+    if (reboot) {
+      return;
+    }
+
+    const data = await response.json();
+    setStatus(data.message || "Saved to flash. Reboot the gateway for IPv4 changes to take effect.", false);
+  } catch (err) {
+    if (reboot) {
+      return;
+    }
+    setStatus("Failed to save config: " + err.message, true);
+  } finally {
+    if (!reboot) {
+      setActionsEnabled(true);
+    }
+  }
+}
+
+function setActionsEnabled(enabled) {
+  var buttons = document.querySelectorAll(".actions .button");
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].disabled = !enabled;
+  }
+}
+
+var gRebootWaitTimer = null;
+var gRebootPollTimer = null;
+var REBOOT_WAIT_SECONDS = 30;
+
+function showRebootWaitModal() {
+  var modal = document.getElementById("rebootWaitModal");
+  if (!modal) {
+    return;
+  }
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+}
+
+function hideRebootWaitModal() {
+  var modal = document.getElementById("rebootWaitModal");
+  if (!modal) {
+    return;
+  }
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+
+function clearRebootWaitTimers() {
+  if (gRebootWaitTimer) {
+    clearInterval(gRebootWaitTimer);
+    gRebootWaitTimer = null;
+  }
+  if (gRebootPollTimer) {
+    clearInterval(gRebootPollTimer);
+    gRebootPollTimer = null;
+  }
+}
+
+function finishRebootWait() {
+  clearRebootWaitTimers();
+  window.location.reload();
+}
+
+async function pollGatewayOnline() {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(function() { controller.abort(); }, 2500);
+    const response = await fetch("/api/network/config", { signal: controller.signal, cache: "no-store" });
+    clearTimeout(timeout);
+    if (response.ok) {
+      finishRebootWait();
+    }
+  } catch (ignore) {}
+}
+
+function stopRebootWaitModal() {
+  clearRebootWaitTimers();
+  hideRebootWaitModal();
+  setActionsEnabled(true);
+}
+
+function startRebootWaitModal() {
+  clearRebootWaitTimers();
+  showRebootWaitModal();
+
+  var bar = document.getElementById("rebootProgressBar");
+  var label = document.getElementById("rebootProgressLabel");
+  var elapsedMs = 0;
+  var totalMs = REBOOT_WAIT_SECONDS * 1000;
+  var tickMs = 250;
+
+  if (bar) {
+    bar.style.width = "0%";
+  }
+  if (label) {
+    label.textContent = REBOOT_WAIT_SECONDS + " seconds remaining";
+  }
+
+  gRebootWaitTimer = setInterval(function() {
+    elapsedMs += tickMs;
+    var remainingSec = Math.max(0, Math.ceil((totalMs - elapsedMs) / 1000));
+    var pct = Math.min(100, (elapsedMs / totalMs) * 100);
+
+    if (bar) {
+      bar.style.width = pct + "%";
+    }
+    if (label) {
+      label.textContent = remainingSec > 0
+        ? (remainingSec + " second" + (remainingSec === 1 ? "" : "s") + " remaining")
+        : "Refreshing page...";
+    }
+
+    if (elapsedMs >= totalMs) {
+      finishRebootWait();
+    }
+  }, tickMs);
+
+  setTimeout(function() {
+    pollGatewayOnline();
+    gRebootPollTimer = setInterval(pollGatewayOnline, 2000);
+  }, 3000);
+}
+
+loadNetworkConfig();
+</script>
+<script src="help.js"></script>
+</body>
+</html>

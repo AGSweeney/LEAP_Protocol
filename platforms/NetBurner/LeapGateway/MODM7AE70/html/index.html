@@ -1,0 +1,49 @@
+<!--
+  LEAP Gateway
+
+  Copyright (c) 2026 Adam G. Sweeney
+
+  SPDX-License-Identifier: MIT
+  See the LICENSE file in the repository root for full license text.
+-->
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="style.css">
+<title>LEAP Gateway</title>
+</head>
+<body>
+<div class="app">
+  <div class="header-card">
+    <div class="brand">
+      <div>
+        <h1>LEAP Gateway</h1>
+        <p class="subtitle">Configuration Console</p>
+      </div>
+      <img class="logo" src="LeapOS_Logo.png" alt="LeapOS Gateway">
+    </div>
+    <p class="lead">Configure network settings and LEAP device mappings for the NetBurner LEAP Gateway.</p>
+  </div>
+
+  <div class="home-grid">
+    <div class="card config-card" onclick="window.location.href='/network.html'">
+      <div class="icon" aria-hidden="true">&#127760;</div>
+      <h2>Network Configuration</h2>
+      <p class="description">
+        Configure Port 1 (plant / EtherNet/IP) and Port 2 (LEAP devices) IPv4 settings on MOD54417.
+      </p>
+    </div>
+    <div class="card config-card" onclick="window.location.href='/mapping.html'">
+      <div class="icon" aria-hidden="true">&#128279;</div>
+      <h2>LEAP Device Mappings</h2>
+      <p class="description">
+        Map LEAP peer MAC addresses to EtherNet/IP assembly byte offsets for assemblies 100 and 150.
+      </p>
+    </div>
+  </div>
+
+  <footer class="footer">
+    &copy; 2026 Adam G. Sweeney &middot; MIT License
+  </footer>
+</div>
+</body>
+</html>
