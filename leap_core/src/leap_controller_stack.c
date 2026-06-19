@@ -16,6 +16,8 @@
 #include "leap/leap_disc_controller.h"
 #include "leap/leap_pd_common.h"
 
+#include "leap_wire.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -746,12 +748,16 @@ static LeapControllerStackStatus leap_ctrl_stack_on_hello_reply(
 
     if (view->payload_length >= sizeof(LeapHelloReply))
     {
-        const LeapHelloReply* hello = (const LeapHelloReply*)view->payload;
+        LeapHelloReply hello;
 
-        if (hello->active_profile_id != 0u)
+        if (leap_disc_controller_on_hello_reply(
+                view->payload,
+                view->payload_length,
+                &hello) == LEAP_DISC_CTRL_OK &&
+            hello.active_profile_id != 0u)
         {
             (void)leap_pd_profile_map_from_profile_id(
-                hello->active_profile_id,
+                hello.active_profile_id,
                 &stack->pd.config.profile);
         }
     }
@@ -762,10 +768,18 @@ static LeapControllerStackStatus leap_ctrl_stack_on_hello_reply(
     }
 
     {
-        const LeapHelloReply* hello = (const LeapHelloReply*)view->payload;
+        LeapHelloReply hello;
+
+        if (leap_disc_controller_on_hello_reply(
+                view->payload,
+                view->payload_length,
+                &hello) != LEAP_DISC_CTRL_OK)
+        {
+            return leap_ctrl_stack_send_select_profile(stack, io, event);
+        }
 
         if (leap_ctrl_stack_should_skip_select_profile(
-                hello,
+                &hello,
                 stack->config.mgmt.controller_mac) != 0)
         {
             return leap_ctrl_stack_send_open_session(
@@ -773,11 +787,11 @@ static LeapControllerStackStatus leap_ctrl_stack_on_hello_reply(
                 io,
                 event,
                 leap_ctrl_stack_bootstrap_open_flags(
-                    hello,
+                    &hello,
                     stack->config.mgmt.controller_mac));
         }
 
-        if (hello->current_state == (uint16_t)LEAP_STATE_OP)
+        if (hello.current_state == (uint16_t)LEAP_STATE_OP)
         {
             return leap_ctrl_stack_send_open_session(
                 stack,
@@ -1588,7 +1602,20 @@ LeapControllerStackStatus leap_controller_stack_bootstrap_peer(
 
     if (hello_reply != NULL)
     {
-        memcpy(hello_bytes, hello_reply, sizeof(hello_bytes));
+        memset(hello_bytes, 0, sizeof(hello_bytes));
+        memcpy(hello_bytes + 0, hello_reply->identity.primary_mac, 6);
+        leap_wire_write_le16(hello_bytes + 6, hello_reply->identity.vendor_id);
+        leap_wire_write_le32(hello_bytes + 8, hello_reply->identity.product_code);
+        leap_wire_write_le32(hello_bytes + 12, hello_reply->identity.serial_number);
+        leap_wire_write_le16(hello_bytes + 16, hello_reply->identity.hardware_revision);
+        leap_wire_write_le16(hello_bytes + 18, hello_reply->identity.firmware_revision);
+        leap_wire_write_le32(hello_bytes + 20, hello_reply->identity.device_capability_flags);
+        leap_wire_write_le32(hello_bytes + 24, hello_reply->default_profile_id);
+        leap_wire_write_le32(hello_bytes + 28, hello_reply->active_profile_id);
+        leap_wire_write_le16(hello_bytes + 32, hello_reply->current_state);
+        leap_wire_write_le16(hello_bytes + 34, hello_reply->supported_service_count);
+        memcpy(hello_bytes + 36, hello_reply->active_owner_mac, 6);
+        leap_wire_write_le16(hello_bytes + 42, hello_reply->locate_capability_flags);
     }
     else
     {
@@ -1596,7 +1623,10 @@ LeapControllerStackStatus leap_controller_stack_bootstrap_peer(
         default_hello.current_state      = (uint16_t)LEAP_STATE_CONFIGURED;
         default_hello.active_profile_id  = leap_ctrl_stack_profile_id(stack);
         default_hello.default_profile_id = default_hello.active_profile_id;
-        memcpy(hello_bytes, &default_hello, sizeof(hello_bytes));
+        memset(hello_bytes, 0, sizeof(hello_bytes));
+        leap_wire_write_le32(hello_bytes + 24, default_hello.default_profile_id);
+        leap_wire_write_le32(hello_bytes + 28, default_hello.active_profile_id);
+        leap_wire_write_le16(hello_bytes + 32, default_hello.current_state);
     }
 
     {
@@ -2429,15 +2459,15 @@ void leap_controller_stack_log_diag(
     if (result->has_timing != 0)
     {
         printf(
-            "  timing: last_cycle=%u us max_cycle=%u min_cycle=%u "
-            "last_reply_lat=%u us max_reply_lat=%u us "
-            "watchdog_remain=%u us lease_remain=%u us\n",
-            result->timing.last_cycle_time_us,
-            result->timing.max_cycle_time_us,
-            result->timing.min_cycle_time_us,
-            result->timing.last_reply_latency_us,
-            result->timing.max_reply_latency_us,
-            result->timing.process_watchdog_remaining_us,
-            result->timing.owner_lease_remaining_us);
+            "  timing: last_cycle=%lu us max_cycle=%lu min_cycle=%lu "
+            "last_reply_lat=%lu us max_reply_lat=%lu us "
+            "watchdog_remain=%lu us lease_remain=%lu us\n",
+            (unsigned long)result->timing.last_cycle_time_us,
+            (unsigned long)result->timing.max_cycle_time_us,
+            (unsigned long)result->timing.min_cycle_time_us,
+            (unsigned long)result->timing.last_reply_latency_us,
+            (unsigned long)result->timing.max_reply_latency_us,
+            (unsigned long)result->timing.process_watchdog_remaining_us,
+            (unsigned long)result->timing.owner_lease_remaining_us);
     }
 }

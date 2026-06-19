@@ -41,4 +41,8 @@ int leap_gateway_runtime_apply_config(const LeapGatewayConfig* config);
 
 int leap_gateway_runtime_persist_config(void);
 
+void leap_gateway_runtime_lock(void);
+
+void leap_gateway_runtime_unlock(void);
+
 #endif /* LEAP_GATEWAY_GLOBAL_H */

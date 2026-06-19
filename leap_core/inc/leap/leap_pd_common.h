@@ -24,6 +24,7 @@ extern "C" {
 
 typedef struct LeapPdEndpointView
 {
+    LeapEndpointDataHeader        header_storage;
     const LeapEndpointDataHeader* header;
     const uint8_t*                data;
     size_t                        data_length;
@@ -31,11 +32,12 @@ typedef struct LeapPdEndpointView
 
 typedef struct LeapPdExchangeView
 {
-    const LeapExchangeHeader* header;
-    const uint8_t*            write_data;
-    size_t                    write_length;
-    const uint8_t*            read_reservation;
-    size_t                    read_length;
+    LeapExchangeHeader          header_storage;
+    const LeapExchangeHeader*   header;
+    const uint8_t*              write_data;
+    size_t                      write_length;
+    const uint8_t*              read_reservation;
+    size_t                      read_length;
 } LeapPdExchangeView;
 
 typedef struct LeapPdBuildParams

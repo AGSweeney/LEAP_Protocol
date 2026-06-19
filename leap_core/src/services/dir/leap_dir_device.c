@@ -7,6 +7,8 @@
 
 #include "leap/leap_dir_device.h"
 
+#include "../../leap_wire.h"
+
 #include <string.h>
 
 #define LEAP_DIR_IDENTITY_OBJECT_ID \
@@ -20,6 +22,38 @@ static int leap_dir_mac_equal(const uint8_t* a, const uint8_t* b)
     return (memcmp(a, b, 6) == 0);
 }
 
+static void leap_dir_write_identity(uint8_t* out, const LeapIdentity* identity)
+{
+    memcpy(out + 0, identity->primary_mac, 6);
+    leap_wire_write_le16(out + 6, identity->vendor_id);
+    leap_wire_write_le32(out + 8, identity->product_code);
+    leap_wire_write_le32(out + 12, identity->serial_number);
+    leap_wire_write_le16(out + 16, identity->hardware_revision);
+    leap_wire_write_le16(out + 18, identity->firmware_revision);
+    leap_wire_write_le32(out + 20, identity->device_capability_flags);
+}
+
+static void leap_dir_write_profile_descriptor(uint8_t* out, const LeapProfileDescriptor* profile)
+{
+    leap_wire_write_le32(out + 0, profile->profile_id);
+    leap_wire_write_le16(out + 4, profile->profile_revision);
+    leap_wire_write_le16(out + 6, profile->endpoint_count);
+    leap_wire_write_le32(out + 8, profile->profile_flags);
+    leap_wire_write_le32(out + 12, profile->schema_object_id);
+}
+
+static void leap_dir_write_endpoint_descriptor(uint8_t* out, const LeapEndpointDescriptor* endpoint)
+{
+    leap_wire_write_le16(out + 0, endpoint->endpoint_id);
+    out[2] = endpoint->direction;
+    out[3] = endpoint->flags;
+    leap_wire_write_le32(out + 4, endpoint->profile_id);
+    leap_wire_write_le16(out + 8, endpoint->byte_length);
+    out[10] = endpoint->alignment;
+    out[11] = endpoint->reserved;
+    leap_wire_write_le32(out + 12, endpoint->schema_object_id);
+}
+
 static size_t leap_dir_append_tlv(
     uint8_t*       out,
     size_t         out_capacity,
@@ -28,7 +62,6 @@ static size_t leap_dir_append_tlv(
     const uint8_t* value,
     uint16_t       value_length)
 {
-    LeapTlvHeader* hdr;
     size_t         total;
     size_t         padded;
     size_t         pad_bytes;
@@ -39,9 +72,8 @@ static size_t leap_dir_append_tlv(
         return 0u;
     }
 
-    hdr = (LeapTlvHeader*)(out + offset);
-    hdr->type   = tlv_type;
-    hdr->length = value_length;
+    leap_wire_write_le16(out + offset + 0, tlv_type);
+    leap_wire_write_le16(out + offset + 2, value_length);
     if (value_length > 0u && value != NULL)
     {
         memcpy(out + offset + sizeof(LeapTlvHeader), value, value_length);
@@ -221,6 +253,10 @@ static size_t leap_dir_build_directory_tlvs(
     size_t                      chunk;
     size_t                      i;
     uint32_t                    active_id;
+    uint8_t                     identity_bytes[sizeof(LeapIdentity)];
+    uint8_t                     u32_bytes[sizeof(uint32_t)];
+    uint8_t                     profile_bytes[sizeof(LeapProfileDescriptor)];
+    uint8_t                     endpoint_bytes[sizeof(LeapEndpointDescriptor)];
 
     profile = leap_dir_find_profile(ctx, ctx->config.active_profile_id);
     if (profile == NULL)
@@ -229,13 +265,14 @@ static size_t leap_dir_build_directory_tlvs(
     }
 
     active_id = ctx->config.active_profile_id;
+    leap_dir_write_identity(identity_bytes, &ctx->config.identity);
 
     chunk = leap_dir_append_tlv(
         out,
         out_capacity,
         offset,
         LEAP_TLV_DEVICE_IDENTITY,
-        (const uint8_t*)&ctx->config.identity,
+        identity_bytes,
         (uint16_t)sizeof(LeapIdentity));
     if (chunk == 0u)
     {
@@ -243,12 +280,13 @@ static size_t leap_dir_build_directory_tlvs(
     }
     offset += chunk;
 
+    leap_wire_write_le32(u32_bytes, ctx->config.default_profile_id);
     chunk = leap_dir_append_tlv(
         out,
         out_capacity,
         offset,
         LEAP_TLV_DEFAULT_PROFILE_ID,
-        (const uint8_t*)&ctx->config.default_profile_id,
+        u32_bytes,
         (uint16_t)sizeof(uint32_t));
     if (chunk == 0u)
     {
@@ -256,12 +294,13 @@ static size_t leap_dir_build_directory_tlvs(
     }
     offset += chunk;
 
+    leap_wire_write_le32(u32_bytes, active_id);
     chunk = leap_dir_append_tlv(
         out,
         out_capacity,
         offset,
         LEAP_TLV_ACTIVE_PROFILE_ID,
-        (const uint8_t*)&active_id,
+        u32_bytes,
         (uint16_t)sizeof(uint32_t));
     if (chunk == 0u)
     {
@@ -269,12 +308,13 @@ static size_t leap_dir_build_directory_tlvs(
     }
     offset += chunk;
 
+    leap_dir_write_profile_descriptor(profile_bytes, &profile->descriptor);
     chunk = leap_dir_append_tlv(
         out,
         out_capacity,
         offset,
         LEAP_TLV_PROFILE_DESCRIPTOR,
-        (const uint8_t*)&profile->descriptor,
+        profile_bytes,
         (uint16_t)sizeof(LeapProfileDescriptor));
     if (chunk == 0u)
     {
@@ -284,12 +324,13 @@ static size_t leap_dir_build_directory_tlvs(
 
     for (i = 0u; i < profile->endpoint_count; i++)
     {
+        leap_dir_write_endpoint_descriptor(endpoint_bytes, &profile->endpoints[i]);
         chunk = leap_dir_append_tlv(
             out,
             out_capacity,
             offset,
             LEAP_TLV_ENDPOINT_DESCRIPTOR,
-            (const uint8_t*)&profile->endpoints[i],
+            endpoint_bytes,
             (uint16_t)sizeof(LeapEndpointDescriptor));
         if (chunk == 0u)
         {
@@ -307,7 +348,6 @@ static size_t leap_dir_build_profile_reply(
     size_t                        out_capacity)
 {
     const LeapDirDeviceProfile* profile;
-    LeapProfileReply*           body;
     size_t                      endpoint_bytes;
     size_t                      total;
     size_t                      i;
@@ -327,17 +367,15 @@ static size_t leap_dir_build_profile_reply(
     }
 
     memset(out, 0, total);
-    body = (LeapProfileReply*)out;
-    body->active_profile_id = ctx->config.active_profile_id;
-    body->endpoint_count    = (uint16_t)profile->endpoint_count;
-    body->profile_flags     = profile->descriptor.profile_flags;
+    leap_wire_write_le32(out + 0, ctx->config.active_profile_id);
+    leap_wire_write_le16(out + 4, (uint16_t)profile->endpoint_count);
+    leap_wire_write_le16(out + 6, (uint16_t)profile->descriptor.profile_flags);
 
     for (i = 0u; i < profile->endpoint_count; i++)
     {
-        memcpy(
+        leap_dir_write_endpoint_descriptor(
             out + sizeof(LeapProfileReply) + (i * sizeof(LeapEndpointDescriptor)),
-            &profile->endpoints[i],
-            sizeof(LeapEndpointDescriptor));
+            &profile->endpoints[i]);
     }
 
     return total;
@@ -475,8 +513,6 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
 {
     LeapFrameParseResult parse_result;
     size_t               reply_length;
-    LeapReadDirectoryReply* dir_hdr;
-    LeapReadObjectReply*    obj_hdr;
     size_t                  object_bytes;
 
     if (result == NULL || dir == NULL || disc == NULL || mgmt == NULL || data == NULL)
@@ -533,9 +569,8 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_ERROR;
         }
 
-        dir_hdr = (LeapReadDirectoryReply*)result->payload;
-        dir_hdr->returned_bytes = (uint16_t)reply_length;
-        dir_hdr->total_bytes    = (uint16_t)reply_length;
+        leap_wire_write_le16(result->payload + 4, (uint16_t)reply_length);
+        leap_wire_write_le16(result->payload + 6, (uint16_t)reply_length);
 
         result->message_type   = LEAP_DIR_READ_DIRECTORY_REPLY;
         result->payload_length = sizeof(LeapReadDirectoryReply) + reply_length;
@@ -545,7 +580,9 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
 
     case LEAP_DIR_READ_OBJECT:
     {
-        const LeapReadObjectRequest* req;
+        uint32_t object_id;
+        uint32_t object_offset;
+        uint32_t object_length;
 
         if (result->frame.payload_length < sizeof(LeapReadObjectRequest))
         {
@@ -554,13 +591,15 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_BAD_LENGTH;
         }
 
-        req = (const LeapReadObjectRequest*)result->frame.payload;
+        object_id = leap_wire_read_le32(result->frame.payload + 0);
+        object_offset = leap_wire_read_le32(result->frame.payload + 4);
+        object_length = leap_wire_read_le32(result->frame.payload + 8);
         memset(result->payload, 0, sizeof(LeapReadObjectReply));
         object_bytes = leap_dir_read_object_bytes(
             dir,
-            req->object_id,
-            req->offset,
-            req->length,
+            object_id,
+            object_offset,
+            object_length,
             result->payload + sizeof(LeapReadObjectReply),
             LEAP_DIR_DEVICE_MAX_REPLY - sizeof(LeapReadObjectReply));
         if (object_bytes == 0u)
@@ -570,11 +609,10 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_ERROR;
         }
 
-        obj_hdr = (LeapReadObjectReply*)result->payload;
-        obj_hdr->object_id    = req->object_id;
-        obj_hdr->offset       = req->offset;
-        obj_hdr->length       = (uint32_t)object_bytes;
-        obj_hdr->object_flags = 0u;
+        leap_wire_write_le32(result->payload + 0, object_id);
+        leap_wire_write_le32(result->payload + 4, object_offset);
+        leap_wire_write_le32(result->payload + 8, (uint32_t)object_bytes);
+        leap_wire_write_le32(result->payload + 12, 0u);
 
         result->message_type   = LEAP_DIR_READ_OBJECT_REPLY;
         result->payload_length = sizeof(LeapReadObjectReply) + object_bytes;
@@ -585,8 +623,8 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
 
     case LEAP_DIR_SELECT_PROFILE:
     {
-        const LeapSelectProfileRequest* req;
         const LeapDirDeviceProfile*       profile;
+        uint32_t requested_profile_id;
 
         if (result->frame.payload_length < sizeof(LeapSelectProfileRequest))
         {
@@ -602,7 +640,7 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_INVALID_STATE;
         }
 
-        req = (const LeapSelectProfileRequest*)result->frame.payload;
+        requested_profile_id = leap_wire_read_le32(result->frame.payload + 0);
         if (!leap_dir_owner_authorized(
                 mgmt,
                 source_mac,
@@ -613,7 +651,7 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_NOT_OWNER;
         }
 
-        profile = leap_dir_find_profile(dir, req->requested_profile_id);
+        profile = leap_dir_find_profile(dir, requested_profile_id);
         if (profile == NULL)
         {
             result->status     = LEAP_DIR_DEVICE_PROFILE_MISMATCH;
@@ -621,7 +659,7 @@ LeapDirDeviceStatus leap_dir_device_process_frame(
             return LEAP_DIR_DEVICE_PROFILE_MISMATCH;
         }
 
-        dir->config.active_profile_id = req->requested_profile_id;
+        dir->config.active_profile_id = requested_profile_id;
         leap_dir_device_sync_disc(dir, disc);
 
         if (mgmt->device_state == LEAP_STATE_INIT)

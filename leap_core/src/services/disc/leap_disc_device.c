@@ -7,13 +7,21 @@
 
 #include "leap/leap_disc_device.h"
 
+#include "../../leap_wire.h"
+
 #include <string.h>
 
-static void leap_disc_fill_identity(
-    LeapIdentity*                  dst,
+static void leap_disc_write_identity(
+    uint8_t*                       dst,
     const LeapDiscDeviceConfig*    config)
 {
-    *dst = config->identity;
+    memcpy(dst + 0, config->identity.primary_mac, 6);
+    leap_wire_write_le16(dst + 6, config->identity.vendor_id);
+    leap_wire_write_le32(dst + 8, config->identity.product_code);
+    leap_wire_write_le32(dst + 12, config->identity.serial_number);
+    leap_wire_write_le16(dst + 16, config->identity.hardware_revision);
+    leap_wire_write_le16(dst + 18, config->identity.firmware_revision);
+    leap_wire_write_le32(dst + 20, config->identity.device_capability_flags);
 }
 
 static size_t leap_disc_build_hello_reply(
@@ -22,11 +30,10 @@ static size_t leap_disc_build_hello_reply(
     uint8_t*                       out,
     size_t                         out_capacity)
 {
-    LeapHelloReply* body;
     size_t          service_bytes;
     size_t          total;
     size_t          i;
-    uint16_t*       services;
+    uint8_t*        services;
 
     if (disc->config.supported_service_count > LEAP_DISC_DEVICE_MAX_SERVICES)
     {
@@ -42,24 +49,23 @@ static size_t leap_disc_build_hello_reply(
     }
 
     memset(out, 0, total);
-    body = (LeapHelloReply*)out;
-    leap_disc_fill_identity(&body->identity, &disc->config);
-    body->default_profile_id       = disc->config.default_profile_id;
-    body->active_profile_id        = disc->config.active_profile_id;
-    body->current_state            = (uint16_t)leap_mgmt_device_get_state(mgmt);
-    body->supported_service_count  = (uint16_t)disc->config.supported_service_count;
+    leap_disc_write_identity(out, &disc->config);
+    leap_wire_write_le32(out + 24, disc->config.default_profile_id);
+    leap_wire_write_le32(out + 28, disc->config.active_profile_id);
+    leap_wire_write_le16(out + 32, (uint16_t)leap_mgmt_device_get_state(mgmt));
+    leap_wire_write_le16(out + 34, (uint16_t)disc->config.supported_service_count);
 
     if (mgmt->owner_active != 0u)
     {
-        (void)memcpy(body->active_owner_mac, mgmt->owner_mac, 6);
+        (void)memcpy(out + 36, mgmt->owner_mac, 6);
     }
 
-    body->locate_capability_flags = LEAP_LOCATE_FLAG_LED;
+    leap_wire_write_le16(out + 42, LEAP_LOCATE_FLAG_LED);
 
-    services = (uint16_t*)(out + sizeof(LeapHelloReply));
+    services = out + sizeof(LeapHelloReply);
     for (i = 0u; i < disc->config.supported_service_count; i++)
     {
-        services[i] = disc->config.supported_services[i];
+        leap_wire_write_le16(services + (i * 2u), disc->config.supported_services[i]);
     }
 
     return total;
@@ -71,11 +77,10 @@ static size_t leap_disc_build_identify_reply(
     uint8_t*                       out,
     size_t                         out_capacity)
 {
-    LeapIdentifyReply* body;
     size_t             service_bytes;
     size_t             total;
     size_t             i;
-    uint16_t*          services;
+    uint8_t*           services;
 
     service_bytes = disc->config.supported_service_count * sizeof(uint16_t);
     total         = sizeof(LeapIdentifyReply) + service_bytes;
@@ -86,24 +91,23 @@ static size_t leap_disc_build_identify_reply(
     }
 
     memset(out, 0, total);
-    body = (LeapIdentifyReply*)out;
-    leap_disc_fill_identity(&body->identity, &disc->config);
-    body->default_profile_id      = disc->config.default_profile_id;
-    body->active_profile_id       = disc->config.active_profile_id;
-    body->current_state           = (uint16_t)leap_mgmt_device_get_state(mgmt);
-    body->supported_service_count = (uint16_t)disc->config.supported_service_count;
+    leap_disc_write_identity(out, &disc->config);
+    leap_wire_write_le32(out + 24, disc->config.default_profile_id);
+    leap_wire_write_le32(out + 28, disc->config.active_profile_id);
+    leap_wire_write_le16(out + 32, (uint16_t)leap_mgmt_device_get_state(mgmt));
+    leap_wire_write_le16(out + 34, (uint16_t)disc->config.supported_service_count);
 
     if (mgmt->owner_active != 0u)
     {
-        (void)memcpy(body->active_owner_mac, mgmt->owner_mac, 6);
+        (void)memcpy(out + 36, mgmt->owner_mac, 6);
     }
 
-    body->locate_capability_flags = LEAP_LOCATE_FLAG_LED;
+    leap_wire_write_le16(out + 42, LEAP_LOCATE_FLAG_LED);
 
-    services = (uint16_t*)(out + sizeof(LeapIdentifyReply));
+    services = out + sizeof(LeapIdentifyReply);
     for (i = 0u; i < disc->config.supported_service_count; i++)
     {
-        services[i] = disc->config.supported_services[i];
+        leap_wire_write_le16(services + (i * 2u), disc->config.supported_services[i]);
     }
 
     return total;
@@ -135,8 +139,6 @@ static size_t leap_disc_build_locate_device_reply(
     uint8_t*         out,
     size_t           out_capacity)
 {
-    LeapLocateDeviceReply* body;
-    const LeapLocateDeviceRequest* req;
     uint16_t duration_ms = LEAP_LOCATE_DURATION_DEFAULT_MS;
 
     if (request_payload == NULL || out == NULL)
@@ -151,23 +153,20 @@ static size_t leap_disc_build_locate_device_reply(
 
     if (request_length >= sizeof(LeapLocateDeviceRequest))
     {
-        req = (const LeapLocateDeviceRequest*)request_payload;
-        if ((req->flags & LEAP_LOCATE_FLAG_CANCEL) != 0u)
+        if ((request_payload[3] & LEAP_LOCATE_FLAG_CANCEL) != 0u)
         {
             memset(out, 0, sizeof(LeapLocateDeviceReply));
-            body = (LeapLocateDeviceReply*)out;
-            body->supported = 1u;
+            out[0] = 1u;
             return sizeof(LeapLocateDeviceReply);
         }
 
-        duration_ms = leap_disc_clamp_locate_duration_ms(req->duration_ms);
+        duration_ms = leap_disc_clamp_locate_duration_ms(leap_wire_read_le16(request_payload));
     }
 
     memset(out, 0, sizeof(LeapLocateDeviceReply));
-    body = (LeapLocateDeviceReply*)out;
-    body->supported    = 1u;
-    body->active       = 1u;
-    body->remaining_ms = duration_ms;
+    out[0] = 1u;
+    out[1] = 1u;
+    leap_wire_write_le16(out + 2, duration_ms);
     return sizeof(LeapLocateDeviceReply);
 }
 

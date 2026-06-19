@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="nbeclipse.core.launch.nbconfig">
+    <stringAttribute key="nbeclipse.launch.PROJECT_DEBUG_CONFIG_ID_ATTR" value="nbeclipse.toolchain.nbde30.exe.debug.268507165"/>
+    <stringAttribute key="nbeclipse.launch.PROJECT_DEBUG_METHOD_ID_ATTR" value="Load and Connect"/>
+    <stringAttribute key="nbeclipse.launch.PROJECT_RELEASE_CONFIG_ID_ATTR" value="nbeclipse.toolchain.nbde30.exe.release.2144168614"/>
+    <stringAttribute key="org.eclipse.cdt.dsf.gdb.HOST" value="192.168.131.217"/>
+    <stringAttribute key="org.eclipse.cdt.dsf.gdb.PORT" value="2159"/>
+    <booleanAttribute key="org.eclipse.cdt.dsf.gdb.REMOTE_TCP" value="true"/>
+    <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_START_MODE" value="remote"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="Release/BurnerGateway.elf"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="BurnerGateway"/>
+    <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="true"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="nbeclipse.toolchain.nbde30.exe.release.2144168614"/>
+    <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+        <listEntry value="/BurnerGateway"/>
+    </listAttribute>
+    <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+        <listEntry value="4"/>
+    </listAttribute>
+    <stringAttribute key="process_factory_id" value="org.eclipse.cdt.dsf.gdb.GdbProcessFactory"/>
+</launchConfiguration>

@@ -9,6 +9,8 @@
 
 #include "leap/leap_log.h"
 
+#include "../../leap_wire.h"
+
 #include <string.h>
 
 static int leap_pd_message_supported(uint16_t message_type)
@@ -111,13 +113,8 @@ static int leap_pd_check_inbound_frame_age(
             return 0;
         }
 
-        {
-            const LeapEndpointDataHeader* hdr =
-                (const LeapEndpointDataHeader*)payload;
-
-            controller_timestamp_us = hdr->controller_timestamp_us;
-            max_frame_age_us        = hdr->max_frame_age_us;
-        }
+        controller_timestamp_us = leap_wire_read_le64(payload + 16);
+        max_frame_age_us        = leap_wire_read_le32(payload + 24);
     }
     else if (message_type == LEAP_PD_EXCHANGE_ENDPOINTS)
     {
@@ -126,12 +123,8 @@ static int leap_pd_check_inbound_frame_age(
             return 0;
         }
 
-        {
-            const LeapExchangeHeader* hdr = (const LeapExchangeHeader*)payload;
-
-            controller_timestamp_us = hdr->controller_timestamp_us;
-            max_frame_age_us        = hdr->max_frame_age_us;
-        }
+        controller_timestamp_us = leap_wire_read_le64(payload + 16);
+        max_frame_age_us        = leap_wire_read_le32(payload + 24);
     }
     else
     {
@@ -170,7 +163,7 @@ static int leap_pd_extract_process_sequence(
             return -1;
         }
 
-        *sequence_out = ((const LeapEndpointDataHeader*)payload)->process_sequence;
+        *sequence_out = leap_wire_read_le32(payload + 8);
         return 0;
     }
 
@@ -181,7 +174,7 @@ static int leap_pd_extract_process_sequence(
             return -1;
         }
 
-        *sequence_out = ((const LeapExchangeHeader*)payload)->process_sequence;
+        *sequence_out = leap_wire_read_le32(payload + 8);
         return 0;
     }
 
@@ -342,10 +335,7 @@ static LeapPdDeviceStatus leap_pd_handle_exchange(
     if (view.write_length >= sizeof(LeapProfileDigital16x16) &&
         (view.header->exchange_flags & LEAP_PD_FLAG_APPLY_OUTPUTS) != 0u)
     {
-        const LeapProfileDigital16x16* write_profile =
-            (const LeapProfileDigital16x16*)view.write_data;
-
-        outputs = write_profile->digital_outputs;
+        outputs = leap_wire_read_le16(view.write_data + 2);
         leap_pd_apply_digital_outputs(io_binding, outputs, result);
     }
 

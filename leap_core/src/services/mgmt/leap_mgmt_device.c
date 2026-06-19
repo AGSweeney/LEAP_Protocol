@@ -7,6 +7,8 @@
 
 #include "leap/leap_mgmt_device.h"
 
+#include "../../leap_wire.h"
+
 #include <string.h>
 
 #define LEAP_MGMT_DEFAULT_LEASE_US     5000000u
@@ -217,17 +219,15 @@ static void leap_mgmt_fill_open_session_reply(
     uint32_t               session_id,
     uint16_t               session_flags)
 {
-    LeapOpenSessionReply* body = (LeapOpenSessionReply*)reply->payload;
-
-    memset(body, 0, sizeof(*body));
-    body->assigned_session_id     = session_id;
-    body->granted_lease_time_us   = ctx->granted_lease_us;
-    body->granted_watchdog_time_us = ctx->granted_watchdog_us;
-    body->session_flags           = session_flags;
-    body->current_state           = (uint16_t)ctx->device_state;
+    memset(reply->payload, 0, sizeof(LeapOpenSessionReply));
+    leap_wire_write_le32(reply->payload + 0, session_id);
+    leap_wire_write_le32(reply->payload + 4, ctx->granted_lease_us);
+    leap_wire_write_le32(reply->payload + 8, ctx->granted_watchdog_us);
+    leap_wire_write_le16(reply->payload + 12, session_flags);
+    leap_wire_write_le16(reply->payload + 14, (uint16_t)ctx->device_state);
     if ((session_flags & LEAP_SESSION_FLAG_OWNER) != 0u)
     {
-        leap_mac_copy(body->owner_mac, ctx->owner_mac);
+        leap_mac_copy(reply->payload + 16, ctx->owner_mac);
     }
 
     reply->status         = LEAP_MGMT_DEVICE_HANDLE_OK;
@@ -241,11 +241,10 @@ static void leap_mgmt_fill_state_reply(
     LeapMgmtDeviceReply*   reply,
     LeapState_u16          accepted_state)
 {
-    LeapStateReply* body = (LeapStateReply*)reply->payload;
-
-    memset(body, 0, sizeof(*body));
-    body->accepted_state = (uint16_t)accepted_state;
-    body->current_state  = (uint16_t)ctx->device_state;
+    memset(reply->payload, 0, sizeof(LeapStateReply));
+    leap_wire_write_le16(reply->payload + 0, (uint16_t)accepted_state);
+    leap_wire_write_le16(reply->payload + 2, (uint16_t)ctx->device_state);
+    leap_wire_write_le32(reply->payload + 4, 0u);
 
     reply->status         = LEAP_MGMT_DEVICE_HANDLE_OK;
     reply->error_code     = LEAP_STATUS_OK;
@@ -258,11 +257,13 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
     const LeapMgmtDeviceRequest* request,
     LeapMgmtDeviceReply*         reply)
 {
-    const LeapOpenSessionRequest* open_req;
     uint16_t                      session_flags = 0u;
     uint32_t                      session_id;
     const uint8_t*                source_mac;
     int                           reboot_recovery_accepted = 0;
+    uint16_t                      open_flags;
+    uint32_t                      requested_lease_us;
+    uint32_t                      requested_watchdog_us;
 
     if (request->payload == NULL || request->payload_length < sizeof(LeapOpenSessionRequest))
     {
@@ -276,16 +277,18 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
         return LEAP_MGMT_DEVICE_HANDLE_ERROR;
     }
 
-    open_req   = (const LeapOpenSessionRequest*)request->payload;
     source_mac = request->source_mac;
+    open_flags = leap_wire_read_le16(request->payload + 6);
+    requested_lease_us = leap_wire_read_le32(request->payload + 8);
+    requested_watchdog_us = leap_wire_read_le32(request->payload + 12);
 
-    if ((open_req->open_flags & LEAP_OPEN_FLAG_REQUEST_OWNER) != 0u)
+    if ((open_flags & LEAP_OPEN_FLAG_REQUEST_OWNER) != 0u)
     {
         if (ctx->owner_active != 0u)
         {
             if (leap_mac_equal(source_mac, ctx->owner_mac))
             {
-                if ((open_req->open_flags & LEAP_OPEN_FLAG_REBOOT_RECOVERY) != 0u)
+                if ((open_flags & LEAP_OPEN_FLAG_REBOOT_RECOVERY) != 0u)
                 {
                     if (ctx->device_state == LEAP_STATE_OP)
                     {
@@ -309,7 +312,7 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
                     leap_mgmt_fill_error(reply, LEAP_STATUS_BUSY);
                     return LEAP_MGMT_DEVICE_HANDLE_ERROR;
                 }
-                else if ((open_req->open_flags & LEAP_OPEN_FLAG_STEAL_EXPIRED) == 0u)
+                else if ((open_flags & LEAP_OPEN_FLAG_STEAL_EXPIRED) == 0u)
                 {
                     leap_mgmt_fill_error(reply, LEAP_STATUS_BUSY);
                     return LEAP_MGMT_DEVICE_HANDLE_ERROR;
@@ -330,7 +333,7 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
                 leap_mgmt_fill_error(reply, LEAP_STATUS_NOT_OWNER);
                 return LEAP_MGMT_DEVICE_HANDLE_ERROR;
             }
-            else if ((open_req->open_flags & LEAP_OPEN_FLAG_STEAL_EXPIRED) != 0u)
+            else if ((open_flags & LEAP_OPEN_FLAG_STEAL_EXPIRED) != 0u)
             {
                 leap_mgmt_clear_owner(ctx);
                 leap_mgmt_transition_to_safe(ctx);
@@ -341,7 +344,7 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
                 return LEAP_MGMT_DEVICE_HANDLE_ERROR;
             }
         }
-        else if ((open_req->open_flags & LEAP_OPEN_FLAG_REBOOT_RECOVERY) != 0u &&
+        else if ((open_flags & LEAP_OPEN_FLAG_REBOOT_RECOVERY) != 0u &&
                  ctx->device_state == LEAP_STATE_OP)
         {
             /*
@@ -353,13 +356,13 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_open_session(
 
         ctx->owner_active = 1u;
         leap_mac_copy(ctx->owner_mac, source_mac);
-        ctx->granted_lease_us = leap_mgmt_clamp_lease(ctx, open_req->requested_lease_time_us);
-        ctx->granted_watchdog_us = leap_mgmt_clamp_watchdog(ctx, open_req->requested_watchdog_time_us);
+        ctx->granted_lease_us = leap_mgmt_clamp_lease(ctx, requested_lease_us);
+        ctx->granted_watchdog_us = leap_mgmt_clamp_watchdog(ctx, requested_watchdog_us);
         leap_mgmt_arm_owner_lease(ctx, request->now_us);
 
         session_flags = (uint16_t)(LEAP_SESSION_FLAG_OWNER | LEAP_SESSION_FLAG_LEASE_ACTIVE);
     }
-    else if ((open_req->open_flags & LEAP_OPEN_FLAG_OBSERVER_ONLY) != 0u)
+    else if ((open_flags & LEAP_OPEN_FLAG_OBSERVER_ONLY) != 0u)
     {
         ctx->observer_active = 1u;
         leap_mac_copy(ctx->observer_mac, source_mac);
@@ -456,7 +459,6 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_set_state(
     const LeapMgmtDeviceRequest* request,
     LeapMgmtDeviceReply*         reply)
 {
-    const LeapSetStateRequest* set_req;
     LeapState_u16              requested;
 
     if (request->payload == NULL || request->payload_length < sizeof(LeapSetStateRequest))
@@ -475,8 +477,7 @@ static LeapMgmtDeviceHandleStatus leap_mgmt_handle_set_state(
         return leap_mgmt_reject_not_owner(ctx, reply);
     }
 
-    set_req   = (const LeapSetStateRequest*)request->payload;
-    requested = (LeapState_u16)set_req->requested_state;
+    requested = (LeapState_u16)leap_wire_read_le16(request->payload + 0);
 
     if (!leap_mgmt_state_transition_allowed(ctx->device_state, requested))
     {

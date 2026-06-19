@@ -1,0 +1,631 @@
+<!--
+  LEAP Gateway
+
+  Copyright (c) 2026 Adam G. Sweeney
+
+  SPDX-License-Identifier: MIT
+  See the LICENSE file in the repository root for full license text.
+-->
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="style.css">
+<title>LEAP Gateway - Device Mappings</title>
+</head>
+<body>
+<div class="app app-wide">
+  <div class="header-card">
+    <div class="brand">
+      <div>
+        <a href="/" class="nav-link"><- Back to Home</a>
+        <h1>LEAP Device Mappings</h1>
+        <p class="subtitle">EtherNet/IP assembly mapping</p>
+      </div>
+      <div class="header-actions">
+        <button class="button help-btn" type="button" onclick="openPageHelp()">Help</button>
+        <img class="logo" src="LeapOS_Logo.png" alt="LeapOS Gateway">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>EtherNet/IP assemblies (PLC connection)</h2>
+    <p class="hint" style="margin-top:0">
+      Use these in Studio 5000 / RSLinx exclusive-owner connection:
+    </p>
+    <ul class="hint" style="margin:0;padding-left:1.2rem">
+      <li>Input assembly <b id="inputAsmId">100</b> (<span id="asmBytes">32</span> bytes) - gateway -&gt; PLC</li>
+      <li>Output assembly <b id="outputAsmId">150</b> (<span id="asmBytesOut">32</span> bytes) - PLC -&gt; gateway</li>
+      <li>Config assembly <b>151</b> (10 bytes)</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>LEAP peer mappings</h2>
+    <p class="hint">
+      Map each LEAP device MAC to byte offsets in the EtherNet/IP assemblies above.
+      Up to <span id="maxMappingsLabel">16</span> mappings are supported.
+    </p>
+    <div class="actions" style="margin-top:12px">
+      <button class="button" type="button" onclick="addMapping()">+ Add mapping</button>
+      <span id="mapEditLabel" class="hint"></span>
+    </div>
+    <table class="grid mapping-grid">
+      <thead>
+        <tr>
+          <th class="col-id">#</th>
+          <th>MAC</th>
+          <th>Profile</th>
+          <th>In byte</th>
+          <th>Out byte</th>
+          <th>Status</th>
+          <th>Width</th>
+          <th class="col-enabled">On</th>
+          <th class="col-actions">Action</th>
+        </tr>
+      </thead>
+      <tbody id="mappingRows">
+        <tr><td colspan="9" class="hint">No mappings configured</td></tr>
+      </tbody>
+    </table>
+
+    <div id="mappingEditor" class="editor-grid" style="margin-top:16px;display:none">
+      <div class="row">
+        <label for="mapMac">Peer MAC</label>
+        <input id="mapMac" type="text" placeholder="aa:bb:cc:dd:ee:ff">
+      </div>
+      <div class="row">
+        <label for="mapProfile">Profile ID</label>
+        <input id="mapProfile" type="text" placeholder="0x00010001">
+      </div>
+      <div class="row">
+        <label for="mapInputByte">Input byte (E/IP asm 100)</label>
+        <input id="mapInputByte" type="number" min="0" max="31">
+      </div>
+      <div class="row">
+        <label for="mapOutputByte">Output byte (E/IP asm 150)</label>
+        <input id="mapOutputByte" type="number" min="0" max="31">
+      </div>
+      <div class="row">
+        <label for="mapStatusByte">Status byte (E/IP asm 100)</label>
+        <input id="mapStatusByte" type="number" min="0" max="31">
+      </div>
+      <div class="row">
+        <label for="mapWidth">Digital width (bits)</label>
+        <input id="mapWidth" type="number" min="1" max="16" value="8">
+      </div>
+      <div class="full">
+        <label><input id="mapEnabled" type="checkbox"> Enable this mapping</label>
+      </div>
+      <div class="full actions" style="justify-content:flex-end">
+        <button class="button" type="button" onclick="finishEditing()">Done editing</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>LEAP sessions</h2>
+    <p class="hint" style="margin-top:0">
+      Bootstrap owner sessions to mapped peers on <b>Port 2</b>. Discover scans the LEAP network for unconfigured devices.
+    </p>
+    <div class="connection-bar" style="margin-bottom:12px">
+      <span id="leapPhaseLabel" class="hint">LEAP phase: ...</span>
+      <span id="leapCommLabel" class="hint"></span>
+    </div>
+    <div class="actions">
+      <button class="button primary" type="button" onclick="leapConnect()">Connect LEAP</button>
+      <button class="button" type="button" onclick="leapDisconnect()">Disconnect</button>
+      <button class="button" type="button" onclick="leapDiscover()">Discover peers</button>
+      <button class="button" type="button" onclick="refreshLeapPeers()">Refresh peers</button>
+      <button class="button" type="button" onclick="refreshLeapIo()">Refresh I/O</button>
+    </div>
+    <table class="grid" style="margin-top:12px">
+      <thead>
+        <tr>
+          <th>Discovered MAC</th>
+          <th>Profile</th>
+          <th>State</th>
+          <th>Owner</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="leapPeerRows">
+        <tr><td colspan="5" class="hint">No discovered peers yet</td></tr>
+      </tbody>
+    </table>
+    <table class="grid" style="margin-top:12px">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>MAC</th>
+          <th>Connected</th>
+          <th>Comm</th>
+          <th>LEAP in</th>
+          <th>LEAP out</th>
+          <th>In byte</th>
+          <th>Out byte</th>
+          <th>Status byte</th>
+          <th>In value</th>
+          <th>Out value</th>
+          <th>Status value</th>
+        </tr>
+      </thead>
+      <tbody id="leapIoRows">
+        <tr><td colspan="12" class="hint">No live I/O - connect LEAP or save mappings first</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button class="button" type="button" onclick="loadMappingConfig()">Refresh</button>
+      <button class="button primary" type="button" onclick="saveMappingConfig()">Save Mappings</button>
+      <button class="button danger" type="button" onclick="clearAllMappings()">Clear All</button>
+    </div>
+    <p id="status" class="hint"></p>
+  </div>
+</div>
+
+<script>
+var MAX_MAPPINGS = 16;
+var ASM_BYTES = 32;
+var mappingDefaults = {
+  profile: "0x00010001",
+  width: 8,
+  enabled: true
+};
+
+var gMappingState = {
+  mappings: [],
+  discoveredPeers: [],
+  selectedIndex: -1
+};
+
+function setStatus(msg, isError) {
+  var el = document.getElementById("status");
+  el.textContent = msg;
+  el.style.color = isError ? "#b00020" : "#2e7d32";
+}
+
+function isZeroMac(mac) {
+  return !mac || /^0{2}(:0{2}){5}$/i.test(String(mac).trim());
+}
+
+function defaultMapping(index) {
+  return {
+    mac: "00:00:00:00:00:00",
+    profile: mappingDefaults.profile,
+    input_byte: index,
+    output_byte: index + 2,
+    status_byte: index + 4,
+    width: mappingDefaults.width,
+    enabled: mappingDefaults.enabled
+  };
+}
+
+function normalizeMac(mac) {
+  return String(mac || "").trim().toLowerCase();
+}
+
+function showEditor(visible) {
+  document.getElementById("mappingEditor").style.display = visible ? "grid" : "none";
+}
+
+function loadMappingIntoForm(index) {
+  if (index < 0 || index >= gMappingState.mappings.length) {
+    gMappingState.selectedIndex = -1;
+    showEditor(false);
+    document.getElementById("mapEditLabel").textContent = "";
+    return;
+  }
+
+  var m = gMappingState.mappings[index];
+  gMappingState.selectedIndex = index;
+  document.getElementById("mapMac").value = m.mac;
+  document.getElementById("mapProfile").value = m.profile;
+  document.getElementById("mapInputByte").value = m.input_byte;
+  document.getElementById("mapOutputByte").value = m.output_byte;
+  document.getElementById("mapStatusByte").value = m.status_byte;
+  document.getElementById("mapWidth").value = m.width;
+  document.getElementById("mapEnabled").checked = !!m.enabled;
+  document.getElementById("mapEditLabel").textContent =
+    "Editing mapping " + (index + 1) + " of " + gMappingState.mappings.length;
+  showEditor(true);
+}
+
+function syncFormToSelectedMapping() {
+  var index = gMappingState.selectedIndex;
+  if (index < 0 || index >= gMappingState.mappings.length) {
+    return;
+  }
+
+  var m = gMappingState.mappings[index];
+  m.mac = normalizeMac(document.getElementById("mapMac").value);
+  m.profile = document.getElementById("mapProfile").value.trim() || mappingDefaults.profile;
+  m.input_byte = Number(document.getElementById("mapInputByte").value) || 0;
+  m.output_byte = Number(document.getElementById("mapOutputByte").value) || 0;
+  m.status_byte = Number(document.getElementById("mapStatusByte").value) || 0;
+  m.width = Number(document.getElementById("mapWidth").value) || mappingDefaults.width;
+  m.enabled = document.getElementById("mapEnabled").checked;
+}
+
+function renderMappingRows() {
+  var tbody = document.getElementById("mappingRows");
+  if (!gMappingState.mappings.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="hint">No mappings configured</td></tr>';
+    return;
+  }
+
+  var html = "";
+  for (var i = 0; i < gMappingState.mappings.length; i++) {
+    var m = gMappingState.mappings[i];
+    html +=
+      '<tr>' +
+        '<td class="col-id">' + (i + 1) + '</td>' +
+        '<td class="cell-clip">' + (m.mac || "") + '</td>' +
+        '<td>' + (m.profile || mappingDefaults.profile) + '</td>' +
+        '<td>' + m.input_byte + '</td>' +
+        '<td>' + m.output_byte + '</td>' +
+        '<td>' + m.status_byte + '</td>' +
+        '<td>' + m.width + '</td>' +
+        '<td class="col-enabled">' + (m.enabled ? "Y" : "") + '</td>' +
+        '<td class="col-actions mapping-actions">' +
+          '<button class="button small" type="button" onclick="editMapping(' + i + ')">Edit</button>' +
+          '<button class="button small danger" type="button" onclick="removeMapping(' + i + ')">Remove</button>' +
+        '</td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function addMapping() {
+  if (gMappingState.selectedIndex >= 0) {
+    syncFormToSelectedMapping();
+  }
+  if (gMappingState.mappings.length >= MAX_MAPPINGS) {
+    setStatus("Maximum " + MAX_MAPPINGS + " mappings reached.", true);
+    return;
+  }
+  var index = gMappingState.mappings.length;
+  gMappingState.mappings.push(defaultMapping(index));
+  loadMappingIntoForm(index);
+  renderMappingRows();
+}
+
+function mappingExistsForMac(mac) {
+  var normalized = normalizeMac(mac);
+  for (var i = 0; i < gMappingState.mappings.length; i++) {
+    if (normalizeMac(gMappingState.mappings[i].mac) === normalized) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function addDiscoveredPeer(index) {
+  var peer = gMappingState.discoveredPeers[index];
+  if (!peer) {
+    return;
+  }
+  if (mappingExistsForMac(peer.mac)) {
+    setStatus("Mapping already exists for " + peer.mac + ".", true);
+    return;
+  }
+  if (gMappingState.selectedIndex >= 0) {
+    syncFormToSelectedMapping();
+  }
+  if (gMappingState.mappings.length >= MAX_MAPPINGS) {
+    setStatus("Maximum " + MAX_MAPPINGS + " mappings reached.", true);
+    return;
+  }
+
+  var mapIndex = gMappingState.mappings.length;
+  var mapping = defaultMapping(mapIndex);
+  mapping.mac = normalizeMac(peer.mac);
+  mapping.profile = peer.profile || mappingDefaults.profile;
+  gMappingState.mappings.push(mapping);
+  loadMappingIntoForm(mapIndex);
+  renderMappingRows();
+  renderDiscoveredPeers();
+  setStatus("Added discovered peer " + peer.mac + ". Save mappings to persist.", false);
+}
+
+function renderDiscoveredPeers() {
+  var tbody = document.getElementById("leapPeerRows");
+  var peers = gMappingState.discoveredPeers || [];
+  if (!peers.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="hint">No discovered peers yet</td></tr>';
+    return;
+  }
+
+  var html = "";
+  for (var i = 0; i < peers.length; i++) {
+    var p = peers[i];
+    var alreadyMapped = mappingExistsForMac(p.mac);
+    html += '<tr>' +
+      '<td class="cell-clip">' + (p.mac || "") + '</td>' +
+      '<td>' + (p.profile || mappingDefaults.profile) + '</td>' +
+      '<td>' + (p.state || "") + '</td>' +
+      '<td>' + (p.owner || "unknown") + '</td>' +
+      '<td>' +
+        (alreadyMapped
+          ? '<span class="hint">Mapped</span>'
+          : '<button class="button small" type="button" onclick="addDiscoveredPeer(' + i + ')">Add mapping</button>') +
+      '</td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function editMapping(index) {
+  if (gMappingState.selectedIndex >= 0) {
+    syncFormToSelectedMapping();
+  }
+  loadMappingIntoForm(index);
+  renderMappingRows();
+}
+
+function removeMapping(index) {
+  if (!window.confirm("Remove mapping " + (index + 1) + "?")) {
+    return;
+  }
+  gMappingState.mappings.splice(index, 1);
+  if (gMappingState.selectedIndex === index) {
+    loadMappingIntoForm(-1);
+  } else if (gMappingState.selectedIndex > index) {
+    gMappingState.selectedIndex -= 1;
+  }
+  renderMappingRows();
+}
+
+function finishEditing() {
+  syncFormToSelectedMapping();
+  renderMappingRows();
+  loadMappingIntoForm(-1);
+}
+
+function buildSaveParams() {
+  var params = new URLSearchParams();
+  var mappings = gMappingState.mappings.filter(function(m) {
+    return !isZeroMac(m.mac);
+  });
+
+  params.set("count", String(mappings.length));
+  for (var i = 0; i < mappings.length; i++) {
+    var m = mappings[i];
+    params.set("m" + i + "_mac", normalizeMac(m.mac));
+    params.set("m" + i + "_profile", m.profile || mappingDefaults.profile);
+    params.set("m" + i + "_input_byte", String(m.input_byte));
+    params.set("m" + i + "_output_byte", String(m.output_byte));
+    params.set("m" + i + "_status_byte", String(m.status_byte));
+    params.set("m" + i + "_width", String(m.width));
+    params.set("m" + i + "_enabled", m.enabled ? "1" : "0");
+  }
+  return params;
+}
+
+function setActionsEnabled(enabled) {
+  var buttons = document.querySelectorAll(".actions .button");
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].disabled = !enabled;
+  }
+}
+
+async function loadMappingConfig() {
+  try {
+    const response = await fetch("/api/mapping/config");
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    const data = await response.json();
+    MAX_MAPPINGS = data.maxMappings || MAX_MAPPINGS;
+    ASM_BYTES = data.assemblyBytes || ASM_BYTES;
+    document.getElementById("maxMappingsLabel").textContent = String(MAX_MAPPINGS);
+    document.getElementById("inputAsmId").textContent = String(data.inputAssemblyId || 100);
+    document.getElementById("outputAsmId").textContent = String(data.outputAssemblyId || 150);
+    document.getElementById("asmBytes").textContent = String(ASM_BYTES);
+    document.getElementById("asmBytesOut").textContent = String(ASM_BYTES);
+
+    gMappingState.mappings = (data.mappings || []).map(function(m, idx) {
+      return {
+        mac: m.mac || "00:00:00:00:00:00",
+        profile: m.profile || mappingDefaults.profile,
+        input_byte: Number(m.inputByte) || idx,
+        output_byte: Number(m.outputByte) || (idx + 2),
+        status_byte: Number(m.statusByte) || (idx + 4),
+        width: Number(m.width) || mappingDefaults.width,
+        enabled: !!m.enabled
+      };
+    });
+
+    loadMappingIntoForm(-1);
+    renderMappingRows();
+    setStatus(
+      "Loaded " + gMappingState.mappings.length + " mapping(s), " +
+      (data.enabledCount || 0) + " enabled.",
+      false
+    );
+  } catch (err) {
+    setStatus("Failed to load mappings: " + err.message, true);
+  }
+}
+
+async function saveMappingConfig() {
+  if (gMappingState.selectedIndex >= 0) {
+    syncFormToSelectedMapping();
+    renderMappingRows();
+  }
+
+  var params = buildSaveParams();
+  setActionsEnabled(false);
+
+  try {
+    const response = await fetch("/api/mapping/config/save?" + params.toString());
+    if (!response.ok) {
+      var errText = "";
+      try {
+        var errData = await response.json();
+        errText = errData && errData.error ? (": " + errData.error) : "";
+      } catch (ignore) {}
+      throw new Error("HTTP " + response.status + errText);
+    }
+
+    const data = await response.json();
+    setStatus(data.message || "Mappings saved.", false);
+    await loadMappingConfig();
+  } catch (err) {
+    setStatus("Failed to save mappings: " + err.message, true);
+  } finally {
+    setActionsEnabled(true);
+  }
+}
+
+async function clearAllMappings() {
+  if (!window.confirm("Remove all LEAP device mappings?")) {
+    return;
+  }
+
+  setActionsEnabled(false);
+  try {
+    const response = await fetch("/api/mapping/config/save?clear=1");
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    gMappingState.mappings = [];
+    loadMappingIntoForm(-1);
+    renderMappingRows();
+    setStatus("All mappings cleared.", false);
+  } catch (err) {
+    setStatus("Failed to clear mappings: " + err.message, true);
+  } finally {
+    setActionsEnabled(true);
+  }
+}
+
+["mapMac", "mapProfile", "mapInputByte", "mapOutputByte", "mapStatusByte", "mapWidth", "mapEnabled"].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    el.addEventListener("change", syncFormToSelectedMapping);
+    el.addEventListener("input", syncFormToSelectedMapping);
+  }
+});
+
+loadMappingConfig();
+refreshLeapStatus();
+refreshLeapPeers();
+
+async function refreshLeapStatus() {
+  try {
+    const response = await fetch("/api/leap/status");
+    if (!response.ok) return;
+    const data = await response.json();
+    document.getElementById("leapPhaseLabel").textContent =
+      "LEAP phase: " + (data.leap_phase || "?") +
+      " | OP peers: " + (data.leap_op_peers || 0);
+    document.getElementById("leapCommLabel").textContent =
+      data.leap_comm_ok ? "I/O comm OK" : "Waiting for I/O";
+  } catch (ignore) {}
+}
+
+async function leapConnect() {
+  setStatus("Requesting LEAP connect...", false);
+  try {
+    const response = await fetch("/api/leap/connect");
+    const data = await response.json();
+    setStatus(data.ok ? "LEAP connect pending." : "Connect failed.", !data.ok);
+    await refreshLeapStatus();
+    await refreshLeapIo();
+  } catch (err) {
+    setStatus("Connect failed: " + err.message, true);
+  }
+}
+
+async function leapDisconnect() {
+  try {
+    await fetch("/api/leap/disconnect");
+    setStatus("LEAP disconnected.", false);
+    await refreshLeapStatus();
+    await refreshLeapIo();
+  } catch (err) {
+    setStatus("Disconnect failed: " + err.message, true);
+  }
+}
+
+async function leapDiscover() {
+  setStatus("LEAP discover scan started (3 s)...", false);
+  try {
+    const response = await fetch("/api/leap/discover");
+    const data = await response.json();
+    if (data.skipped) {
+      setStatus(data.reason || "Discover skipped.", true);
+    } else {
+      setStatus("Discover scan requested.", false);
+      await new Promise(function(resolve) { setTimeout(resolve, (data.scan_ms || 3000) + 500); });
+      await refreshLeapPeers();
+    }
+  } catch (err) {
+    setStatus("Discover failed: " + err.message, true);
+  }
+}
+
+async function refreshLeapPeers() {
+  try {
+    const response = await fetch("/api/leap/peers");
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    const data = await response.json();
+    gMappingState.discoveredPeers = data.peers || [];
+    renderDiscoveredPeers();
+    if (gMappingState.discoveredPeers.length) {
+      setStatus("Found " + gMappingState.discoveredPeers.length + " LEAP peer(s).", false);
+    } else if (data.discover_active) {
+      setStatus("Discover scan still running.", false);
+    } else {
+      setStatus("No LEAP peers discovered.", true);
+    }
+  } catch (err) {
+    setStatus("Failed to load discovered peers: " + err.message, true);
+  }
+}
+
+async function refreshLeapIo() {
+  try {
+    const response = await fetch("/api/leap/io");
+    if (!response.ok) return;
+    const data = await response.json();
+    var tbody = document.getElementById("leapIoRows");
+    var rows = data.mappings || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="12" class="hint">No enabled mappings with live data</td></tr>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      html += '<tr>' +
+        '<td>' + (r.index + 1) + '</td>' +
+        '<td class="cell-clip">' + r.mac + '</td>' +
+        '<td>' + (r.leap_connected ? "yes" : "no") + '</td>' +
+        '<td>' + (r.comm_ok ? "ok" : "-") + '</td>' +
+        '<td>' + r.leap_inputs + '</td>' +
+        '<td>' + r.leap_outputs + '</td>' +
+        '<td>' + r.eip_input_byte + '</td>' +
+        '<td>' + r.eip_output_byte + '</td>' +
+        '<td>' + r.eip_status_byte + '</td>' +
+        '<td>' + (r.eip_input_value || 0) + '</td>' +
+        '<td>' + (r.eip_output_value || 0) + '</td>' +
+        '<td>' + (r.eip_status_value || 0) + '</td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+    document.getElementById("leapPhaseLabel").textContent =
+      "LEAP phase: " + (data.leap_phase || "?") +
+      (data.session_active ? " (active)" : "");
+    document.getElementById("leapCommLabel").textContent =
+      data.leap_comm_ok ? "I/O comm OK" : "Waiting for I/O";
+  } catch (ignore) {}
+}
+</script>
+<script src="help.js"></script>
+</body>
+</html>

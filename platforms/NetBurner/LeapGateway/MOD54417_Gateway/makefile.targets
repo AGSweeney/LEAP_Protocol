@@ -1,0 +1,77 @@
+# LEAP Gateway (NetBurner MOD5441X)
+# Copyright (c) 2026 Adam G. Sweeney
+# SPDX-License-Identifier: MIT
+# See the LICENSE file in the repository root for full license text.
+
+ifeq ($(MKNBLIBS),1)
+all: $(TARGET)
+$(ELF): $(TARGET)
+endif
+
+ifeq ($(NBDEBUG),1)
+$(TARGET): $(DBLIB_OBJ_FILES)
+else
+$(TARGET): $(LIB_OBJ_FILES)
+endif
+	$(RM) $@
+	$(call max_args,$(AR) cr $@ ,10,$^)
+
+.PHONY: clean-nblibs load-nbimage app-s19
+
+clean-nblibs:
+	$(RM) $(OBJDIR)
+
+# Legacy AutoUpdate image (*_APP.s19) for MOD5441x first-time flash. Run from Release after build.
+ifneq ($(strip $(BUILD_ARTIFACT_NAME)),)
+app-s19: $(BUILD_ARTIFACT_NAME).s19
+	@echo 'Building AutoUpdate image: $(BUILD_ARTIFACT_NAME)_APP.s19'
+	compcode $< $(BUILD_ARTIFACT_NAME)_APP.s19 0xC0040000 0xC1FC0000 -PMOD5441X -R -M $(BUILD_ARTIFACT_NAME).map
+endif
+
+load-nbimage:
+	@echo "Sending $(NBIMAGE) to $(DEVIP)"
+	$(APPUPDATE) -q -O- --post-file=$(NBIMAGE) $(DEVIP):20034/appupdate.htm
+
+htmldata.cpp: $(COMPHTML_SRCS)
+	comphtml $(HTMLDIR) -o$@
+
+htmldata.o: htmldata.cpp
+	$(CXX) -c -I"../src" $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+
+ifneq ($(wildcard $(OBJDIR)/.stale),)
+clean: clean-nblibs
+endif
+
+ifneq ($(strip $(ELF)),)
+.SECONDEXPANSION:
+ELF1 := $(firstword $(ELF))
+TIMESTAMP_SRC = "extern const char LinkTime[]; const char LinkTime[] = \"`date -u +"%Y-%m-%dT%H:%M:%SZ"`\";"
+LINKSTAMP_OBJ := $(dir $(ELF1))$(notdir $(basename $(ELF1)))_linkDTStamp.o
+USER_OBJS += $(LINKSTAMP_OBJ)
+$(ELF1): $(LINKSTAMP_OBJ)
+
+$(LINKSTAMP_OBJ): $$(filter-out $$(LINKSTAMP_OBJ),$$(OBJS) $$(USER_OBJS)) $$(LIBS) makefile objects.mk sources.mk subdir.mk
+	@echo "Time stamping $@"
+	@mkdir -p $(dir $@)
+	@echo $(TIMESTAMP_SRC) | $(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ -xc++ -c -
+endif
+
+# Eclipse-generated subdir.mk compile lines omit LEAP gateway include paths.
+# Explicit rules here override those pattern rules (included last via Release/makefile).
+GW_APP_CXX_BASE := -std=gnu++17 -O2 -Wall -c -fmessage-length=0 -fdata-sections -ffunction-sections \
+	-gdwarf-2 -fno-exceptions -fno-rtti -Wno-write-strings -fno-omit-frame-pointer \
+	-falign-functions=4 -fasynchronous-unwind-tables -mcpu=54415 -DMOD5441X -DMCF5441X -DCOLDFIRE
+
+./src/main.o: ../src/main.cpp
+	@echo 'Building file: $<'
+	@echo 'Invoking: GNU C++ Compiler'
+	m68k-unknown-elf-g++ $(GW_APP_CXX_BASE) $(CXXFLAGS) $(CPPFLAGS) $(EXTRACPPFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+./src/platform/leap_transport_nb.o: ../src/platform/leap_transport_nb.cpp
+	@echo 'Building file: $<'
+	@echo 'Invoking: GNU C++ Compiler'
+	m68k-unknown-elf-g++ $(GW_APP_CXX_BASE) $(CXXFLAGS) $(CPPFLAGS) $(EXTRACPPFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '

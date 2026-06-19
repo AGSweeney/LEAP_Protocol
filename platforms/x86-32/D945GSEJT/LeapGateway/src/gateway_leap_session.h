@@ -16,6 +16,7 @@ typedef struct LeapGatewayRuntime LeapGatewayRuntime;
 typedef struct LeapGatewayLeapSessionState
 {
     int                       connect_pending;
+    int                       disconnect_pending;
     int                       connect_suppressed;
     unsigned                  op_peer_count;
     LeapControllerStackStatus last_status;
