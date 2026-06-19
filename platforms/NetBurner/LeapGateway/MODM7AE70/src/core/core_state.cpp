@@ -13,8 +13,16 @@ static bool g_gateway_forced_independent_topology = false;
 
 static bool IsDualEthernetModule()
 {
-    const uint16_t cpuId = static_cast<uint16_t>(sim1.ccm.cir >> 6);
-    return (cpuId & CPUID_MCF_54417) == CPUID_MCF_54417;
+    int count = 0;
+    for (int ifNumber = GetFirstInterface(); ifNumber; ifNumber = GetNextInterface(ifNumber))
+    {
+        ++count;
+        if (count >= 2)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void EnsureGatewayPortTopology()
@@ -31,12 +39,6 @@ static void EnsureGatewayPortTopology()
         iprintf("Ethernet bridge mode disabled before network init. Port 1=Plant network, Port 2=LEAP network.\r\n");
     }
 
-    if ((bool)DoEtherSwitch)
-    {
-        DoEtherSwitch = false;
-        SaveConfigToStorage();
-        iprintf("Ethernet bridge mode disabled. Port 1=Plant network, Port 2=LEAP network.\r\n");
-    }
 }
 
 static void ForceIndependentDualEthernet(bool *topologyChanged)
@@ -46,14 +48,7 @@ static void ForceIndependentDualEthernet(bool *topologyChanged)
         return;
     }
 
-    if ((bool)DoEtherSwitch)
-    {
-        DoEtherSwitch = false;
-        if (topologyChanged)
-        {
-            *topologyChanged = true;
-        }
-    }
+    (void)topologyChanged;
 }
 
 static const char *GetInterfaceRole(int ifNumber)

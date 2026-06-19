@@ -45,7 +45,7 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := MOD54417_Gateway
+BUILD_ARTIFACT_NAME := MODM7AE70
 BUILD_ARTIFACT_EXTENSION := bin
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
@@ -55,43 +55,43 @@ EXECUTABLES += \
 USER_OBJS.elf \
 
 ELF += \
-MOD54417_Gateway.elf \
+MODM7AE70.elf \
 
 S19FILE += \
-MOD54417_Gateway.s19 \
+MODM7AE70.s19 \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: MOD54417_Gateway.bin
+main-build: MODM7AE70.bin
 
 # Tool invocations
-MOD54417_Gateway.bin: $(ELF) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
+MODM7AE70.bin: $(ELF) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: NB Flashpack'
-	flashpack -output-target bin -cflag S:0 -cflag S:1 -P MODM7AE70 -C -cflag S:3 -S -O "MOD54417_Gateway.bin" $(ELF)
+	flashpack -output-target bin -cflag S:0 -cflag S:1 -P MODM7AE70 -C -cflag S:3 -S -O "MODM7AE70.bin" $(ELF)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-MOD54417_Gateway.elf: $(OBJS) $(USER_OBJS) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
+MODM7AE70.elf: $(OBJS) $(USER_OBJS) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Invoking: GNU C/C++ Linker'
-	arm-unknown-eabi-g++ $(OBJS) $(USER_OBJS) $(LIBS) -Wl,-Map="MOD54417_Gateway.map" -nostartfiles -Wl,--start-group -lnetburner  -lstdc++ -Wl,--end-group -LC:/nburn/platform/MODM7AE70/original/lib -Lnblibs -Wl,-n -TC:/nburn/platform/MODM7AE70/lib/MODM7AE70.ld -Wl,-RC:/nburn/platform/MODM7AE70/lib/sys.ld -Wl,--cref -Wl,--gc-sections -mfpu=fpv5-d16 -mfloat-abi=softfp -mthumb -Wl,--thumb-entry=Reset_Handler -mcpu=cortex-m7 -o"MOD54417_Gateway.elf"
+	arm-unknown-eabi-g++ $(OBJS) $(USER_OBJS) $(LIBS) -Wl,-Map="MODM7AE70.map" -nostartfiles -Wl,--start-group -lnetburner  -lstdc++ -Wl,--end-group -LC:/nburn/platform/MODM7AE70/original/lib -Lnblibs -Wl,-n -TC:/nburn/platform/MODM7AE70/lib/MODM7AE70.ld -Wl,-RC:/nburn/platform/MODM7AE70/lib/sys.ld -Wl,--cref -Wl,--gc-sections -mfpu=fpv5-d16 -mfloat-abi=softfp -mthumb -Wl,--thumb-entry=Reset_Handler -mcpu=cortex-m7 -o"MODM7AE70.elf"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-USER_OBJS.elf: MOD54417_Gateway.elf $(OBJS) $(USER_OBJS)
+USER_OBJS.elf: MODM7AE70.elf $(OBJS) $(USER_OBJS)
 
-MOD54417_Gateway.s19: $(ELF) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
+MODM7AE70.s19: $(ELF) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Invoking: GNU Objcopy'
-	arm-unknown-eabi-objcopy --strip-all --output-target=srec $(ELF) "MOD54417_Gateway.s19"
+	arm-unknown-eabi-objcopy --strip-all --output-target=srec $(ELF) "MODM7AE70.s19"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) MOD54417_Gateway.bin MOD54417_Gateway.elf MOD54417_Gateway.s19 USER_OBJS.elf
+	-$(RM) MODM7AE70.bin MODM7AE70.elf MODM7AE70.s19 USER_OBJS.elf
 	-@echo ' '
 
 .PHONY: all clean dependents main-build

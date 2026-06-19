@@ -3,13 +3,46 @@
  ******************************************************************************/
 
 #include <predef.h>
-#include <sim5441x.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "nb_eth_counters.h"
 
 extern int g_opener_plant_ifnum;
+
+#if defined(MODM7AE70) || defined(SAME70) || defined(CORTEX_M7)
+
+int NbEthReadInterfaceCounters(const unsigned eth_link_instance,
+                               uint32_t *const cntr32_11) {
+  (void)eth_link_instance;
+  if (cntr32_11 == NULL) {
+    return -1;
+  }
+  memset(cntr32_11, 0, sizeof(uint32_t) * 11U);
+  return 0;
+}
+
+int NbEthReadMediaCounters(const unsigned eth_link_instance,
+                           uint32_t *const cntr32_12) {
+  (void)eth_link_instance;
+  if (cntr32_12 == NULL) {
+    return -1;
+  }
+  memset(cntr32_12, 0, sizeof(uint32_t) * 12U);
+  return 0;
+}
+
+void NbEthClearInterfaceCounters(const unsigned eth_link_instance) {
+  (void)eth_link_instance;
+}
+
+void NbEthClearMediaCounters(const unsigned eth_link_instance) {
+  (void)eth_link_instance;
+}
+
+#else
+
+#include <sim5441x.h>
 
 static int NbFecnForEthLinkInstance(const unsigned eth_link_instance) {
   int ifnum;
@@ -152,3 +185,5 @@ void NbEthClearInterfaceCounters(const unsigned eth_link_instance) {
 void NbEthClearMediaCounters(const unsigned eth_link_instance) {
   NbEthClearFecMibBlocks(NbFecnForEthLinkInstance(eth_link_instance));
 }
+
+#endif

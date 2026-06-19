@@ -301,14 +301,21 @@ static bool ApplyEnet1NetworkSave(const char *url, const char **errorCode)
         return false;
     }
 
-    enet1.ip4.mode = mode;
+    InterfaceBlock *ifBlock = GetInterfaceBlock(2);
+    if (!ifBlock)
+    {
+        *errorCode = "interface_not_available";
+        return false;
+    }
+
+    ifBlock->ip4.mode = mode;
     if (needsStatic)
     {
-        enet1.ip4.addr = staticIp;
-        enet1.ip4.mask = staticMask;
-        if (haveGate) enet1.ip4.gate = staticGate;
-        if (haveDns1) enet1.ip4.dns1 = staticDns1;
-        if (haveDns2) enet1.ip4.dns2 = staticDns2;
+        ifBlock->ip4.addr = staticIp;
+        ifBlock->ip4.mask = staticMask;
+        if (haveGate) ifBlock->ip4.gate = staticGate;
+        if (haveDns1) ifBlock->ip4.dns1 = staticDns1;
+        if (haveDns2) ifBlock->ip4.dns2 = staticDns2;
     }
     return true;
 }
@@ -320,6 +327,25 @@ static void WriteEnet1PreviewJson(int sock, bool prependComma)
         fdprintf(sock, ",");
     }
 
+    const char *mode = "DHCP";
+    NBString modeStorage;
+    IPADDR4 staticAddr{};
+    IPADDR4 staticMask{};
+    IPADDR4 staticGate{};
+    IPADDR4 staticDns1{};
+    IPADDR4 staticDns2{};
+    InterfaceBlock *ifBlock = GetInterfaceBlock(2);
+    if (ifBlock)
+    {
+        modeStorage = static_cast<NBString>(ifBlock->ip4.mode);
+        mode = modeStorage.c_str();
+        staticAddr = static_cast<IPADDR4>(ifBlock->ip4.addr);
+        staticMask = static_cast<IPADDR4>(ifBlock->ip4.mask);
+        staticGate = static_cast<IPADDR4>(ifBlock->ip4.gate);
+        staticDns1 = static_cast<IPADDR4>(ifBlock->ip4.dns1);
+        staticDns2 = static_cast<IPADDR4>(ifBlock->ip4.dns2);
+    }
+
     fdprintf(sock,
              "{\"interface\":2,\"port\":2,\"role\":\"leap\",\"portLabel\":\"Port 2 - LEAP Network\","
              "\"name\":\"Ethernet1\",\"mode\":\"%s\","
@@ -327,12 +353,12 @@ static void WriteEnet1PreviewJson(int sock, bool prependComma)
              "\"staticDNS1\":\"%hI\",\"staticDNS2\":\"%hI\","
              "\"activeAddr\":\"0.0.0.0\",\"activeMask\":\"0.0.0.0\",\"activeGate\":\"0.0.0.0\","
              "\"activeDNS1\":\"0.0.0.0\",\"activeDNS2\":\"0.0.0.0\",\"autoIPAddr\":\"0.0.0.0\"}",
-             static_cast<NBString>(enet1.ip4.mode).c_str(),
-             static_cast<IPADDR4>(enet1.ip4.addr),
-             static_cast<IPADDR4>(enet1.ip4.mask),
-             static_cast<IPADDR4>(enet1.ip4.gate),
-             static_cast<IPADDR4>(enet1.ip4.dns1),
-             static_cast<IPADDR4>(enet1.ip4.dns2));
+             mode,
+             staticAddr,
+             staticMask,
+             staticGate,
+             staticDns1,
+             staticDns2);
 }
 
 static int HandleNetworkConfigApi(int sock, HTTP_Request &req)

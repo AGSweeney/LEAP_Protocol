@@ -50,13 +50,12 @@
 
 #include <sim.h>
 
-#include <sim5441x.h>
-
 #include <ethervars.h>
 
 #include <cstdio>
 
 #include <cstring>
+#include <cerrno>
 
 
 
@@ -104,6 +103,15 @@ extern "C" {
 
 #include "leap/leap_protocol.h"
 
+}
+
+extern "C" __attribute__((weak)) int _open(const char* path, int flags, int mode)
+{
+    (void)path;
+    (void)flags;
+    (void)mode;
+    errno = ENOSYS;
+    return -1;
 }
 
 
@@ -192,12 +200,6 @@ static void GatewayInitSystem()
 
     InitBuffers();
     ConfigInit();
-
-    if (IsDualEthernetModule() && static_cast<bool>(DoEtherSwitch))
-    {
-        DoEtherSwitch = false;
-        g_gateway_forced_independent_topology = true;
-    }
 
     IrqStdio();
     InitializeStack();

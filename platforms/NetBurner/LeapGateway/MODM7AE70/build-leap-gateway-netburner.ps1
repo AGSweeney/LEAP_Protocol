@@ -1,5 +1,5 @@
-# Build leap_core + shared LeapGateway sources as a static m68k library for
-# NetBurner MOD54417 LEAP Gateway (embedded LeapOS-Gateway).
+# Build leap_core + shared LeapGateway sources as a static ARM library for
+# NetBurner MODM7AE70 LEAP Gateway (embedded LeapOS-Gateway).
 #
 # Usage: .\build-leap-gateway-netburner.ps1
 
@@ -16,20 +16,20 @@ $ObjDir = Join-Path $BuildDir 'objs'
 $OutLib = Join-Path $ScriptDir 'leap\build-work\libleap_gateway_netburner.a'
 $NndkRoot = if ($env:NNDK_ROOT) { $env:NNDK_ROOT } else { 'C:\nburn' }
 $ToolchainBin = Join-Path $NndkRoot 'gcc\bin'
-$Gcc = Join-Path $ToolchainBin 'm68k-unknown-elf-gcc.exe'
-$Gxx = Join-Path $ToolchainBin 'm68k-unknown-elf-g++.exe'
-$Ar = Join-Path $ToolchainBin 'm68k-unknown-elf-ar.exe'
-$Ranlib = Join-Path $ToolchainBin 'm68k-unknown-elf-ranlib.exe'
+$Gcc = Join-Path $ToolchainBin 'arm-unknown-eabi-gcc.exe'
+$Gxx = Join-Path $ToolchainBin 'arm-unknown-eabi-g++.exe'
+$Ar = Join-Path $ToolchainBin 'arm-unknown-eabi-ar.exe'
+$Ranlib = Join-Path $ToolchainBin 'arm-unknown-eabi-ranlib.exe'
 
-if (-not (Test-Path $Gcc)) { throw "m68k toolchain not found at $Gcc" }
+if (-not (Test-Path $Gcc)) { throw "arm toolchain not found at $Gcc" }
 if (-not (Test-Path $LeapCore)) { throw "leap_core not found at $LeapCore" }
 if (-not (Test-Path $SharedGw)) { throw "LeapGateway shared sources not found at $SharedGw" }
 
 $NbInc = @(
     '-IC:/nburn/nbrtos/include',
-    '-IC:/nburn/platform/MOD5441X/include',
-    '-IC:/nburn/arch/coldfire/include',
-    '-IC:/nburn/arch/coldfire/cpu/MCF5441X/include',
+    '-IC:/nburn/platform/MODM7AE70/include',
+    '-IC:/nburn/arch/cortex-m7/include',
+    '-IC:/nburn/arch/cortex-m7/cpu/SAME70/include',
     '-IC:/nburn/libraries/include'
 ) -join ' '
 
@@ -40,9 +40,10 @@ $GwInc = @(
     "-I$(Join-Path $LeapCore 'inc')"
 ) -join ' '
 
-$Defines = '-DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DMOD5441X -DMCF5441X -DCOLDFIRE'
-$Cflags = "-mcpu=54415 -O2 -Wall -std=gnu17 $Defines $NbInc $GwInc"
-$Cxxflags = "-mcpu=54415 -O2 -Wall -std=gnu++17 -fno-exceptions -fno-rtti $Defines $NbInc $GwInc"
+$Defines = '-DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DMODM7AE70 -DSAME70 -DCORTEX_M7'
+$ArchFlags = '-mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=softfp -mthumb'
+$Cflags = "$ArchFlags -O2 -Wall -std=gnu17 $Defines $NbInc $GwInc"
+$Cxxflags = "$ArchFlags -O2 -Wall -std=gnu++17 -fno-exceptions -fno-rtti $Defines $NbInc $GwInc"
 
 $CoreSrc = @(
     'src/crc/leap_crc.c',

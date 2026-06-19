@@ -1,9 +1,9 @@
-# Build OpENer as a static m68k library for LEAP Gateway on NetBurner MOD5441X.
+# Build OpENer as a static ARM library for LEAP Gateway on NetBurner MODM7AE70.
 # Stages OpENer-Enhanced, injects the NETBURNER port overlay, and merges libs
 # into opener/build-work/libopener_netburner.a
 #
 # Usage: .\build-opener-netburner.ps1
-# Env:   OPENER_ROOT, NNDK_ROOT, LEAP_OPENER_BUILD_DIR (optional)
+# Env:   OPENER_ROOT, NNDK_ROOT, LEAP_OPENER_BUILD_DIR, CMAKE_EXE (optional)
 
 $ErrorActionPreference = 'Stop'
 
@@ -15,29 +15,29 @@ $StageDir = Join-Path $BuildDir 'opener-src'
 $GateH = Join-Path $ScriptDir 'opener\opener_netburner_gate.h'
 $OutLib = Join-Path $ScriptDir 'opener\build-work\libopener_netburner.a'
 $ToolchainBin = Join-Path $NndkRoot 'gcc\bin'
-$Gcc = Join-Path $ToolchainBin 'm68k-unknown-elf-gcc.exe'
-$Gxx = Join-Path $ToolchainBin 'm68k-unknown-elf-g++.exe'
-$Ar = Join-Path $ToolchainBin 'm68k-unknown-elf-ar.exe'
-$Ranlib = Join-Path $ToolchainBin 'm68k-unknown-elf-ranlib.exe'
+$Gcc = Join-Path $ToolchainBin 'arm-unknown-eabi-gcc.exe'
+$Gxx = Join-Path $ToolchainBin 'arm-unknown-eabi-g++.exe'
+$Ar = Join-Path $ToolchainBin 'arm-unknown-eabi-ar.exe'
+$Ranlib = Join-Path $ToolchainBin 'arm-unknown-eabi-ranlib.exe'
 
 if (-not (Test-Path (Join-Path $OpenerRoot 'source'))) {
     throw "OpENer source not found at $OpenerRoot. Set OPENER_ROOT to your OpENer-Enhanced checkout."
 }
 
 if (-not (Test-Path $Gcc)) {
-    throw "m68k toolchain not found at $Gcc"
+    throw "arm toolchain not found at $Gcc"
 }
 
-$Cmake = Join-Path $ToolchainBin 'cmake.exe'
+$Cmake = if ($env:CMAKE_EXE) { $env:CMAKE_EXE } else { Join-Path $ToolchainBin 'cmake.exe' }
 if (-not (Test-Path $Cmake)) {
     $cmakeCmd = Get-Command cmake -ErrorAction SilentlyContinue
     if (-not $cmakeCmd) {
-        throw 'cmake not found in PATH or NNDK toolchain'
+        throw 'cmake not found. Set CMAKE_EXE to full cmake.exe path or add cmake to PATH.'
     }
     $Cmake = $cmakeCmd.Source
 }
 
-$NbCflags = "-mcpu=54415 -O2 -I$StageDir -include opener_netburner_gate.h -DCIP_FILE_OBJECT=0 -DCIP_SECURITY_OBJECTS=0 -DOPENER_NETBURNER -DMOD5441X -DMCF5441X -DCOLDFIRE"
+$NbCflags = "-mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=softfp -mthumb -O2 -I$StageDir -include opener_netburner_gate.h -DCIP_FILE_OBJECT=0 -DCIP_SECURITY_OBJECTS=0 -DOPENER_NETBURNER -DMODM7AE70 -DSAME70 -DCORTEX_M7"
 $NbCxxflags = "$NbCflags -fno-exceptions -fno-rtti -std=gnu++17"
 
 Write-Host '=== Staging OpENer source ==='
@@ -73,7 +73,7 @@ Write-Host '=== Patching staged OpENer for NETBURNER ==='
 & (Join-Path $ScriptDir 'opener\patch-opener-netburner.ps1') -StageDir $StageDir
 
 $CmakeDir = Join-Path $BuildDir 'cmake'
-Write-Host '=== Configuring OpENer (NETBURNER, static m68k) ==='
+Write-Host '=== Configuring OpENer (NETBURNER, static ARM) ==='
 $buildsupport = (Join-Path $StageDir 'buildsupport') -replace '\\', '/'
 & $Cmake -S $StageDir -B $CmakeDir -G 'Unix Makefiles' `
     -DOpENer_PLATFORM=NETBURNER `
