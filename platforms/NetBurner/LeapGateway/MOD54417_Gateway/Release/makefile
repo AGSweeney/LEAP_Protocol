@@ -60,6 +60,9 @@ MOD54417_Gateway.elf \
 S19FILE += \
 MOD54417_Gateway.s19 \
 
+NBECLIPSE_TOOLCHAIN_TC30_TOOL_NB_FLASHPACK_OUTPUT_OUTPUTS += \
+default.bin \
+
 
 # All Target
 all: main-build
@@ -68,16 +71,16 @@ all: main-build
 main-build: MOD54417_Gateway.bin
 
 # Tool invocations
-MOD54417_Gateway.bin: $(ELF) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
+MOD54417_Gateway.bin: $(S19FILE) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Building target: $@'
-	@echo 'Invoking: NB Flashpack'
-	flashpack -output-target bin -cflag S:0 -cflag S:1 -P MODM7AE70 -C -cflag S:3 -S -O "MOD54417_Gateway.bin" $(ELF)
+	@echo 'Invoking: NB Compcode'
+	compcode $(S19FILE) "MOD54417_Gateway.bin" 0xC0040000 0xC1FC0000 -PMOD5441X -B -R -M MOD54417_Gateway.map
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 MOD54417_Gateway.elf: $(OBJS) $(USER_OBJS) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Invoking: GNU C/C++ Linker'
-	arm-unknown-eabi-g++ $(OBJS) $(USER_OBJS) $(LIBS) -Wl,-Map="MOD54417_Gateway.map" -nostartfiles -Wl,--start-group -lnetburner  -lstdc++ -Wl,--end-group -LC:/nburn/platform/MODM7AE70/original/lib -Lnblibs -Wl,-n -TC:/nburn/platform/MODM7AE70/lib/MODM7AE70.ld -Wl,-RC:/nburn/platform/MODM7AE70/lib/sys.ld -Wl,--cref -Wl,--gc-sections -mfpu=fpv5-d16 -mfloat-abi=softfp -mthumb -Wl,--thumb-entry=Reset_Handler -mcpu=cortex-m7 -o"MOD54417_Gateway.elf"
+	m68k-unknown-elf-g++ $(OBJS) $(USER_OBJS) $(LIBS) -Wl,-Map="MOD54417_Gateway.map" -Wl,--start-group -lnetburner  -lstdc++ -Wl,--end-group -LC:/nburn/platform/MOD5441X/original/lib -Lnblibs -Wl,-n -TC:/nburn/platform/MOD5441X/lib/MOD5441X.ld -Wl,-RC:/nburn/platform/MOD5441X/lib/sys.ld -Wl,--cref -Wl,--gc-sections -mcpu=54415 -o"MOD54417_Gateway.elf"
 	@echo 'Finished building: $@'
 	@echo ' '
 
@@ -85,13 +88,19 @@ USER_OBJS.elf: MOD54417_Gateway.elf $(OBJS) $(USER_OBJS)
 
 MOD54417_Gateway.s19: $(ELF) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Invoking: GNU Objcopy'
-	arm-unknown-eabi-objcopy --strip-all --output-target=srec $(ELF) "MOD54417_Gateway.s19"
+	m68k-unknown-elf-objcopy --strip-all --output-target=srec $(ELF) "MOD54417_Gateway.s19"
+	@echo 'Finished building: $@'
+	@echo ' '
+
+default.bin: $(ELF) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
+	@echo 'Invoking: NB Flashpack'
+	flashpack -output-target bin -cflag S:0 -cflag S:1 -P MOD5441X -C -cflag S:3 -S -O "default.bin" $(ELF)
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) MOD54417_Gateway.bin MOD54417_Gateway.elf MOD54417_Gateway.s19 USER_OBJS.elf
+	-$(RM) MOD54417_Gateway.bin MOD54417_Gateway.elf MOD54417_Gateway.s19 USER_OBJS.elf default.bin
 	-@echo ' '
 
 .PHONY: all clean dependents main-build

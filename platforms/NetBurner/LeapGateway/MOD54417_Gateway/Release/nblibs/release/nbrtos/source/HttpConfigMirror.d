@@ -4,12 +4,9 @@ nblibs/release/nbrtos/source/HttpConfigMirror.o: \
  C:/nburn/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
- C:/nburn/arch/cortex-m7/include/basictypes.h \
- C:/nburn/arch/cortex-m7/cpu/SAME70/include/cm_core_config.h \
- C:/nburn/arch/cortex-m7/include/cmsis_compiler.h \
- C:/nburn/arch/cortex-m7/include/cmsis_gcc.h \
+ C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nbrtos.h \
- C:/nburn/arch/cortex-m7/include/nbrtoscpu.h \
+ C:/nburn/arch/coldfire/include/nbrtoscpu.h \
  C:/nburn/nbrtos/include/utils.h C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
  C:/nburn/nbrtos/include/nbprintfinternal.h \
@@ -19,7 +16,9 @@ nblibs/release/nbrtos/source/HttpConfigMirror.o: \
  C:/nburn/nbrtos/include/tcp_private.h \
  C:/nburn/libraries/include/crypto/wolfssl/ssl.h \
  C:/nburn/libraries/include/crypto/wolfssl/wolfcrypt/settings.h \
- C:/nburn/libraries/include/crypto/platform/MODM7AE70/user_settings.h \
+ C:/nburn/libraries/include/crypto/platform/MOD5441X/user_settings.h \
+ C:/nburn/nbrtos/include/endian.h \
+ C:/nburn/arch/coldfire/cpu/MCF5441X/include/cpu.h \
  C:/nburn/libraries/include/crypto/wolfssl/wolfcrypt/visibility.h \
  C:/nburn/libraries/include/crypto/wolfssl/version.h \
  C:/nburn/libraries/include/crypto/wolfssl/error-ssl.h \
@@ -42,7 +41,7 @@ nblibs/release/nbrtos/source/HttpConfigMirror.o: \
  C:/nburn/nbrtos/include/buffers.h C:/nburn/nbrtos/include/counters.h \
  C:/nburn/nbrtos/include/arp.h C:/nburn/nbrtos/include/config_obj.h \
  C:/nburn/nbrtos/include/nbstring.h C:/nburn/nbrtos/include/fd_adapter.h \
- C:/nburn/platform/MODM7AE70/include/plat_cfg_types.h \
+ C:/nburn/platform/MOD5441X/include/plat_cfg_types.h \
  C:/nburn/nbrtos/include/htmlfiles.h C:/nburn/nbrtos/include/http.h \
  C:/nburn/nbrtos/include/httppost.h C:/nburn/nbrtos/include/json_lexer.h \
  C:/nburn/nbrtos/include/webclient/web_buffers.h \
@@ -62,17 +61,11 @@ C:/nburn/nbrtos/include/constants-overload.h:
 
 C:/nburn/nbrtos/include/constants-overload-undefs.h:
 
-C:/nburn/arch/cortex-m7/include/basictypes.h:
-
-C:/nburn/arch/cortex-m7/cpu/SAME70/include/cm_core_config.h:
-
-C:/nburn/arch/cortex-m7/include/cmsis_compiler.h:
-
-C:/nburn/arch/cortex-m7/include/cmsis_gcc.h:
+C:/nburn/arch/coldfire/include/basictypes.h:
 
 C:/nburn/nbrtos/include/nbrtos.h:
 
-C:/nburn/arch/cortex-m7/include/nbrtoscpu.h:
+C:/nburn/arch/coldfire/include/nbrtoscpu.h:
 
 C:/nburn/nbrtos/include/utils.h:
 
@@ -100,7 +93,11 @@ C:/nburn/libraries/include/crypto/wolfssl/ssl.h:
 
 C:/nburn/libraries/include/crypto/wolfssl/wolfcrypt/settings.h:
 
-C:/nburn/libraries/include/crypto/platform/MODM7AE70/user_settings.h:
+C:/nburn/libraries/include/crypto/platform/MOD5441X/user_settings.h:
+
+C:/nburn/nbrtos/include/endian.h:
+
+C:/nburn/arch/coldfire/cpu/MCF5441X/include/cpu.h:
 
 C:/nburn/libraries/include/crypto/wolfssl/wolfcrypt/visibility.h:
 
@@ -156,7 +153,7 @@ C:/nburn/nbrtos/include/nbstring.h:
 
 C:/nburn/nbrtos/include/fd_adapter.h:
 
-C:/nburn/platform/MODM7AE70/include/plat_cfg_types.h:
+C:/nburn/platform/MOD5441X/include/plat_cfg_types.h:
 
 C:/nburn/nbrtos/include/htmlfiles.h:
 

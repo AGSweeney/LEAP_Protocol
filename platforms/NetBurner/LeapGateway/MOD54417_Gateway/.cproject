@@ -16,7 +16,7 @@
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 				<configuration artifactExtension="bin" artifactName="MOD54417_Gateway" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="nbeclipse.toolchain.nbde30.exe.release.2144168614" name="Release" parent="nbeclipse.toolchain.nbde30.exe.release">
 					<folderInfo id="nbeclipse.toolchain.nbde30.exe.release.2144168614." name="/" resourcePath="">
-						<toolChain id="nbeclipse.toolchain.nbde30.exe.release.tc.771985994" name="NetBurner Toolchain" superClass="nbeclipse.toolchain.nbde30.exe.release.tc" targetTool="nbeclipse.toolchain.tc30.tool.nb.flashpack">
+						<toolChain id="nbeclipse.toolchain.nbde30.exe.release.tc.771985994" name="NetBurner Toolchain" superClass="nbeclipse.toolchain.nbde30.exe.release.tc" targetTool="nbeclipse.toolchain.tc30.tool.nb.compcode">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="nbeclipse.toolchain.tc30.target.1980764733" isAbstract="false" name="NetBurner Device" osList="all" superClass="nbeclipse.toolchain.tc30.target"/>
 							<builder buildPath="${workspace_loc:/MOD54417_Gateway}/Release" enableAutoBuild="true" id="nbeclipse.toolchain.tc30.builder.270867778" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="nbeclipse.toolchain.tc30.builder"/>
 							<tool id="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.1852822084" name="GNU C Compiler" superClass="nbeclipse.toolchain.tc30.tool.gnu.c.compiler">
@@ -35,7 +35,7 @@
 									<listOptionValue builtIn="false" value="${NNDK_ROOT}/platform/${PLATFORM}/original/lib"/>
 									<listOptionValue builtIn="false" value="nblibs"/>
 								</option>
-								<option id="gnu.cpp.link.option.nostart.1332214575" superClass="gnu.cpp.link.option.nostart" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.link.option.nostart.1332214575" superClass="gnu.cpp.link.option.nostart" value="false" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.844926137" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -46,8 +46,8 @@
 								<inputType id="nbeclipse.toolchain.tc30.tool.gnu.assembler.input.399367225" name="GNU Assembler Input" superClass="nbeclipse.toolchain.tc30.tool.gnu.assembler.input"/>
 							</tool>
 							<tool id="nbeclipse.toolchain.tc30.tool.gnu.objcopy.1731856078" name="GNU Objcopy" superClass="nbeclipse.toolchain.tc30.tool.gnu.objcopy"/>
-							<tool id="nbeclipse.toolchain.tc30.tool.nb.compcode.928350331" isHidden="true" name="NB Compcode" superClass="nbeclipse.toolchain.tc30.tool.nb.compcode"/>
-							<tool id="nbeclipse.toolchain.tc30.tool.nb.flashpack.1864580116" isHidden="false" name="NB Flashpack" superClass="nbeclipse.toolchain.tc30.tool.nb.flashpack"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.compcode.928350331" isHidden="false" name="NB Compcode" superClass="nbeclipse.toolchain.tc30.tool.nb.compcode"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.flashpack.1864580116" isHidden="true" name="NB Flashpack" superClass="nbeclipse.toolchain.tc30.tool.nb.flashpack"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
@@ -73,7 +73,7 @@
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 				<configuration artifactExtension="bin" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug" cleanCommand="rm -rf" description="" id="nbeclipse.toolchain.nbde30.exe.debug.268507165" name="Debug" parent="nbeclipse.toolchain.nbde30.exe.debug">
 					<folderInfo id="nbeclipse.toolchain.nbde30.exe.debug.268507165." name="/" resourcePath="">
-						<toolChain id="nbeclipse.toolchain.nbde30.exe.debug.tc.1992958056" name="NetBurner Toolchain" superClass="nbeclipse.toolchain.nbde30.exe.debug.tc" targetTool="nbeclipse.toolchain.tc30.tool.nb.flashpack">
+						<toolChain id="nbeclipse.toolchain.nbde30.exe.debug.tc.1992958056" name="NetBurner Toolchain" superClass="nbeclipse.toolchain.nbde30.exe.debug.tc" targetTool="nbeclipse.toolchain.tc30.tool.nb.compcode">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="nbeclipse.toolchain.tc30.target.1617998294" isAbstract="false" name="NetBurner Device" osList="all" superClass="nbeclipse.toolchain.tc30.target"/>
 							<builder arguments="NBDEBUG=1 -j" buildPath="${workspace_loc:/MOD54417_Gateway}/Debug" enableAutoBuild="true" id="nbeclipse.toolchain.tc30.builder.62216533" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="nbeclipse.toolchain.tc30.builder"/>
 							<tool id="nbeclipse.toolchain.tc30.tool.gnu.c.compiler.1653033900" name="GNU C Compiler" superClass="nbeclipse.toolchain.tc30.tool.gnu.c.compiler">
@@ -98,7 +98,7 @@
 									<listOptionValue builtIn="false" value="${NNDK_ROOT}/platform/${PLATFORM}/original/lib"/>
 									<listOptionValue builtIn="false" value="nblibs"/>
 								</option>
-								<option id="gnu.cpp.link.option.nostart.290954583" superClass="gnu.cpp.link.option.nostart" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.link.option.nostart.290954583" superClass="gnu.cpp.link.option.nostart" value="false" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1969848217" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -109,8 +109,8 @@
 								<inputType id="nbeclipse.toolchain.tc30.tool.gnu.assembler.input.1238535642" name="GNU Assembler Input" superClass="nbeclipse.toolchain.tc30.tool.gnu.assembler.input"/>
 							</tool>
 							<tool id="nbeclipse.toolchain.tc30.tool.gnu.objcopy.2109445077" name="GNU Objcopy" superClass="nbeclipse.toolchain.tc30.tool.gnu.objcopy"/>
-							<tool id="nbeclipse.toolchain.tc30.tool.nb.compcode.1276429393" isHidden="true" name="NB Compcode" superClass="nbeclipse.toolchain.tc30.tool.nb.compcode"/>
-							<tool id="nbeclipse.toolchain.tc30.tool.nb.flashpack.830597990" isHidden="false" name="NB Flashpack" superClass="nbeclipse.toolchain.tc30.tool.nb.flashpack"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.compcode.1276429393" isHidden="false" name="NB Compcode" superClass="nbeclipse.toolchain.tc30.tool.nb.compcode"/>
+							<tool id="nbeclipse.toolchain.tc30.tool.nb.flashpack.830597990" isHidden="true" name="NB Flashpack" superClass="nbeclipse.toolchain.tc30.tool.nb.flashpack"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>

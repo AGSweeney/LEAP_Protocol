@@ -28,14 +28,36 @@ if (-not (Test-Path $Gcc)) {
     throw "m68k toolchain not found at $Gcc"
 }
 
-$Cmake = Join-Path $ToolchainBin 'cmake.exe'
-if (-not (Test-Path $Cmake)) {
-    $cmakeCmd = Get-Command cmake -ErrorAction SilentlyContinue
-    if (-not $cmakeCmd) {
-        throw 'cmake not found in PATH or NNDK toolchain'
+function Resolve-CMake {
+    if ($env:CMAKE_EXE -and (Test-Path $env:CMAKE_EXE)) {
+        return $env:CMAKE_EXE
     }
-    $Cmake = $cmakeCmd.Source
+
+    $nndkCmake = Join-Path $ToolchainBin 'cmake.exe'
+    if (Test-Path $nndkCmake) {
+        return $nndkCmake
+    }
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (Test-Path $vswhere) {
+        $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.CMake.Project -property installationPath
+        if ($LASTEXITCODE -eq 0 -and $vsPath) {
+            $vsCmake = Join-Path $vsPath 'Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
+            if (Test-Path $vsCmake) {
+                return $vsCmake
+            }
+        }
+    }
+
+    $cmakeCmd = Get-Command cmake -ErrorAction SilentlyContinue
+    if ($cmakeCmd) {
+        return $cmakeCmd.Source
+    }
+
+    throw 'cmake not found. Set CMAKE_EXE to full cmake.exe path, install Visual Studio CMake tools, or add cmake to PATH.'
 }
+
+$Cmake = Resolve-CMake
 
 $NbCflags = "-mcpu=54415 -O2 -I$StageDir -include opener_netburner_gate.h -DCIP_FILE_OBJECT=0 -DCIP_SECURITY_OBJECTS=0 -DOPENER_NETBURNER -DMOD5441X -DMCF5441X -DCOLDFIRE"
 $NbCxxflags = "$NbCflags -fno-exceptions -fno-rtti -std=gnu++17"
@@ -91,7 +113,10 @@ $buildsupport = (Join-Path $StageDir 'buildsupport') -replace '\\', '/'
     -DCMAKE_CXX_COMPILER="$Gxx" `
     -DCMAKE_AR="$Ar" `
     -DCMAKE_RANLIB="$Ranlib" `
+    -DCMAKE_SYSTEM_NAME=Generic `
     -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY `
+    -DCMAKE_C_COMPILER_WORKS=TRUE `
+    -DCMAKE_CXX_COMPILER_WORKS=TRUE `
     -DCMAKE_C_FLAGS="$NbCflags" `
     -DCMAKE_CXX_FLAGS="$NbCxxflags"
 if ($LASTEXITCODE -ne 0) {

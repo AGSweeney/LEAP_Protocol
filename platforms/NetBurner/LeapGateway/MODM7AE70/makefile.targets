@@ -21,6 +21,14 @@ endif
 clean-nblibs:
 	$(RM) $(OBJDIR)
 
+$(OPENER_LIB): ../build-opener-netburner.ps1
+	@echo 'Building OpENer NetBurner static library: $@'
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-opener-netburner.ps1
+
+$(LEAP_GW_LIB): ../build-leap-gateway-netburner.ps1
+	@echo 'Building LEAP Gateway NetBurner static library: $@'
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-leap-gateway-netburner.ps1
+
 # Legacy AutoUpdate image (*_APP.s19) for first-time flash. Run from Release after build.
 ifneq ($(strip $(BUILD_ARTIFACT_NAME)),)
 app-s19: $(BUILD_ARTIFACT_NAME).s19

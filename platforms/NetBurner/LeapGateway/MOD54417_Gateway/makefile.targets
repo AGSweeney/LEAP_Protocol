@@ -21,6 +21,14 @@ endif
 clean-nblibs:
 	$(RM) $(OBJDIR)
 
+$(OPENER_LIB): ../build-opener-netburner.ps1
+	@echo 'Building OpENer NetBurner static library: $@'
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-opener-netburner.ps1
+
+$(LEAP_GW_LIB): ../build-leap-gateway-netburner.ps1
+	@echo 'Building LEAP Gateway NetBurner static library: $@'
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-leap-gateway-netburner.ps1
+
 # Legacy AutoUpdate image (*_APP.s19) for MOD5441x first-time flash. Run from Release after build.
 ifneq ($(strip $(BUILD_ARTIFACT_NAME)),)
 app-s19: $(BUILD_ARTIFACT_NAME).s19
@@ -66,17 +74,22 @@ GW_APP_C_BASE := -std=gnu11 -O2 -Wall -c -fmessage-length=0 -fdata-sections -ffu
 	-gdwarf-2 -Wno-write-strings -fno-omit-frame-pointer \
 	-falign-functions=4 -fasynchronous-unwind-tables -mcpu=54415 -DMOD5441X -DMCF5441X -DCOLDFIRE
 
+GW_ARM_ONLY_FLAGS := -mcpu=cortex-m7 -DMODM7AE70 -DSAME70 -DCORTEX_M7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=softfp
+GW_APP_CPPFLAGS := $(filter-out $(GW_ARM_ONLY_FLAGS),$(CPPFLAGS))
+GW_APP_CXXFLAGS := $(filter-out $(GW_ARM_ONLY_FLAGS),$(CXXFLAGS))
+GW_APP_CFLAGS := $(filter-out $(GW_ARM_ONLY_FLAGS),$(CFLAGS))
+
 ./src/main.o: ../src/main.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: GNU C++ Compiler'
-	m68k-unknown-elf-g++ $(GW_APP_CXX_BASE) $(CXXFLAGS) $(CPPFLAGS) $(EXTRACPPFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	m68k-unknown-elf-g++ $(GW_APP_CXX_BASE) $(GW_APP_CXXFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACPPFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
 ./src/platform/leap_transport_nb.o: ../src/platform/leap_transport_nb.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: GNU C++ Compiler'
-	m68k-unknown-elf-g++ $(GW_APP_CXX_BASE) $(CXXFLAGS) $(CPPFLAGS) $(EXTRACPPFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	m68k-unknown-elf-g++ $(GW_APP_CXX_BASE) $(GW_APP_CXXFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACPPFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
@@ -84,6 +97,6 @@ GW_APP_C_BASE := -std=gnu11 -O2 -Wall -c -fmessage-length=0 -fdata-sections -ffu
 	@echo 'Building file: $<'
 	@echo 'Invoking: GNU C Compiler'
 	@mkdir -p $(dir $@)
-	m68k-unknown-elf-gcc $(GW_APP_C_BASE) $(CFLAGS) $(CPPFLAGS) $(EXTRACFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	m68k-unknown-elf-gcc $(GW_APP_C_BASE) $(GW_APP_CFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '

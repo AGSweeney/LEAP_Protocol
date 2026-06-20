@@ -5,11 +5,8 @@ nblibs/release/nbrtos/source/Socks.o: C:/nburn/nbrtos/source/Socks.cpp \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
  C:/nburn/nbrtos/include/nbrtos.h \
- C:/nburn/arch/cortex-m7/include/basictypes.h \
- C:/nburn/arch/cortex-m7/cpu/SAME70/include/cm_core_config.h \
- C:/nburn/arch/cortex-m7/include/cmsis_compiler.h \
- C:/nburn/arch/cortex-m7/include/cmsis_gcc.h \
- C:/nburn/arch/cortex-m7/include/nbrtoscpu.h \
+ C:/nburn/arch/coldfire/include/basictypes.h \
+ C:/nburn/arch/coldfire/include/nbrtoscpu.h \
  C:/nburn/nbrtos/include/fdprintf.h C:/nburn/nbrtos/include/dns.h \
  C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
@@ -25,7 +22,7 @@ nblibs/release/nbrtos/source/Socks.o: C:/nburn/nbrtos/source/Socks.cpp \
  C:/nburn/nbrtos/include/nettimer.h C:/nburn/nbrtos/include/utils.h \
  C:/nburn/nbrtos/include/config_netobj.h \
  C:/nburn/nbrtos/include/config_obj.h \
- C:/nburn/platform/MODM7AE70/include/plat_cfg_types.h \
+ C:/nburn/platform/MOD5441X/include/plat_cfg_types.h \
  C:/nburn/nbrtos/include/dhcpclient.h \
  C:/nburn/nbrtos/include/discoveryservlet.h \
  C:/nburn/nbrtos/include/servlets.h \
@@ -52,15 +49,9 @@ C:/nburn/nbrtos/include/constants-overload-undefs.h:
 
 C:/nburn/nbrtos/include/nbrtos.h:
 
-C:/nburn/arch/cortex-m7/include/basictypes.h:
+C:/nburn/arch/coldfire/include/basictypes.h:
 
-C:/nburn/arch/cortex-m7/cpu/SAME70/include/cm_core_config.h:
-
-C:/nburn/arch/cortex-m7/include/cmsis_compiler.h:
-
-C:/nburn/arch/cortex-m7/include/cmsis_gcc.h:
-
-C:/nburn/arch/cortex-m7/include/nbrtoscpu.h:
+C:/nburn/arch/coldfire/include/nbrtoscpu.h:
 
 C:/nburn/nbrtos/include/fdprintf.h:
 
@@ -106,7 +97,7 @@ C:/nburn/nbrtos/include/config_netobj.h:
 
 C:/nburn/nbrtos/include/config_obj.h:
 
-C:/nburn/platform/MODM7AE70/include/plat_cfg_types.h:
+C:/nburn/platform/MOD5441X/include/plat_cfg_types.h:
 
 C:/nburn/nbrtos/include/dhcpclient.h:
 
