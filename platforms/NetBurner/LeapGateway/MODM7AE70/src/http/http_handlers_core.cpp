@@ -12,6 +12,22 @@
 static bool ParseIpv4Text(const char *text, IPADDR4 &ipOut);
 static bool StrIStartsWith(const char *text, const char *prefix);
 
+static void FormatIpv4Text(IPADDR4 ip, char *out, size_t outLen)
+{
+    const uint32_t raw = static_cast<uint32_t>(ip);
+    if (!out || outLen == 0)
+    {
+        return;
+    }
+    snprintf(out,
+             outLen,
+             "%lu.%lu.%lu.%lu",
+             (unsigned long)(raw & 0xFFUL),
+             (unsigned long)((raw >> 8) & 0xFFUL),
+             (unsigned long)((raw >> 16) & 0xFFUL),
+             (unsigned long)((raw >> 24) & 0xFFUL));
+}
+
 static const char *NormalizeIpv4Mode(const char *mode)
 {
     if (!mode || !mode[0]) return nullptr;
@@ -71,6 +87,17 @@ static bool HasNetworkQueryParam(const char *url, int ifNumber, bool allowUnpref
 static void WriteInterfaceJson(int sock, int ifNumber, bool prependComma)
 {
     InterfaceBlock *ifBlock = GetInterfaceBlock(ifNumber);
+    char staticAddr[16]{0};
+    char staticMask[16]{0};
+    char staticGate[16]{0};
+    char staticDns1[16]{0};
+    char staticDns2[16]{0};
+    char activeAddr[16]{0};
+    char activeMask[16]{0};
+    char activeGate[16]{0};
+    char activeDns1[16]{0};
+    char activeDns2[16]{0};
+    char autoIpAddr[16]{0};
     if (!ifBlock)
     {
         return;
@@ -81,29 +108,41 @@ static void WriteInterfaceJson(int sock, int ifNumber, bool prependComma)
         fdprintf(sock, ",");
     }
 
+    FormatIpv4Text(static_cast<IPADDR4>(ifBlock->ip4.addr), staticAddr, sizeof(staticAddr));
+    FormatIpv4Text(static_cast<IPADDR4>(ifBlock->ip4.mask), staticMask, sizeof(staticMask));
+    FormatIpv4Text(static_cast<IPADDR4>(ifBlock->ip4.gate), staticGate, sizeof(staticGate));
+    FormatIpv4Text(static_cast<IPADDR4>(ifBlock->ip4.dns1), staticDns1, sizeof(staticDns1));
+    FormatIpv4Text(static_cast<IPADDR4>(ifBlock->ip4.dns2), staticDns2, sizeof(staticDns2));
+    FormatIpv4Text(InterfaceIP(ifNumber), activeAddr, sizeof(activeAddr));
+    FormatIpv4Text(InterfaceMASK(ifNumber), activeMask, sizeof(activeMask));
+    FormatIpv4Text(InterfaceGate(ifNumber), activeGate, sizeof(activeGate));
+    FormatIpv4Text(InterfaceDNS(ifNumber), activeDns1, sizeof(activeDns1));
+    FormatIpv4Text(InterfaceDNS2(ifNumber), activeDns2, sizeof(activeDns2));
+    FormatIpv4Text(InterfaceAutoIP(ifNumber), autoIpAddr, sizeof(autoIpAddr));
+
     fdprintf(sock,
              "{\"interface\":%d,\"port\":%d,\"role\":\"%s\",\"portLabel\":\"%s\",\"name\":\"%s\",\"mode\":\"%s\","
-             "\"staticAddr\":\"%hI\",\"staticMask\":\"%hI\",\"staticGate\":\"%hI\","
-             "\"staticDNS1\":\"%hI\",\"staticDNS2\":\"%hI\","
-             "\"activeAddr\":\"%hI\",\"activeMask\":\"%hI\",\"activeGate\":\"%hI\","
-             "\"activeDNS1\":\"%hI\",\"activeDNS2\":\"%hI\",\"autoIPAddr\":\"%hI\"}",
+             "\"staticAddr\":\"%s\",\"staticMask\":\"%s\",\"staticGate\":\"%s\","
+             "\"staticDNS1\":\"%s\",\"staticDNS2\":\"%s\","
+             "\"activeAddr\":\"%s\",\"activeMask\":\"%s\",\"activeGate\":\"%s\","
+             "\"activeDNS1\":\"%s\",\"activeDNS2\":\"%s\",\"autoIPAddr\":\"%s\"}",
              ifNumber,
              ifNumber,
              GetInterfaceRole(ifNumber),
              GetInterfacePortLabel(ifNumber),
              ifBlock->GetInterfaceName(),
              static_cast<NBString>(ifBlock->ip4.mode).c_str(),
-             static_cast<IPADDR4>(ifBlock->ip4.addr),
-             static_cast<IPADDR4>(ifBlock->ip4.mask),
-             static_cast<IPADDR4>(ifBlock->ip4.gate),
-             static_cast<IPADDR4>(ifBlock->ip4.dns1),
-             static_cast<IPADDR4>(ifBlock->ip4.dns2),
-             InterfaceIP(ifNumber),
-             InterfaceMASK(ifNumber),
-             InterfaceGate(ifNumber),
-             InterfaceDNS(ifNumber),
-             InterfaceDNS2(ifNumber),
-             InterfaceAutoIP(ifNumber));
+             staticAddr,
+             staticMask,
+             staticGate,
+             staticDns1,
+             staticDns2,
+             activeAddr,
+             activeMask,
+             activeGate,
+             activeDns1,
+             activeDns2,
+             autoIpAddr);
 }
 
 static bool ApplyInterfaceNetworkSave(const char *url, int ifNumber, bool allowUnprefixedFallback,
@@ -322,6 +361,11 @@ static bool ApplyEnet1NetworkSave(const char *url, const char **errorCode)
 
 static void WriteEnet1PreviewJson(int sock, bool prependComma)
 {
+    char staticAddrText[16]{0};
+    char staticMaskText[16]{0};
+    char staticGateText[16]{0};
+    char staticDns1Text[16]{0};
+    char staticDns2Text[16]{0};
     if (prependComma)
     {
         fdprintf(sock, ",");
@@ -346,19 +390,25 @@ static void WriteEnet1PreviewJson(int sock, bool prependComma)
         staticDns2 = static_cast<IPADDR4>(ifBlock->ip4.dns2);
     }
 
+    FormatIpv4Text(staticAddr, staticAddrText, sizeof(staticAddrText));
+    FormatIpv4Text(staticMask, staticMaskText, sizeof(staticMaskText));
+    FormatIpv4Text(staticGate, staticGateText, sizeof(staticGateText));
+    FormatIpv4Text(staticDns1, staticDns1Text, sizeof(staticDns1Text));
+    FormatIpv4Text(staticDns2, staticDns2Text, sizeof(staticDns2Text));
+
     fdprintf(sock,
              "{\"interface\":2,\"port\":2,\"role\":\"leap\",\"portLabel\":\"Port 2 - LEAP Network\","
              "\"name\":\"Ethernet1\",\"mode\":\"%s\","
-             "\"staticAddr\":\"%hI\",\"staticMask\":\"%hI\",\"staticGate\":\"%hI\","
-             "\"staticDNS1\":\"%hI\",\"staticDNS2\":\"%hI\","
+             "\"staticAddr\":\"%s\",\"staticMask\":\"%s\",\"staticGate\":\"%s\","
+             "\"staticDNS1\":\"%s\",\"staticDNS2\":\"%s\","
              "\"activeAddr\":\"0.0.0.0\",\"activeMask\":\"0.0.0.0\",\"activeGate\":\"0.0.0.0\","
              "\"activeDNS1\":\"0.0.0.0\",\"activeDNS2\":\"0.0.0.0\",\"autoIPAddr\":\"0.0.0.0\"}",
              mode,
-             staticAddr,
-             staticMask,
-             staticGate,
-             staticDns1,
-             staticDns2);
+             staticAddrText,
+             staticMaskText,
+             staticGateText,
+             staticDns1Text,
+             staticDns2Text);
 }
 
 static int HandleNetworkConfigApi(int sock, HTTP_Request &req)
@@ -366,6 +416,17 @@ static int HandleNetworkConfigApi(int sock, HTTP_Request &req)
     (void)req;
     const int firstIfNumber = GetFirstInterface();
     InterfaceBlock *firstIfBlock = firstIfNumber ? GetInterfaceBlock(firstIfNumber) : nullptr;
+    char staticAddr[16]{0};
+    char staticMask[16]{0};
+    char staticGate[16]{0};
+    char staticDns1[16]{0};
+    char staticDns2[16]{0};
+    char activeAddr[16]{0};
+    char activeMask[16]{0};
+    char activeGate[16]{0};
+    char activeDns1[16]{0};
+    char activeDns2[16]{0};
+    char autoIpAddr[16]{0};
     if (!firstIfBlock)
     {
         fdprintf(sock, "HTTP/1.0 503 Service Unavailable\r\nPragma: no-cache\r\nContent-Type: application/json\r\n\r\n");
@@ -396,26 +457,38 @@ static int HandleNetworkConfigApi(int sock, HTTP_Request &req)
         WriteEnet1PreviewJson(sock, wroteAny);
     }
 
+    FormatIpv4Text(static_cast<IPADDR4>(firstIfBlock->ip4.addr), staticAddr, sizeof(staticAddr));
+    FormatIpv4Text(static_cast<IPADDR4>(firstIfBlock->ip4.mask), staticMask, sizeof(staticMask));
+    FormatIpv4Text(static_cast<IPADDR4>(firstIfBlock->ip4.gate), staticGate, sizeof(staticGate));
+    FormatIpv4Text(static_cast<IPADDR4>(firstIfBlock->ip4.dns1), staticDns1, sizeof(staticDns1));
+    FormatIpv4Text(static_cast<IPADDR4>(firstIfBlock->ip4.dns2), staticDns2, sizeof(staticDns2));
+    FormatIpv4Text(InterfaceIP(firstIfNumber), activeAddr, sizeof(activeAddr));
+    FormatIpv4Text(InterfaceMASK(firstIfNumber), activeMask, sizeof(activeMask));
+    FormatIpv4Text(InterfaceGate(firstIfNumber), activeGate, sizeof(activeGate));
+    FormatIpv4Text(InterfaceDNS(firstIfNumber), activeDns1, sizeof(activeDns1));
+    FormatIpv4Text(InterfaceDNS2(firstIfNumber), activeDns2, sizeof(activeDns2));
+    FormatIpv4Text(InterfaceAutoIP(firstIfNumber), autoIpAddr, sizeof(autoIpAddr));
+
     fdprintf(sock,
              "],\"interface\":%d,\"name\":\"%s\",\"mode\":\"%s\","
-             "\"staticAddr\":\"%hI\",\"staticMask\":\"%hI\",\"staticGate\":\"%hI\","
-             "\"staticDNS1\":\"%hI\",\"staticDNS2\":\"%hI\","
-             "\"activeAddr\":\"%hI\",\"activeMask\":\"%hI\",\"activeGate\":\"%hI\","
-             "\"activeDNS1\":\"%hI\",\"activeDNS2\":\"%hI\",\"autoIPAddr\":\"%hI\"}",
+             "\"staticAddr\":\"%s\",\"staticMask\":\"%s\",\"staticGate\":\"%s\","
+             "\"staticDNS1\":\"%s\",\"staticDNS2\":\"%s\","
+             "\"activeAddr\":\"%s\",\"activeMask\":\"%s\",\"activeGate\":\"%s\","
+             "\"activeDNS1\":\"%s\",\"activeDNS2\":\"%s\",\"autoIPAddr\":\"%s\"}",
              firstIfNumber,
              firstIfBlock->GetInterfaceName(),
              static_cast<NBString>(firstIfBlock->ip4.mode).c_str(),
-             static_cast<IPADDR4>(firstIfBlock->ip4.addr),
-             static_cast<IPADDR4>(firstIfBlock->ip4.mask),
-             static_cast<IPADDR4>(firstIfBlock->ip4.gate),
-             static_cast<IPADDR4>(firstIfBlock->ip4.dns1),
-             static_cast<IPADDR4>(firstIfBlock->ip4.dns2),
-             InterfaceIP(firstIfNumber),
-             InterfaceMASK(firstIfNumber),
-             InterfaceGate(firstIfNumber),
-             InterfaceDNS(firstIfNumber),
-             InterfaceDNS2(firstIfNumber),
-             InterfaceAutoIP(firstIfNumber));
+             staticAddr,
+             staticMask,
+             staticGate,
+             staticDns1,
+             staticDns2,
+             activeAddr,
+             activeMask,
+             activeGate,
+             activeDns1,
+             activeDns2,
+             autoIpAddr);
     return 1;
 }
 

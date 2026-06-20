@@ -141,6 +141,7 @@ typedef struct LeapControllerStack
     LeapControllerStackConfig config;
     LeapControllerStackPhase  phase;
     LeapControllerStackStatus last_status;
+    uint16_t                  last_error_code;
 
     LeapMgmtControllerContext mgmt;
     LeapPdControllerContext   pd;

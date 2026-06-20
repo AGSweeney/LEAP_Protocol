@@ -11,6 +11,14 @@
 const char *AppName = "LEAP Gateway";
 static bool g_gateway_forced_independent_topology = false;
 
+static uint32_t GatewaySwapIpv4Bytes(uint32_t value)
+{
+    return ((value & 0x000000FFUL) << 24) |
+           ((value & 0x0000FF00UL) << 8) |
+           ((value & 0x00FF0000UL) >> 8) |
+           ((value & 0xFF000000UL) >> 24);
+}
+
 static bool IsDualEthernetModule()
 {
     int count = 0;
@@ -36,7 +44,7 @@ static void EnsureGatewayPortTopology()
     {
         SaveConfigToStorage();
         g_gateway_forced_independent_topology = false;
-        iprintf("Ethernet bridge mode disabled before network init. Port 1=Plant network, Port 2=LEAP network.\r\n");
+        iprintf("Ethernet bridge mode disabled before network init.\r\n");
     }
 
 }
@@ -66,6 +74,10 @@ static const char *GetInterfaceRole(int ifNumber)
 
 static const char *GetInterfacePortLabel(int ifNumber)
 {
+    if (!IsDualEthernetModule())
+    {
+        return "Primary Network Interface";
+    }
     if (ifNumber == 1)
     {
         return "Port 1 - Plant Network";
@@ -273,7 +285,7 @@ static bool ParseIpv4Text(const char *text, IPADDR4 &ipOut)
                          (static_cast<uint32_t>(b) << 16) |
                          (static_cast<uint32_t>(c) << 8) |
                          static_cast<uint32_t>(d);
-    ipOut = IPV4FromConst(raw);
+    ipOut = IPADDR4(GatewaySwapIpv4Bytes(raw));
     return !ipOut.IsNull();
 }
 

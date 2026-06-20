@@ -11,10 +11,10 @@ var GW_HELP = {
   "index.html": {
     title: "Configuration Console Help",
     html:
-      "<p>This is the <b>LEAP Gateway</b> configuration console on the NetBurner MOD5441X module.</p>" +
+      "<p>This is the <b>LEAP Gateway</b> configuration console on a NetBurner gateway module.</p>" +
       "<h3>Current capabilities</h3>" +
       "<ul>" +
-      "<li><b>Network Configuration</b>  - Port 1 plant network and Port 2 LEAP network IPv4 settings on MOD54417.</li>" +
+      "<li><b>Network Configuration</b>  - IPv4 settings for the active network interface(s).</li>" +
       "<li><b>LEAP Device Mappings</b>  - Map LEAP peer MAC addresses to EtherNet/IP assembly byte offsets.</li>" +
       "</ul>" +
       "<h3>EtherNet/IP / PLC setup</h3>" +
@@ -30,7 +30,7 @@ var GW_HELP = {
       "<li>Network settings are stored in the gateway flash memory.</li>" +
       "<li>Changes to network IP require a <b>reboot</b> to take effect.</li>" +
       "</ul>" +
-      "<p>Use <b>Connect LEAP</b> after saving mappings to bootstrap owner sessions on Port 2. "
+      "<p>Use <b>Connect LEAP</b> after saving mappings to bootstrap owner sessions on the configured LEAP interface. "
       + "<b>Discover peers</b> scans for devices not yet in your mapping table (skipped while sessions are active).</p>"
       + "<p>Live I/O table shows LEAP digital values and the mapped EtherNet/IP assembly bytes.</p>"
   },
@@ -69,10 +69,10 @@ var GW_HELP = {
     title: "Network Configuration Help",
     html:
       "<p>Configure IPv4 addressing for each gateway Ethernet port. After changing settings here, use <b>Save &amp; Reboot</b> unless you only saved for later.</p>" +
-      "<h3>MOD54417 port roles (fixed)</h3>" +
+      "<h3>Gateway port roles</h3>" +
       "<ul>" +
       "<li><b>Port 1 - Plant Network</b>  - PLC / EtherNet/IP traffic and this configuration web UI.</li>" +
-      "<li><b>Port 2 - LEAP Network</b>  - LEAP devices only. LEAP peers must be connected to this port.</li>" +
+      "<li><b>Additional LEAP ports (when present)</b>  - LEAP devices only. LEAP peers should be connected there.</li>" +
       "<li>Bridging both Ethernet ports is <b>not supported</b> on this gateway.</li>" +
       "</ul>" +
       "<h3>IPv4 mode (each port)</h3>" +
@@ -96,7 +96,7 @@ var GW_HELP = {
       "<li><b>Save &amp; Reboot</b>  - Save and restart immediately. A wait dialog appears; the page reloads when the gateway is back.</li>" +
       "</ul>" +
       "<h3>Bench / laptop direct cable</h3>" +
-      "<p>For Port 1 or Port 2 bench testing, leave mode on DHCP, set your PC adapter to obtain an IP automatically, wait for both sides to get 169.254.x.x addresses, then browse to the gateway AutoIP shown on this page.</p>"
+      "<p>For bench testing, leave mode on DHCP, set your PC adapter to obtain an IP automatically, wait for both sides to get 169.254.x.x addresses, then browse to the gateway AutoIP shown on this page.</p>"
   }
 };
 

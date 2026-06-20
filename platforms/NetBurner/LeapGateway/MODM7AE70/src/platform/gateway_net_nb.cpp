@@ -1,5 +1,5 @@
 /*
- * gateway_net_nb.cpp - Bind LEAP transport on Port 2 (MOD54417 dual-Ethernet).
+ * gateway_net_nb.cpp - Bind LEAP transport on the configured interface.
  *
  * SPDX-License-Identifier: MIT
  */
@@ -51,8 +51,8 @@ static int try_transport(LeapGatewayRuntime* gw, const char* ifname)
         return -1;
     }
 
-    snprintf(gw->bound_ifname, sizeof(gw->bound_ifname), "%s", ifname);
     ifn = gw->transport.interface_number;
+    snprintf(gw->bound_ifname, sizeof(gw->bound_ifname), "%d", ifn);
     ensure_interface_active_for_l2(ifn);
     InterfaceBlock* ifblock = GetInterfaceBlock(ifn);
     printf(

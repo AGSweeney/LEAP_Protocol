@@ -441,7 +441,7 @@ void UserMain(void *pd)
 
         {
 
-            iprintf("OpENer EtherNet/IP listening on Port 1 (interface %s, %hI, TCP/UDP port 44818)\r\n",
+            iprintf("OpENer EtherNet/IP listening on interface %s (%hI, TCP/UDP port 44818)\r\n",
 
                     opener_ifname,
 
@@ -449,7 +449,7 @@ void UserMain(void *pd)
 
             iprintf("Assemblies: Input=100 (32B), Output=150 (32B), Config=151 (10B)\r\n");
 
-            iprintf("LEAP Master on Port 2 (interface %s)\r\n", g_gateway.bound_ifname[0] ? g_gateway.bound_ifname : "2");
+            iprintf("LEAP Master on interface %s\r\n", g_gateway.bound_ifname[0] ? g_gateway.bound_ifname : "?");
 
             OSSimpleTaskCreatewName(OpenerTask, MAIN_PRIO - 2, "OpENer");
 

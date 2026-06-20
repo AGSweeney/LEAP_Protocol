@@ -158,10 +158,15 @@ static int parse_interface_number(const char* ifname)
     return static_cast<int>(value);
 }
 
+static int interface_exists(int ifn)
+{
+    return (ifn > 0 && GetInterfaceBlock(ifn) != nullptr) ? 1 : 0;
+}
+
 static int resolve_leap_interface(const char* ifname)
 {
     int ifn = parse_interface_number(ifname);
-    if (ifn > 0)
+    if (ifn > 0 && interface_exists(ifn) != 0)
     {
         return ifn;
     }
@@ -169,13 +174,18 @@ static int resolve_leap_interface(const char* ifname)
     int probe = GetFirstInterface();
     while (probe > 0)
     {
-        if (probe > 1)
+        if (probe > 1 && interface_exists(probe) != 0)
         {
             return probe;
         }
         probe = GetNextInterface(probe);
     }
-    return GetFirstInterface();
+    probe = GetFirstInterface();
+    if (interface_exists(probe) != 0)
+    {
+        return probe;
+    }
+    return 0;
 }
 
 int leap_rtems_transport_init(LeapRtemsTransport* transport, const char* ifname, uint16_t ethertype)

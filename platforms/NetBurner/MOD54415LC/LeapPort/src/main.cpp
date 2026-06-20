@@ -225,6 +225,36 @@ static void leap_diag_note_reply_tx(uint16_t service_id, uint64_t now_us)
     }
 }
 
+static uint64_t leap_diag_counter_value(const LeapRuntime *runtime, uint16_t counter_id)
+{
+    if (runtime == 0)
+    {
+        return 0ULL;
+    }
+
+    switch (counter_id)
+    {
+    case LEAP_COUNTER_RX_FRAMES_ACCEPTED:
+        return (uint64_t)runtime->rx_frames;
+    case LEAP_COUNTER_RX_FRAMES_REJECTED:
+        return (uint64_t)g_rx_frames_rejected;
+    case LEAP_COUNTER_TX_FRAMES_ACCEPTED:
+        return (uint64_t)runtime->tx_frames;
+    case LEAP_COUNTER_TX_FRAMES_DROPPED:
+        return (uint64_t)(g_tx_frames_dropped + g_rx_queue_drop_count);
+    case LEAP_COUNTER_BAD_LENGTH_FAILURES:
+        return (uint64_t)g_rx_frames_rejected;
+    case LEAP_COUNTER_PROCESS_CYCLES_ACCEPTED:
+        return (uint64_t)g_pd_cycles_accepted;
+    case LEAP_COUNTER_MAX_REPLY_LATENCY_US:
+        return (uint64_t)g_max_reply_latency_us;
+    case LEAP_COUNTER_LAST_REPLY_LATENCY_US:
+        return (uint64_t)g_last_reply_latency_us;
+    default:
+        return 0ULL;
+    }
+}
+
 static void leap_board_io_init()
 {
     if (g_board_io_initialized)
@@ -1065,8 +1095,6 @@ static uint16_t leap_build_diag_payload(const LeapHeaderWire *request_header,
                                         uint8_t *out_payload,
                                         uint16_t out_capacity)
 {
-    (void)request_payload;
-    (void)request_payload_len;
     if (request_header == 0 || reply_message_type_out == 0 || out_payload == 0 || runtime == 0)
     {
         return 0U;
@@ -1074,34 +1102,40 @@ static uint16_t leap_build_diag_payload(const LeapHeaderWire *request_header,
 
     if (request_header->message_type == LEAP_DIAG_READ_COUNTERS)
     {
-        LeapCountersReplyWire reply;
-        LeapCounterEntryWire entries[6];
-        if (out_capacity < (uint16_t)(sizeof(reply) + sizeof(entries)))
+        LeapCountersReplyWire *reply = (LeapCountersReplyWire *)out_payload;
+        LeapCounterEntryWire *entries =
+            (LeapCounterEntryWire *)(out_payload + sizeof(LeapCountersReplyWire));
+        uint16_t first_counter_id;
+        uint16_t counter_count;
+        uint16_t total_len;
+
+        if (request_payload == 0 || request_payload_len < 8U)
         {
             return 0U;
         }
-        memset(&reply, 0, sizeof(reply));
-        leap_write_le16((uint8_t *)&reply.counter_count, 6U);
 
-        memset(entries, 0, sizeof(entries));
-        leap_write_le16((uint8_t *)&entries[0].counter_id, LEAP_COUNTER_RX_FRAMES_ACCEPTED);
-        leap_write_le64((uint8_t *)&entries[0].value, (uint64_t)runtime->rx_frames);
-        leap_write_le16((uint8_t *)&entries[1].counter_id, LEAP_COUNTER_RX_FRAMES_REJECTED);
-        leap_write_le64((uint8_t *)&entries[1].value, (uint64_t)g_rx_frames_rejected);
-        leap_write_le16((uint8_t *)&entries[2].counter_id, LEAP_COUNTER_TX_FRAMES_ACCEPTED);
-        leap_write_le64((uint8_t *)&entries[2].value, (uint64_t)runtime->tx_frames);
-        leap_write_le16((uint8_t *)&entries[3].counter_id, LEAP_COUNTER_TX_FRAMES_DROPPED);
-        leap_write_le64((uint8_t *)&entries[3].value,
-                        (uint64_t)(g_tx_frames_dropped + g_rx_queue_drop_count));
-        leap_write_le16((uint8_t *)&entries[4].counter_id, LEAP_COUNTER_PROCESS_CYCLES_ACCEPTED);
-        leap_write_le64((uint8_t *)&entries[4].value, (uint64_t)g_pd_cycles_accepted);
-        leap_write_le16((uint8_t *)&entries[5].counter_id, LEAP_COUNTER_MAX_REPLY_LATENCY_US);
-        leap_write_le64((uint8_t *)&entries[5].value, (uint64_t)g_max_reply_latency_us);
+        first_counter_id = leap_read_le16(request_payload + 0);
+        counter_count = leap_read_le16(request_payload + 2);
+        total_len = (uint16_t)(sizeof(LeapCountersReplyWire) +
+                               ((uint16_t)sizeof(LeapCounterEntryWire) * counter_count));
+        if (counter_count == 0U || out_capacity < total_len)
+        {
+            return 0U;
+        }
 
-        memcpy(out_payload, &reply, sizeof(reply));
-        memcpy(out_payload + sizeof(reply), entries, sizeof(entries));
+        memset(out_payload, 0, total_len);
+        leap_write_le16((uint8_t *)&reply->counter_count, counter_count);
+
+        for (uint16_t i = 0U; i < counter_count; ++i)
+        {
+            const uint16_t counter_id = (uint16_t)(first_counter_id + i);
+            leap_write_le16((uint8_t *)&entries[i].counter_id, counter_id);
+            leap_write_le64((uint8_t *)&entries[i].value,
+                            leap_diag_counter_value(runtime, counter_id));
+        }
+
         *reply_message_type_out = LEAP_DIAG_COUNTERS_REPLY;
-        return (uint16_t)(sizeof(reply) + sizeof(entries));
+        return total_len;
     }
 
     if (request_header->message_type == LEAP_DIAG_READ_TIMING)

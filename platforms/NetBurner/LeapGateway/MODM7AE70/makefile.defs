@@ -41,3 +41,15 @@ endif
 ifneq ($(filter $(GW_TRANSPORT_OBJ),$(OBJS)),$(GW_TRANSPORT_OBJ))
 OBJS += $(GW_TRANSPORT_OBJ)
 endif
+
+# Keep the shared session state machine in the firmware build proper.  The same
+# object also exists in libleap_gateway_netburner.a, but linking this object
+# first prevents stale archive members from masking source changes.
+GW_SESSION_C := $(GW_SHARED)/gateway_leap_session.c
+GW_SESSION_OBJ := ./src/gateway_leap_session.o
+ifneq ($(filter $(GW_SESSION_C),$(C_SRCS)),$(GW_SESSION_C))
+C_SRCS += $(GW_SESSION_C)
+endif
+ifneq ($(filter $(GW_SESSION_OBJ),$(OBJS)),$(GW_SESSION_OBJ))
+OBJS += $(GW_SESSION_OBJ)
+endif

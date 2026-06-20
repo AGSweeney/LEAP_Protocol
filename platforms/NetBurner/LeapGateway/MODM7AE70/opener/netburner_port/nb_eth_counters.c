@@ -12,13 +12,38 @@ extern int g_opener_plant_ifnum;
 
 #if defined(MODM7AE70) || defined(SAME70) || defined(CORTEX_M7)
 
+#include <same70q21.h>
+#include <instance/gmac.h>
+
+static uint32_t NbEthSaturatingSub(uint32_t value, uint32_t minus) {
+  return (value >= minus) ? (value - minus) : 0U;
+}
+
 int NbEthReadInterfaceCounters(const unsigned eth_link_instance,
                                uint32_t *const cntr32_11) {
+  uint32_t in_non_ucast;
+  uint32_t out_non_ucast;
+
   (void)eth_link_instance;
   if (cntr32_11 == NULL) {
     return -1;
   }
-  memset(cntr32_11, 0, sizeof(uint32_t) * 11U);
+
+  in_non_ucast = REG_GMAC_BCFR + REG_GMAC_MFR;
+  out_non_ucast = REG_GMAC_BCFT + REG_GMAC_MFT;
+
+  cntr32_11[0] = REG_GMAC_ORLO;
+  cntr32_11[1] = NbEthSaturatingSub(REG_GMAC_FR, in_non_ucast);
+  cntr32_11[2] = in_non_ucast;
+  cntr32_11[3] = REG_GMAC_RRE + REG_GMAC_ROE;
+  cntr32_11[4] =
+    REG_GMAC_FCSE + REG_GMAC_AE + REG_GMAC_RSE + REG_GMAC_LFFE + REG_GMAC_OFR + REG_GMAC_JR;
+  cntr32_11[5] = 0U;
+  cntr32_11[6] = REG_GMAC_OTLO;
+  cntr32_11[7] = NbEthSaturatingSub(REG_GMAC_FT, out_non_ucast);
+  cntr32_11[8] = out_non_ucast;
+  cntr32_11[9] = 0U;
+  cntr32_11[10] = REG_GMAC_TUR + REG_GMAC_CSE;
   return 0;
 }
 
@@ -28,7 +53,19 @@ int NbEthReadMediaCounters(const unsigned eth_link_instance,
   if (cntr32_12 == NULL) {
     return -1;
   }
-  memset(cntr32_12, 0, sizeof(uint32_t) * 12U);
+
+  cntr32_12[0] = REG_GMAC_AE;
+  cntr32_12[1] = REG_GMAC_FCSE;
+  cntr32_12[2] = REG_GMAC_SCF;
+  cntr32_12[3] = REG_GMAC_MCF;
+  cntr32_12[4] = 0U;
+  cntr32_12[5] = REG_GMAC_DTF;
+  cntr32_12[6] = REG_GMAC_LC;
+  cntr32_12[7] = REG_GMAC_EC;
+  cntr32_12[8] = REG_GMAC_TUR;
+  cntr32_12[9] = REG_GMAC_CSE;
+  cntr32_12[10] = REG_GMAC_OFR + REG_GMAC_JR;
+  cntr32_12[11] = REG_GMAC_RSE;
   return 0;
 }
 

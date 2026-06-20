@@ -286,6 +286,11 @@ static LeapControllerStackStatus leap_ctrl_stack_recv_expected_from_peer(
 
             if ((view->header.flags & LEAP_FLAG_ERROR) != 0u)
             {
+                if (view->payload_length >= sizeof(LeapErrorPayload))
+                {
+                    const LeapErrorPayload* err = (const LeapErrorPayload*)view->payload;
+                    stack->last_error_code = err->status_code;
+                }
                 if (expect_service == (uint16_t)LEAP_SERVICE_DIR)
                 {
                     return LEAP_CTRL_STACK_DIR_ERROR;
@@ -405,6 +410,7 @@ static void leap_ctrl_stack_set_fault(
 
     stack->phase       = LEAP_CTRL_STACK_FAULT;
     stack->last_status = status;
+    stack->last_error_code = error_code;
 
     if (event != NULL)
     {
@@ -918,6 +924,7 @@ void leap_controller_stack_init(
     memset(stack, 0, sizeof(*stack));
     stack->phase       = LEAP_CTRL_STACK_IDLE;
     stack->last_status = LEAP_CTRL_STACK_OK;
+    stack->last_error_code = (uint16_t)LEAP_STATUS_OK;
 
     if (config != NULL)
     {

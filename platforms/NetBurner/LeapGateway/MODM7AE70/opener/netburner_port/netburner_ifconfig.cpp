@@ -13,6 +13,13 @@ extern IPADDR4 InterfaceDNS(int interface);
 extern IPADDR4 InterfaceDNS2(int interface);
 extern MACADR InterfaceMAC(int interface);
 
+static uint32_t nb_ipv4_to_cip(uint32_t value) {
+  return ((value & 0x000000FFUL) << 24) |
+         ((value & 0x0000FF00UL) << 8) |
+         ((value & 0x00FF0000UL) >> 8) |
+         ((value & 0xFF000000UL) >> 24);
+}
+
 extern "C" int nb_iface_number_from_name(const char *iface_name) {
   if (iface_name == NULL) {
     return 0;
@@ -55,17 +62,17 @@ extern "C" int nb_iface_get_ipv4_config(int ifnum, NbIpv4Config *cfg_out) {
     return -1;
   }
 
-  cfg_out->ip = (uint32_t)ip;
-  cfg_out->mask = (uint32_t)mask;
+  cfg_out->ip = nb_ipv4_to_cip((uint32_t)ip);
+  cfg_out->mask = nb_ipv4_to_cip((uint32_t)mask);
 
   const IPADDR4 gate = InterfaceGate(ifnum);
-  cfg_out->gateway = gate.IsNull() ? 0U : (uint32_t)gate;
+  cfg_out->gateway = gate.IsNull() ? 0U : nb_ipv4_to_cip((uint32_t)gate);
 
   const IPADDR4 dns = InterfaceDNS(ifnum);
-  cfg_out->dns1 = dns.IsNull() ? 0U : (uint32_t)dns;
+  cfg_out->dns1 = dns.IsNull() ? 0U : nb_ipv4_to_cip((uint32_t)dns);
 
   const IPADDR4 dns2 = InterfaceDNS2(ifnum);
-  cfg_out->dns2 = dns2.IsNull() ? 0U : (uint32_t)dns2;
+  cfg_out->dns2 = dns2.IsNull() ? 0U : nb_ipv4_to_cip((uint32_t)dns2);
 
   return 0;
 }

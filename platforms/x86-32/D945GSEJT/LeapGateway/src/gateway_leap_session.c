@@ -439,6 +439,138 @@ gateway_sync_hub_config(LeapGatewayRuntime* gw)
 
 
 
+static LeapControllerStackStatus
+
+gateway_bootstrap_stack_at_slot(
+
+    LeapGatewayRuntime*         gw,
+
+    unsigned                    mapping_index,
+
+    const uint8_t               peer_mac[6],
+
+    const LeapHelloReply*       hello)
+
+{
+
+    LeapControllerPeerSlot* slot;
+
+
+
+    if (gw == NULL || peer_mac == NULL || mapping_index >= LEAP_CTRL_MAX_PEERS)
+
+    {
+
+        return LEAP_CTRL_STACK_INVALID_ARG;
+
+    }
+
+
+
+    slot = &gw->session_hub.slots[mapping_index];
+
+    if (slot->in_use != 0)
+
+    {
+
+        return LEAP_CTRL_STACK_ABORTED;
+
+    }
+
+
+
+    leap_controller_stack_init(
+
+        &slot->stack,
+
+        &gw->session_hub.config.default_peer);
+
+    memcpy(slot->peer_mac, peer_mac, 6);
+
+    slot->in_use = 1;
+
+    gw->session_hub.active_count++;
+
+
+
+    return leap_controller_stack_bootstrap_peer(
+
+        &slot->stack,
+
+        &gw->controller_io,
+
+        peer_mac,
+
+        hello);
+
+}
+
+
+
+static LeapControllerStackStatus
+
+gateway_bootstrap_stack_live_at_slot(
+
+    LeapGatewayRuntime*   gw,
+
+    unsigned              mapping_index,
+
+    const uint8_t         peer_mac[6])
+
+{
+
+    LeapControllerPeerSlot* slot;
+
+
+
+    if (gw == NULL || peer_mac == NULL || mapping_index >= LEAP_CTRL_MAX_PEERS)
+
+    {
+
+        return LEAP_CTRL_STACK_INVALID_ARG;
+
+    }
+
+
+
+    slot = &gw->session_hub.slots[mapping_index];
+
+    if (slot->in_use != 0)
+
+    {
+
+        return LEAP_CTRL_STACK_ABORTED;
+
+    }
+
+
+
+    leap_controller_stack_init(
+
+        &slot->stack,
+
+        &gw->session_hub.config.default_peer);
+
+    memcpy(slot->peer_mac, peer_mac, 6);
+
+    slot->in_use = 1;
+
+    gw->session_hub.active_count++;
+
+
+
+    return leap_controller_stack_bootstrap(
+
+        &slot->stack,
+
+        &gw->controller_io,
+
+        NULL);
+
+}
+
+
+
 static void
 
 gateway_sync_bridge_from_pd(
@@ -853,6 +985,8 @@ gateway_bootstrap_mapping_slot(
 
         int                      use_live_bootstrap = 0;
 
+        const char*              live_bootstrap_reason = "none";
+
 
 
         peer_index = leap_controller_peer_table_find(&gw->peer_table, map->leap_mac);
@@ -883,41 +1017,22 @@ gateway_bootstrap_mapping_slot(
 
         peer_index = leap_controller_peer_table_find(&gw->peer_table, map->leap_mac);
 
-        if (probe_status != LEAP_CTRL_PEER_OK ||
-
-            peer_index < 0)
-
+        if (peer_index >= 0)
         {
-
-            use_live_bootstrap = 1;
-
-        }
-
-        else
-
-        {
-
             entry = leap_controller_peer_table_get(
 
                 &gw->peer_table,
 
                 (unsigned)peer_index);
+        }
 
-            if (entry == NULL || entry->reachable == 0)
-
-            {
-
-                use_live_bootstrap = 1;
-
-            }
-
-            else if (leap_controller_peer_owned_by_other(
+        if (entry != NULL &&
+            leap_controller_peer_owned_by_other(
 
                          entry,
 
                          gw->session_hub.config.default_peer.mgmt.controller_mac) != 0)
-
-            {
+        {
 
                 printf(
 
@@ -945,8 +1060,25 @@ gateway_bootstrap_mapping_slot(
 
                 return LEAP_CTRL_STACK_MGMT_ERROR;
 
-            }
+        }
 
+        if (entry == NULL)
+        {
+            use_live_bootstrap = 1;
+            live_bootstrap_reason = "no_peer_table_entry";
+        }
+        else if (entry->reachable == 0 &&
+                 (gateway_mac_is_zero(entry->active_owner_mac) ||
+                  memcmp(
+                      entry->active_owner_mac,
+                      gw->session_hub.config.default_peer.mgmt.controller_mac,
+                      6) != 0))
+        {
+            use_live_bootstrap = 1;
+            live_bootstrap_reason =
+                gateway_mac_is_zero(entry->active_owner_mac)
+                    ? "unreachable_no_owner"
+                    : "unreachable_different_owner";
         }
 
 
@@ -959,7 +1091,49 @@ gateway_bootstrap_mapping_slot(
 
                 LEAP_TS_FMT LEAP_ANSI_WARN
 
-                "Gateway: mapping %u live DISC bootstrap for %02x:%02x:%02x:%02x:%02x:%02x"
+                "Gateway: mapping %u live DISC bootstrap for %02x:%02x:%02x:%02x:%02x:%02x (%s)"
+
+                LEAP_ANSI_RESET "\n",
+
+                leap_rtems_uptime_str(),
+
+                mapping_index,
+
+                map->leap_mac[0],
+
+                map->leap_mac[1],
+
+                map->leap_mac[2],
+
+                map->leap_mac[3],
+
+                map->leap_mac[4],
+
+                map->leap_mac[5],
+
+                live_bootstrap_reason);
+
+
+
+            status = gateway_bootstrap_stack_live_at_slot(
+
+                gw,
+
+                mapping_index,
+
+                map->leap_mac);
+
+        }
+
+        else
+
+        {
+
+            printf(
+
+                LEAP_TS_FMT LEAP_ANSI_INFO
+
+                "Gateway: mapping %u cached HELLO bootstrap for %02x:%02x:%02x:%02x:%02x:%02x"
 
                 LEAP_ANSI_RESET "\n",
 
@@ -979,39 +1153,19 @@ gateway_bootstrap_mapping_slot(
 
                 map->leap_mac[5]);
 
-
-
-            status = leap_controller_session_hub_bootstrap_peer_live_at_slot(
-
-                &gw->session_hub,
-
-                &gw->controller_io,
-
-                map->leap_mac,
-
-                (int)mapping_index);
-
-        }
-
-        else
-
-        {
-
             gateway_build_hello_from_entry(entry, profile_id, &hello);
 
 
 
-            status = leap_controller_session_hub_bootstrap_peer_at_slot(
+            status = gateway_bootstrap_stack_at_slot(
 
-                &gw->session_hub,
+                gw,
 
-                &gw->controller_io,
+                mapping_index,
 
                 map->leap_mac,
 
-                &hello,
-
-                (int)mapping_index);
+                &hello);
 
         }
 
@@ -1040,7 +1194,7 @@ gateway_bootstrap_mapping_slot(
 
             LEAP_TS_FMT LEAP_ANSI_WARN
 
-            "Gateway: LEAP bootstrap failed mapping %u (%s, phase=%s)" LEAP_ANSI_RESET "\n",
+            "Gateway: LEAP bootstrap failed mapping %u (%s, phase=%s, err=0x%04X)" LEAP_ANSI_RESET "\n",
 
             leap_rtems_uptime_str(),
 
@@ -1048,7 +1202,8 @@ gateway_bootstrap_mapping_slot(
 
             gateway_stack_status_name(status),
 
-            gateway_stack_phase_name(phase));
+            gateway_stack_phase_name(phase),
+            failed_stack != NULL ? (unsigned)failed_stack->last_error_code : 0u);
 
         if (entry != NULL)
 
