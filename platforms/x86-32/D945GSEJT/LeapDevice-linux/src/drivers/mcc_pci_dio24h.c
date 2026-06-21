@@ -2,7 +2,7 @@
  * mcc_pci_dio24h.c — Measurement Computing PCI-DIO-24H userspace scaffold.
  *
  * Hardware model:
- * - PCI vendor/device: ComputerBoards/Measurement Computing 0x1307:0x0014
+ * - PCI vendor/device: Measurement Computing 0x1307:0x0014 (DIO-24H) or 0x0028 (DIO-24)
  * - One Intel 8255-compatible 24-bit DIO block
  * - DIO register BAR: PCI resource index 2 (per Linux Comedi 8255_pci table)
  *
@@ -85,6 +85,12 @@ read_pci_resource(
         return -1;
     }
 
+    if (strlen(device_path) + 10u > sizeof(path))
+    {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
     snprintf(path, sizeof(path), "%s/resource", device_path);
     fp = fopen(path, "r");
     if (fp == NULL)
@@ -110,6 +116,18 @@ read_pci_resource(
     }
 
     return 0;
+}
+
+static int
+mcc_pci_dio24_is_supported_device(unsigned long vendor, unsigned long device)
+{
+    if (vendor != MCC_PCI_DIO24H_VENDOR_ID)
+    {
+        return 0;
+    }
+
+    return (device == MCC_PCI_DIO24H_DEVICE_ID ||
+            device == MCC_PCI_DIO24_DEVICE_ID) ? 1 : 0;
 }
 
 static int
@@ -160,7 +178,7 @@ find_mcc_pci_dio24h(uint16_t* io_base_out, char* pci_address_out, size_t pci_add
             continue;
         }
 
-        if (vendor != MCC_PCI_DIO24H_VENDOR_ID || device != MCC_PCI_DIO24H_DEVICE_ID)
+        if (!mcc_pci_dio24_is_supported_device(vendor, device))
         {
             continue;
         }
@@ -200,6 +218,43 @@ mcc_in8(uint16_t port)
 
     __asm__ volatile("inb %1, %0" : "=a"(value) : "Nd"(port));
     return value;
+}
+
+int
+mcc_pci_dio24h_port_is_output(const MccPciDio24h* dev, MccPciDio24hPort port)
+{
+    if (dev == NULL || dev->io_ready == 0)
+    {
+        return 0;
+    }
+
+    switch (port)
+    {
+    case MCC_PCI_DIO24H_PORT_A:
+        return (dev->control_word & 0x10u) == 0u;
+    case MCC_PCI_DIO24H_PORT_B:
+        return (dev->control_word & 0x02u) == 0u;
+    case MCC_PCI_DIO24H_PORT_C:
+        return (dev->control_word & 0x09u) == 0u;
+    default:
+        return 0;
+    }
+}
+
+int
+mcc_pci_dio24h_read_port_raw(
+    MccPciDio24h*    dev,
+    MccPciDio24hPort port,
+    uint8_t*          value_out)
+{
+    if (dev == NULL || dev->io_ready == 0 || value_out == NULL || port > MCC_PCI_DIO24H_PORT_C)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    *value_out = mcc_in8((uint16_t)(dev->io_base + (uint16_t)port));
+    return 0;
 }
 
 static inline void
@@ -358,6 +413,12 @@ mcc_pci_dio24h_read_port(MccPciDio24h* dev, MccPciDio24hPort port, uint8_t* valu
     {
         errno = EINVAL;
         return -1;
+    }
+
+    if (mcc_pci_dio24h_port_is_output(dev, port))
+    {
+        *value_out = dev->output_shadow[port];
+        return 0;
     }
 
     *value_out = mcc_in8((uint16_t)(dev->io_base + (uint16_t)port));

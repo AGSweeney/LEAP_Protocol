@@ -17,7 +17,7 @@ PCI-DIO-24H 24-channel digital I/O board.
 Known hardware assumptions from Linux Comedi references:
 
 - PCI vendor ID: `0x1307`
-- PCI device ID: `0x0014`
+- PCI device ID: `0x0014` (PCI-DIO-24H) or `0x0028` (PCI-DIO-24 / Rev 02)
 - One Intel 8255-compatible DIO block
 - 8255 DIO registers exposed through PCI BAR/resource index `2`
 - Only 8255 mode 0 is planned for LEAP use
@@ -40,7 +40,7 @@ First hardware bring-up checklist:
 1. Confirm PCI enumeration:
 
    ```sh
-   lspci -nn | grep -i '1307:0014'
+   lspci -nn | grep -iE '1307:0014|1307:0028'
    ```
 
 2. Confirm BAR/resource layout:

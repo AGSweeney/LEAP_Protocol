@@ -55,4 +55,7 @@ void leap_rtems_board_sample_inputs(LeapRtemsBoardIo* io);
 
 int leap_board_port_io_ready(void);
 
+const char* leap_board_description(void);
+const char* leap_board_pci_address(void);
+
 #endif /* LEAP_RTEMS_BOARD_H */

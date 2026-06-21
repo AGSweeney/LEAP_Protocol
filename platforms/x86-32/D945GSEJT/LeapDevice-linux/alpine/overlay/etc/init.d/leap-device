@@ -1,7 +1,7 @@
 #!/sbin/openrc-run
 
 name="leap-device"
-description="LeapOS LEAP device (raw L2 + LPT I/O)"
+description="LeapOS LEAP device (raw L2 + digital I/O)"
 command="/usr/sbin/leap-device"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"

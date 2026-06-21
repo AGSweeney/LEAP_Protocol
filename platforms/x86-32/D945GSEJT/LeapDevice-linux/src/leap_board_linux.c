@@ -157,3 +157,15 @@ leap_board_port_io_ready(void)
 {
     return g_port_io_ready;
 }
+
+const char*
+leap_board_description(void)
+{
+    return "LPT1 8x8 I/O";
+}
+
+const char*
+leap_board_pci_address(void)
+{
+    return NULL;
+}

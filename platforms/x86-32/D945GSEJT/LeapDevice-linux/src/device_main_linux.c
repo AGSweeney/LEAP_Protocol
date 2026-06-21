@@ -145,8 +145,8 @@ main(void)
            "=== LeapOS booting (D945GSEJT / Atom N270, Alpine Linux) ===" LEAP_ANSI_RESET "\n",
            leap_rtems_uptime_str());
     printf(LEAP_TS_FMT LEAP_ANSI_BANNER
-           "*** LeapOS LEAP device (D945GSEJT, LPT 8x8 I/O) ***" LEAP_ANSI_RESET "\n",
-           leap_rtems_uptime_str());
+           "*** LeapOS LEAP device (D945GSEJT, %s) ***" LEAP_ANSI_RESET "\n",
+           leap_rtems_uptime_str(), leap_board_description());
     leap_build_info_print(stdout, "device");
     fflush(stdout);
 
@@ -157,8 +157,17 @@ main(void)
     if (leap_board_port_io_ready() == 0)
     {
         printf(LEAP_TS_FMT LEAP_ANSI_WARN
-               "LPT port I/O unavailable (need root / iopl) — digital I/O disabled" LEAP_ANSI_RESET "\n",
-               leap_rtems_uptime_str());
+               "%s unavailable (need root / PCI card / MCC_DIO24_IO_BASE) — digital I/O disabled"
+               LEAP_ANSI_RESET "\n",
+               leap_rtems_uptime_str(), leap_board_description());
+    }
+    else if (leap_board_pci_address() != NULL)
+    {
+        printf(LEAP_TS_FMT LEAP_ANSI_OK
+               "%s ready at PCI %s" LEAP_ANSI_RESET "\n",
+               leap_rtems_uptime_str(),
+               leap_board_description(),
+               leap_board_pci_address());
     }
 
     memset(&stack_config, 0, sizeof(stack_config));

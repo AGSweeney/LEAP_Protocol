@@ -8,7 +8,7 @@
 #ifndef LEAP_BUILD_INFO_GEN_H
 #define LEAP_BUILD_INFO_GEN_H
 
-#define LEAP_BUILD_GIT  "e2d7bcf"
-#define LEAP_BUILD_DATE "2026-06-16 UTC"
+#define LEAP_BUILD_GIT  "d01d5d5"
+#define LEAP_BUILD_DATE "2026-06-21 UTC"
 
 #endif /* LEAP_BUILD_INFO_GEN_H */

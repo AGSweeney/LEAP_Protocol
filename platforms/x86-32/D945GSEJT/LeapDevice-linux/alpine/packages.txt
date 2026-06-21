@@ -11,3 +11,7 @@ linux-lts
 mkinitfs
 openrc
 libgpiod
+hwdata-pci
+pciutils
+i2c-tools
+kmod

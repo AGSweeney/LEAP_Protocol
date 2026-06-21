@@ -19,7 +19,8 @@ extern "C" {
 #endif
 
 #define MCC_PCI_DIO24H_VENDOR_ID 0x1307u
-#define MCC_PCI_DIO24H_DEVICE_ID 0x0014u
+#define MCC_PCI_DIO24H_DEVICE_ID 0x0014u /* PCI-DIO-24H */
+#define MCC_PCI_DIO24_DEVICE_ID  0x0028u /* PCI-DIO-24  (Rev 02 and earlier) */
 
 /* Comedi's 8255_pci table identifies the DIO 8255 register BAR as index 2. */
 #define MCC_PCI_DIO24H_DIO_BAR_INDEX 2u
@@ -79,6 +80,13 @@ int mcc_pci_dio24h_configure_all_outputs(MccPciDio24h* dev);
 
 int mcc_pci_dio24h_write_port(MccPciDio24h* dev, MccPciDio24hPort port, uint8_t value);
 int mcc_pci_dio24h_read_port(MccPciDio24h* dev, MccPciDio24hPort port, uint8_t* value_out);
+
+int mcc_pci_dio24h_port_is_output(const MccPciDio24h* dev, MccPciDio24hPort port);
+
+int mcc_pci_dio24h_read_port_raw(
+    MccPciDio24h*       dev,
+    MccPciDio24hPort    port,
+    uint8_t*            value_out);
 
 int mcc_pci_dio24h_write_24(MccPciDio24h* dev, uint32_t value);
 int mcc_pci_dio24h_read_24(MccPciDio24h* dev, uint32_t* value_out);

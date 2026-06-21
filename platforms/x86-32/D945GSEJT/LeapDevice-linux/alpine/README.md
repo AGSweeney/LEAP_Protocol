@@ -83,11 +83,19 @@ LEAP full stack listening on eth0 (DISC/DIR/MGMT/PD/DIAG)
 
 Both run the same `leap_core` device stack and 8×8 LPT profile.
 
-## GPIO (on target)
+## GPIO / bus debug (on target)
 
 `libgpiod` is included (`gpiodetect`, `gpioinfo`, `gpioget`, `gpioset`):
 
 ```sh
 gpiodetect
 gpioinfo gpiochip0
+```
+
+PCI and I2C helpers for board bring-up (`pciutils`, `i2c-tools`):
+
+```sh
+lspci -nn
+i2cdetect -l
+i2cdetect -y 0
 ```

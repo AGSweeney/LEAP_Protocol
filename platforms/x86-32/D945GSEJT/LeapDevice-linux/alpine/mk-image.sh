@@ -122,6 +122,34 @@ if [ -z "$QEMU" ]; then
 	exit 1
 fi
 
+verify_target_tools() {
+	echo "Verifying bus debug tools in rootfs ..."
+	chroot "$ROOT" /bin/sh <<'VERIFY'
+set -e
+for cmd in /usr/bin/lspci /usr/sbin/i2cdetect; do
+	if [ ! -x "$cmd" ]; then
+		echo "error: missing executable $cmd" >&2
+		exit 1
+	fi
+done
+if [ ! -f /usr/share/hwdata/pci.ids ]; then
+	echo "error: missing /usr/share/hwdata/pci.ids (install hwdata-pci)" >&2
+	exit 1
+fi
+if ! /usr/bin/lspci --version >/dev/null 2>&1; then
+	echo "error: lspci --version failed" >&2
+	exit 1
+fi
+if ! /usr/bin/ldd /usr/bin/lspci 2>/dev/null | grep -q 'libpci.so'; then
+	echo "error: lspci is missing libpci.so linkage" >&2
+	exit 1
+fi
+echo "  lspci: $(/usr/bin/lspci --version 2>&1 | head -1)"
+echo "  pci.ids: $(wc -c < /usr/share/hwdata/pci.ids) bytes"
+echo "  i2cdetect: $(/usr/sbin/i2cdetect -V 2>&1 | head -1 || echo present)"
+VERIFY
+}
+
 trim_rootfs() {
 	echo "Trimming rootfs (drop firmware, modloop, unneeded modules) ..."
 	chroot "$ROOT" /bin/sh <<'TRIM'
@@ -139,13 +167,15 @@ keep_ko() {
 	*/kernel/drivers/ata/*|*/kernel/drivers/scsi/*|*/kernel/drivers/block/loop.ko*|\
 	*/kernel/drivers/net/r8169.ko*|*/kernel/drivers/net/r8169.ko.xz|\
 	*/kernel/drivers/net/ethernet/realtek/*|*/kernel/drivers/net/phy/*|\
-	*/kernel/drivers/net/mdio/*|*/kernel/fs/ext4/*|*/kernel/lib/crc/*) return 0 ;;
+	*/kernel/drivers/net/mdio/*|*/kernel/drivers/i2c/*|\
+	*/kernel/fs/ext4/*|*/kernel/lib/crc/*) return 0 ;;
 	esac
 	return 1
 }
 find "/lib/modules/$KVER" \( -name '*.ko' -o -name '*.ko.xz' \) | while read -r ko; do
 	keep_ko "$ko" || rm -f "$ko"
 done
+depmod -a "$KVER"
 TRIM
 }
 
@@ -211,6 +241,7 @@ ls -lh /boot/initramfs-lts
 PXE_INITRD
 
 	trim_rootfs
+	verify_target_tools
 	md5sum "$SCRIPT_DIR/packages.txt" | awk '{print $1}' > "$PKG_HASH_FILE"
 	touch "$ROOTFS_STAMP"
 
