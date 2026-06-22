@@ -16,8 +16,18 @@
 #define LEAP_LPT_REG_STATUS_OFFSET  0x1u
 #define LEAP_LPT_REG_CONTROL_OFFSET 0x2u
 
-/* Control bit used for data direction on PS/2-capable ports. */
-#define LEAP_LPT_CONTROL_BIDIR      0x20u
+/* Control register @ 0x37A — bits 0..3 drive DB25 pins 1, 14, 16, 17 (inverted). */
+#define LEAP_LPT_CONTROL_STROBE_BIT   0u /* pin 1  — spindle/enable on many CNC BOBs */
+#define LEAP_LPT_CONTROL_AUTOFD_BIT   1u /* pin 14 — coolant/relay on some boards */
+#define LEAP_LPT_CONTROL_INIT_BIT     2u /* pin 16 — relay 2 on some boards */
+#define LEAP_LPT_CONTROL_SELECT_BIT   3u /* pin 17 — relay 1 on some boards */
+#define LEAP_LPT_CONTROL_BIDIR        0x20u /* bit 5: 1 = data port input */
+
+/*
+ * Control outputs are active-low on the connector. Set bits 0..3 so pins 1/14/16/17
+ * stay high (relay off on typical opto-isolated CNC breakouts). Not part of LEAP D0..D7.
+ */
+#define LEAP_LPT_CONTROL_OUTPUTS_IDLE 0x0fu
 
 /*
  * D945GSEJT on-board 26-pin parallel header (Table 19, Standard/SPP).
@@ -25,6 +35,8 @@
  *
  * Outputs (data register @ 0x378): PD0..PD7 on header pins
  *   3, 5, 7, 9, 11, 13, 15, 17 (LEAP D0..D7).
+ *   Hardware is active-low: data register bit 0 drives the line high (off),
+ *   bit 1 drives the line low (on). LEAP/logical 1 = on = inverted on the port.
  *
  * Physical status inputs (status register @ 0x379):
  *   LEAP in0: bit 6 ACK#   -> pin 19
@@ -40,6 +52,10 @@
 #define LEAP_LPT_STATUS_PERROR_BIT  5u
 #define LEAP_LPT_STATUS_SELECT_BIT  4u
 #define LEAP_LPT_STATUS_FAULT_BIT   3u
+
+/* PC LPT data register is inverted: logical off=all ones, logical on=bit clear. */
+#define LEAP_LPT_LOGICAL_TO_HW(v) ((uint8_t)(~(uint8_t)(v)))
+#define LEAP_LPT_HW_TO_LOGICAL(v) ((uint8_t)(~(uint8_t)(v)))
 
 typedef struct LeapRtemsBoardIo
 {
@@ -57,5 +73,8 @@ int leap_board_port_io_ready(void);
 
 const char* leap_board_description(void);
 const char* leap_board_pci_address(void);
+
+void leap_board_read_registers(uint8_t* data, uint8_t* status, uint8_t* control);
+uint16_t leap_board_read_physical_inputs(void);
 
 #endif /* LEAP_RTEMS_BOARD_H */

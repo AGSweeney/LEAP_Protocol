@@ -287,7 +287,7 @@ PART_MIB=$((PART_KB / 1024))
 FS_BLOCKS=$((PART_BYTES / 4096))
 LINUX_WORK="${ALPINE_LINUX_WORK:-/tmp/leap-alpine-device-build-${USER:-user}}"
 PART_IMG="$LINUX_WORK/partition.ext4"
-mkdir -p "$LINUX_WORK" "$IMAGE_DIR"
+mkdir -p "$LINUX_WORK" "$IMAGE_DIR" "$(dirname "$IMG")"
 
 if [ "$ROOT_KB" -gt $((PART_KB * 95 / 100)) ]; then
 	echo "error: rootfs ($((ROOT_KB / 1024)) MiB) too large for ${PART_MIB} MiB partition" >&2

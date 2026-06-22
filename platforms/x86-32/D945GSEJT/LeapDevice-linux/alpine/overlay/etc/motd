@@ -3,4 +3,5 @@ Raw L2 LEAP stack + board digital I/O.
 
 Serial: COM1 @ 115200 8N1
 Bus debug: /usr/bin/lspci -nn   i2cdetect -l
+LPT test:   lpt-dio read | write | peek  (stop leap-device first)
 MCC DIO24:  mcc-dio24 read | write | safe  (stop leap-device first)

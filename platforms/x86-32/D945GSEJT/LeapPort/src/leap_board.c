@@ -60,25 +60,26 @@ void leap_rtems_board_init(LeapRtemsBoardIo* io)
     /* Keep data register in output mode ("without switching"). */
     {
         uint8_t control = leap_lpt_in8(LEAP_LPT_CONTROL_PORT);
-        control = (uint8_t)(control & (uint8_t)~LEAP_LPT_CONTROL_BIDIR);
+        control = (uint8_t)((control & (uint8_t)~LEAP_LPT_CONTROL_BIDIR) |
+                            LEAP_LPT_CONTROL_OUTPUTS_IDLE);
         leap_lpt_out8(LEAP_LPT_CONTROL_PORT, control);
     }
 
-    leap_lpt_out8(LEAP_LPT_DATA_PORT, 0u);
+    leap_lpt_out8(LEAP_LPT_DATA_PORT, LEAP_LPT_LOGICAL_TO_HW(0u));
     io->io_status = LEAP_DIO_STATUS_OK;
 }
 
 void leap_rtems_board_apply_outputs(LeapRtemsBoardIo* io, uint16_t outputs)
 {
-    const uint8_t out8 = (uint8_t)(outputs & 0xffu);
+    const uint8_t logical = (uint8_t)(outputs & 0xffu);
 
     if (io == NULL)
     {
         return;
     }
 
-    io->digital_outputs = (uint16_t)out8;
-    leap_lpt_out8(LEAP_LPT_DATA_PORT, out8);
+    io->digital_outputs = (uint16_t)logical;
+    leap_lpt_out8(LEAP_LPT_DATA_PORT, LEAP_LPT_LOGICAL_TO_HW(logical));
 }
 
 void leap_rtems_board_enter_safe(LeapRtemsBoardIo* io)

@@ -93,9 +93,10 @@ leap_rtems_board_init(LeapRtemsBoardIo* io)
     {
         uint8_t control = leap_lpt_in8(LEAP_LPT_CONTROL_PORT);
 
-        control = (uint8_t)(control & (uint8_t)~LEAP_LPT_CONTROL_BIDIR);
+        control = (uint8_t)((control & (uint8_t)~LEAP_LPT_CONTROL_BIDIR) |
+                            LEAP_LPT_CONTROL_OUTPUTS_IDLE);
         leap_lpt_out8(LEAP_LPT_CONTROL_PORT, control);
-        leap_lpt_out8(LEAP_LPT_DATA_PORT, 0u);
+        leap_lpt_out8(LEAP_LPT_DATA_PORT, LEAP_LPT_LOGICAL_TO_HW(0u));
     }
 
     io->io_status = (g_port_io_ready != 0) ? LEAP_DIO_STATUS_OK : LEAP_DIO_STATUS_OUTPUT_SHORT;
@@ -104,18 +105,18 @@ leap_rtems_board_init(LeapRtemsBoardIo* io)
 void
 leap_rtems_board_apply_outputs(LeapRtemsBoardIo* io, uint16_t outputs)
 {
-    const uint8_t out8 = (uint8_t)(outputs & 0xffu);
+    const uint8_t logical = (uint8_t)(outputs & 0xffu);
 
     if (io == NULL)
     {
         return;
     }
 
-    io->digital_outputs = (uint16_t)out8;
+    io->digital_outputs = (uint16_t)logical;
 
     if (g_port_io_ready != 0)
     {
-        leap_lpt_out8(LEAP_LPT_DATA_PORT, out8);
+        leap_lpt_out8(LEAP_LPT_DATA_PORT, LEAP_LPT_LOGICAL_TO_HW(logical));
     }
 }
 
@@ -168,4 +169,32 @@ const char*
 leap_board_pci_address(void)
 {
     return NULL;
+}
+
+void
+leap_board_read_registers(uint8_t* data, uint8_t* status, uint8_t* control)
+{
+    if (data != NULL)
+    {
+        *data = (g_port_io_ready != 0) ? leap_lpt_in8(LEAP_LPT_DATA_PORT) : 0u;
+    }
+    if (status != NULL)
+    {
+        *status = (g_port_io_ready != 0) ? leap_lpt_in8(LEAP_LPT_STATUS_PORT) : 0u;
+    }
+    if (control != NULL)
+    {
+        *control = (g_port_io_ready != 0) ? leap_lpt_in8(LEAP_LPT_CONTROL_PORT) : 0u;
+    }
+}
+
+uint16_t
+leap_board_read_physical_inputs(void)
+{
+    if (g_port_io_ready == 0)
+    {
+        return 0u;
+    }
+
+    return leap_board_read_native_inputs();
 }

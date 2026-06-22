@@ -117,6 +117,22 @@ strip "$BUILD_DIR/leap-device"
 mkdir -p "$DEST"
 install -m 755 "$BUILD_DIR/leap-device" "$DEST/leap-device"
 
+echo "=== Building lpt-dio CLI (static i386) ==="
+LPT_BOARD_OBJ="$BUILD_DIR/leap_board_linux.o"
+LPT_CLI_OBJ="$BUILD_DIR/lpt_dio_cli.o"
+if [ "$LEAP_BOARD" != "lpt" ]; then
+	cp "$BUILD_DIR/leap_config.h" "$BUILD_DIR/leap_config.h.bak"
+	cp "$SCRIPT_DIR/src/leap_config.h" "$BUILD_DIR/leap_config.h"
+	gcc $CFLAGS "${INCLUDES[@]}" -I"$BUILD_DIR" \
+		-c "$SCRIPT_DIR/src/leap_board_linux.c" -o "$LPT_BOARD_OBJ"
+	mv "$BUILD_DIR/leap_config.h.bak" "$BUILD_DIR/leap_config.h"
+fi
+gcc $CFLAGS "${INCLUDES[@]}" -I"$BUILD_DIR" \
+	-c "$SCRIPT_DIR/src/lpt_dio_cli.c" -o "$LPT_CLI_OBJ"
+gcc $LDFLAGS "$LPT_CLI_OBJ" "$LPT_BOARD_OBJ" -o "$BUILD_DIR/lpt-dio"
+strip "$BUILD_DIR/lpt-dio"
+install -m 755 "$BUILD_DIR/lpt-dio" "$DEST/lpt-dio"
+
 if [ "$LEAP_BOARD" = "mcc_dio24" ]; then
 	echo "=== Building mcc-dio24 CLI (static i386) ==="
 	CLI_OBJ="$BUILD_DIR/mcc_dio24_cli.o"
@@ -129,7 +145,7 @@ fi
 
 echo ""
 echo "Installed into overlay (repack with: sudo bash alpine/mk-image.sh):"
-ls -lh "$DEST/leap-device"
+ls -lh "$DEST/leap-device" "$DEST/lpt-dio"
 if [ "$LEAP_BOARD" = "mcc_dio24" ]; then
 	ls -lh "$DEST/mcc-dio24"
 fi
