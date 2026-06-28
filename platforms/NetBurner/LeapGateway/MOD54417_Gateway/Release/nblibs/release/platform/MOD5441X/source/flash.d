@@ -1,7 +1,7 @@
 nblibs/release/platform/MOD5441X/source/flash.o: \
  C:/nburn/platform/MOD5441X/source/flash.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h \
  C:/nburn/nbrtos/include/includes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
@@ -40,7 +40,7 @@ nblibs/release/platform/MOD5441X/source/flash.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h:
 

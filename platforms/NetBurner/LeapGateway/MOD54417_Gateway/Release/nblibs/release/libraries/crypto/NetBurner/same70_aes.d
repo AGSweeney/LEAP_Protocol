@@ -1,7 +1,7 @@
 nblibs/release/libraries/crypto/NetBurner/same70_aes.o: \
  C:/nburn/libraries/crypto/NetBurner/same70_aes.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/libraries/include/crypto/wolfssl/wolfcrypt/settings.h \
  C:/nburn/libraries/include/crypto/platform/MOD5441X/user_settings.h \
  C:/nburn/nbrtos/include/endian.h \
@@ -21,7 +21,7 @@ nblibs/release/libraries/crypto/NetBurner/same70_aes.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/libraries/include/crypto/wolfssl/wolfcrypt/settings.h:
 

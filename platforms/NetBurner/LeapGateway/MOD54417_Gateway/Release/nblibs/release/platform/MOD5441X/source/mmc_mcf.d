@@ -1,7 +1,7 @@
 nblibs/release/platform/MOD5441X/source/mmc_mcf.o: \
  C:/nburn/platform/MOD5441X/source/mmc_mcf.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/effs_fat/multi_drive_mmc_mcf.h \
  C:/nburn/nbrtos/include/effs_fat/common.h \
@@ -21,7 +21,7 @@ nblibs/release/platform/MOD5441X/source/mmc_mcf.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 

@@ -41,9 +41,87 @@
     </div>
   </div>
 
+  <div class="card health-card">
+    <div class="health-card-header">
+      <div>
+        <h2>System Health</h2>
+        <p class="description">Live task load from NNDK runtime counters.</p>
+      </div>
+      <span id="healthReady" class="status-pill">Waiting for sample</span>
+    </div>
+    <div class="health-grid">
+      <div class="health-metric">
+        <span id="cpuLoadPct" class="health-value">--</span>
+        <span class="health-label">CPU Load</span>
+      </div>
+      <div class="health-metric">
+        <span id="idlePct" class="health-value">--</span>
+        <span class="health-label">Idle</span>
+      </div>
+      <div class="health-metric">
+        <span id="leapTaskPct" class="health-value">--</span>
+        <span class="health-label">LEAP Task</span>
+      </div>
+      <div class="health-metric">
+        <span id="eipTaskPct" class="health-value">--</span>
+        <span class="health-label">EtherNet/IP</span>
+      </div>
+      <div class="health-metric">
+        <span id="networkTaskPct" class="health-value">--</span>
+        <span class="health-label">Network/HTTP</span>
+      </div>
+      <div class="health-metric">
+        <span id="maxTaskPct" class="health-value">--</span>
+        <span id="maxTaskLabel" class="health-label">Max Task</span>
+      </div>
+    </div>
+  </div>
+
   <footer class="footer">
     &copy; 2026 Adam G. Sweeney &middot; MIT License
   </footer>
 </div>
+<script>
+function healthPct(value) {
+  if (typeof value !== "number" || !isFinite(value)) {
+    return "--";
+  }
+  return value.toFixed(1) + "%";
+}
+
+function setHealthText(id, text) {
+  var el = document.getElementById(id);
+  if (el) {
+    el.textContent = text;
+  }
+}
+
+async function refreshSystemHealth() {
+  try {
+    var response = await fetch("/api/system/health");
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    var data = await response.json();
+    setHealthText("cpuLoadPct", healthPct(data.cpu_load_pct));
+    setHealthText("idlePct", healthPct(data.idle_pct));
+    setHealthText("leapTaskPct", healthPct(data.leap_task_pct));
+    setHealthText("eipTaskPct", healthPct(data.eip_task_pct));
+    setHealthText("networkTaskPct", healthPct(data.network_task_pct));
+    setHealthText("maxTaskPct", healthPct(data.max_task_pct));
+    setHealthText("maxTaskLabel", "Max: " + (data.max_task_name || "Task"));
+
+    var ready = document.getElementById("healthReady");
+    if (ready) {
+      ready.textContent = data.ready ? ("Sample " + (data.sample_ms || 0) + " ms") : "Waiting for sample";
+    }
+  } catch (err) {
+    setHealthText("healthReady", "Health unavailable");
+  }
+}
+
+refreshSystemHealth();
+setInterval(refreshSystemHealth, 2000);
+</script>
 </body>
 </html>

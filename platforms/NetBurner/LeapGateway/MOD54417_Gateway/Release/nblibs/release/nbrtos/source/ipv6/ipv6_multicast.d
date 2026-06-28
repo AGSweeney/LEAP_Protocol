@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/ipv6/ipv6_multicast.o: \
  C:/nburn/nbrtos/source/ipv6/ipv6_multicast.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/multicast.h C:/nburn/nbrtos/include/nbrtos.h \
  C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -38,7 +38,7 @@ nblibs/release/nbrtos/source/ipv6/ipv6_multicast.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/multicast.h:
 

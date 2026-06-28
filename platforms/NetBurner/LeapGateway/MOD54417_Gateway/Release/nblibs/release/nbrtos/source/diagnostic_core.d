@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/diagnostic_core.o: \
  C:/nburn/nbrtos/source/diagnostic_core.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/buffers.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
@@ -27,7 +27,7 @@ nblibs/release/nbrtos/source/diagnostic_core.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/buffers.h:
 

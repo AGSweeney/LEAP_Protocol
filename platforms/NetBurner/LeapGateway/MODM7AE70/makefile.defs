@@ -14,8 +14,8 @@ GW_PLATFORM = ../src/platform
 GW_SHARED = ../../../../x86-32/D945GSEJT/LeapGateway/src
 LEAP_CORE = ../../../../../leap_core
 
-EXTRACPPFLAGS += -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../opener/netburner_port -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1
-EXTRACFLAGS += -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../opener/netburner_port -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1
+EXTRACPPFLAGS += -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../opener/netburner_port -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DLEAP_PD_LATENCY_HISTORY_MAX=64u
+EXTRACFLAGS += -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../opener/netburner_port -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DLEAP_PD_LATENCY_HISTORY_MAX=64u
 
 nbfind = $(foreach x,$(wildcard $1*),$(call nbfind,$x/,$2)$(filter $(subst *,%,$2),$x))
 COMPHTML_SRCS := $(call nbfind,$(HTMLDIR)/,*.htm *.html *.HTM *.HTML *.Htm *.Html *.js *.Js *.JS *.css *.CSS *.Css *.jpg *.jpeg *.gif *.png)

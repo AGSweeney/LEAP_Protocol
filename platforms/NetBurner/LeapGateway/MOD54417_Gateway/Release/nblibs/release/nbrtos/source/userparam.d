@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/userparam.o: \
  C:/nburn/nbrtos/source/userparam.cpp C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/hal.h C:/nburn/libraries/include/crypto/ssl.h \
  C:/nburn/nbrtos/include/nettypes.h \
@@ -36,7 +36,7 @@ nblibs/release/nbrtos/source/userparam.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 

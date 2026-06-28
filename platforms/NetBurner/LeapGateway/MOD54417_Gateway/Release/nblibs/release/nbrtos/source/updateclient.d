@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/updateclient.o: \
  C:/nburn/nbrtos/source/updateclient.cpp C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/StreamUpdate.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/hal.h C:/nburn/libraries/include/crypto/ssl.h \
@@ -52,7 +52,7 @@ nblibs/release/nbrtos/source/updateclient.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/StreamUpdate.h:
 

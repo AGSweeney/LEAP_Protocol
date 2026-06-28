@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/crypto_stubs.o: \
  C:/nburn/nbrtos/source/crypto_stubs.cpp C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
@@ -15,7 +15,7 @@ nblibs/release/nbrtos/source/crypto_stubs.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/nettypes.h:
 

@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/arp.o: C:/nburn/nbrtos/source/arp.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -25,11 +25,15 @@ nblibs/release/nbrtos/source/arp.o: C:/nburn/nbrtos/source/arp.cpp \
  C:/nburn/nbrtos/include/webclient/http_funcs.h \
  C:/nburn/nbrtos/include/dns.h \
  C:/nburn/nbrtos/include/webclient/web_buffers.h \
- C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/snmp.h
+ C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/snmp.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h \
+ C:/nburn/nbrtos/include/snmp/mibII_vars.h \
+ C:/nburn/nbrtos/include/snmp/snmp_table.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 
@@ -100,3 +104,11 @@ C:/nburn/nbrtos/include/webclient/web_buffers.h:
 C:/nburn/nbrtos/include/mDNS.h:
 
 C:/nburn/nbrtos/include/snmp.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
+
+C:/nburn/nbrtos/include/snmp/mibII_vars.h:
+
+C:/nburn/nbrtos/include/snmp/snmp_table.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:

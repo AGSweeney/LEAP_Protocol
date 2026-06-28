@@ -1,7 +1,7 @@
 nblibs/release/arch/coldfire/cpu/MCF5441X/source/usb_msd/usb/usb_host_msd_queue.o: \
  C:/nburn/arch/coldfire/cpu/MCF5441X/source/usb_msd/usb/usb_host_msd_queue.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
@@ -33,7 +33,7 @@ nblibs/release/arch/coldfire/cpu/MCF5441X/source/usb_msd/usb/usb_host_msd_queue.
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/nbrtos.h:
 

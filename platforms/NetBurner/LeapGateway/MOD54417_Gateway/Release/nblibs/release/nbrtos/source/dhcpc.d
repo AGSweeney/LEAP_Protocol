@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/dhcpc.o: C:/nburn/nbrtos/source/dhcpc.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/dhcpinternals.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/netinterface.h C:/nburn/nbrtos/include/autoip.h \
@@ -30,7 +30,7 @@ nblibs/release/nbrtos/source/dhcpc.o: C:/nburn/nbrtos/source/dhcpc.cpp \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/dhcpinternals.h:
 

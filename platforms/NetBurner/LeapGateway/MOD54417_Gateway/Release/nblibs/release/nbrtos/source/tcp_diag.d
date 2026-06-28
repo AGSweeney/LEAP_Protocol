@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/tcp_diag.o: \
  C:/nburn/nbrtos/source/tcp_diag.cpp C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -11,19 +11,23 @@ nblibs/release/nbrtos/source/tcp_diag.o: \
  C:/nburn/nbrtos/include/nbprintfinternal.h \
  C:/nburn/nbrtos/include/nettypes.h C:/nburn/nbrtos/include/iointernal.h \
  C:/nburn/nbrtos/include/iosys.h C:/nburn/nbrtos/include/snmp.h \
- C:/nburn/nbrtos/include/buffers.h C:/nburn/nbrtos/include/counters.h \
- C:/nburn/nbrtos/include/ip.h C:/nburn/nbrtos/include/netinterface.h \
- C:/nburn/nbrtos/include/autoip.h C:/nburn/nbrtos/include/nettimer.h \
- C:/nburn/nbrtos/include/udp.h C:/nburn/nbrtos/include/config_netobj.h \
- C:/nburn/nbrtos/include/config_obj.h C:/nburn/nbrtos/include/nbstring.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h \
+ C:/nburn/nbrtos/include/snmp/mibII_vars.h \
+ C:/nburn/nbrtos/include/snmp/snmp_table.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h C:/nburn/nbrtos/include/config_obj.h \
+ C:/nburn/nbrtos/include/buffers.h C:/nburn/nbrtos/include/nbstring.h \
  C:/nburn/nbrtos/include/system.h C:/nburn/nbrtos/include/fd_adapter.h \
  C:/nburn/platform/MOD5441X/include/plat_cfg_types.h \
- C:/nburn/nbrtos/include/dhcpclient.h \
- C:/nburn/nbrtos/include/discoveryservlet.h \
  C:/nburn/nbrtos/include/servlets.h \
  C:/nburn/nbrtos/include/webclient/http_funcs.h \
- C:/nburn/nbrtos/include/dns.h \
+ C:/nburn/nbrtos/include/dns.h C:/nburn/nbrtos/include/udp.h \
+ C:/nburn/nbrtos/include/ip.h \
  C:/nburn/nbrtos/include/webclient/web_buffers.h \
+ C:/nburn/nbrtos/include/nettimer.h C:/nburn/nbrtos/include/counters.h \
+ C:/nburn/nbrtos/include/netinterface.h C:/nburn/nbrtos/include/autoip.h \
+ C:/nburn/nbrtos/include/config_netobj.h \
+ C:/nburn/nbrtos/include/dhcpclient.h \
+ C:/nburn/nbrtos/include/discoveryservlet.h \
  C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/tcp.h \
  C:/nburn/nbrtos/include/tcp_private.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_constants.h \
@@ -38,7 +42,7 @@ nblibs/release/nbrtos/source/tcp_diag.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 
@@ -68,23 +72,17 @@ C:/nburn/nbrtos/include/iosys.h:
 
 C:/nburn/nbrtos/include/snmp.h:
 
-C:/nburn/nbrtos/include/buffers.h:
+C:/nburn/nbrtos/include/snmp/asn1.h:
 
-C:/nburn/nbrtos/include/counters.h:
+C:/nburn/nbrtos/include/snmp/mibII_vars.h:
 
-C:/nburn/nbrtos/include/ip.h:
+C:/nburn/nbrtos/include/snmp/snmp_table.h:
 
-C:/nburn/nbrtos/include/netinterface.h:
-
-C:/nburn/nbrtos/include/autoip.h:
-
-C:/nburn/nbrtos/include/nettimer.h:
-
-C:/nburn/nbrtos/include/udp.h:
-
-C:/nburn/nbrtos/include/config_netobj.h:
+C:/nburn/nbrtos/include/snmp/asn1.h:
 
 C:/nburn/nbrtos/include/config_obj.h:
+
+C:/nburn/nbrtos/include/buffers.h:
 
 C:/nburn/nbrtos/include/nbstring.h:
 
@@ -94,17 +92,31 @@ C:/nburn/nbrtos/include/fd_adapter.h:
 
 C:/nburn/platform/MOD5441X/include/plat_cfg_types.h:
 
-C:/nburn/nbrtos/include/dhcpclient.h:
-
-C:/nburn/nbrtos/include/discoveryservlet.h:
-
 C:/nburn/nbrtos/include/servlets.h:
 
 C:/nburn/nbrtos/include/webclient/http_funcs.h:
 
 C:/nburn/nbrtos/include/dns.h:
 
+C:/nburn/nbrtos/include/udp.h:
+
+C:/nburn/nbrtos/include/ip.h:
+
 C:/nburn/nbrtos/include/webclient/web_buffers.h:
+
+C:/nburn/nbrtos/include/nettimer.h:
+
+C:/nburn/nbrtos/include/counters.h:
+
+C:/nburn/nbrtos/include/netinterface.h:
+
+C:/nburn/nbrtos/include/autoip.h:
+
+C:/nburn/nbrtos/include/config_netobj.h:
+
+C:/nburn/nbrtos/include/dhcpclient.h:
+
+C:/nburn/nbrtos/include/discoveryservlet.h:
 
 C:/nburn/nbrtos/include/mDNS.h:
 

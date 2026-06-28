@@ -34,10 +34,10 @@ extern void nb_schedule_reboot(void);
 #define LEAP_GATEWAY_HEARTBEAT_LISTEN_ONLY_ASSEMBLY_NUM 153U
 #define LEAP_GATEWAY_EXPLICIT_ASSEMBLY_NUM 154U
 
-EipUint8 g_assembly_data064[32];
-EipUint8 g_assembly_data096[32];
+EipUint8 g_assembly_data064[64];
+EipUint8 g_assembly_data096[64];
 EipUint8 g_assembly_data097[10];
-EipUint8 g_assembly_data09A[32];
+EipUint8 g_assembly_data09A[64];
 
 static EipUint32 s_active_io_connections = 0U;
 static bool s_io_activity_seen = false;
@@ -142,8 +142,7 @@ EipStatus ApplicationInitialization(void)
     LEAP_GATEWAY_INPUT_ASSEMBLY_NUM,
     LEAP_GATEWAY_CONFIG_ASSEMBLY_NUM);
 
-  CipRunIdleHeaderSetO2T(false);
-  CipRunIdleHeaderSetT2O(false);
+  OpenerConfigureMicro800RunIdleCompat();
 
   InsertGetSetCallback(GetCipClass(kCipQoSClassCode), NvQosSetCallback, kNvDataFunc);
   InsertGetSetCallback(GetCipClass(kCipTcpIpInterfaceClassCode), NvTcpipSetCallback,

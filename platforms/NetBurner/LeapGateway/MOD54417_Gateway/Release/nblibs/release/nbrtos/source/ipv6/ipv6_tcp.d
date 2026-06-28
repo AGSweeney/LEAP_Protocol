@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/ipv6/ipv6_tcp.o: \
  C:/nburn/nbrtos/source/ipv6/ipv6_tcp.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
@@ -27,7 +27,11 @@ nblibs/release/nbrtos/source/ipv6/ipv6_tcp.o: \
  C:/nburn/nbrtos/include/dns.h \
  C:/nburn/nbrtos/include/webclient/web_buffers.h \
  C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/snmp.h \
- C:/nburn/nbrtos/include/tcp.h C:/nburn/nbrtos/include/tcp_private.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h \
+ C:/nburn/nbrtos/include/snmp/mibII_vars.h \
+ C:/nburn/nbrtos/include/snmp/snmp_table.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h C:/nburn/nbrtos/include/tcp.h \
+ C:/nburn/nbrtos/include/tcp_private.h \
  C:/nburn/nbrtos/include/multihome.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_constants.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_frames.h \
@@ -39,7 +43,7 @@ nblibs/release/nbrtos/source/ipv6/ipv6_tcp.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/constants.h:
 
@@ -108,6 +112,14 @@ C:/nburn/nbrtos/include/webclient/web_buffers.h:
 C:/nburn/nbrtos/include/mDNS.h:
 
 C:/nburn/nbrtos/include/snmp.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
+
+C:/nburn/nbrtos/include/snmp/mibII_vars.h:
+
+C:/nburn/nbrtos/include/snmp/snmp_table.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
 
 C:/nburn/nbrtos/include/tcp.h:
 

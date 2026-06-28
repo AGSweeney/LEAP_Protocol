@@ -528,4 +528,139 @@ static int DecodeTcpIpInterfaceHostNameWrapper(void *const data,
     }
 }
 
+function Ensure-Micro800RunIdleCompat {
+    param(
+        [string]$Root
+    )
+
+    $cipIo = Join-Path $Root "src\cip\cipioconnection.c"
+    $apiH = Join-Path $Root "src\opener_api.h"
+    $cmakeLists = Join-Path $Root "CMakeLists.txt"
+
+    if (-not (Test-Path $cipIo)) {
+        throw "Missing $cipIo"
+    }
+
+    $cipSrc = Get-Content $cipIo -Raw
+    if ($cipSrc -notmatch 'OpenerConfigureMicro800RunIdleCompat') {
+        $cipSrc = $cipSrc -replace '(bool CipRunIdleHeaderGetT2O\(void\) \{\s*\r?\n\s*return s_produce_run_idle;\s*\r?\n\})',
+@'
+$1
+
+void OpenerConfigureMicro800RunIdleCompat(void) {
+#if defined(OPENER_MICRO800_RUN_IDLE_COMPAT) && OPENER_MICRO800_RUN_IDLE_COMPAT
+  CipRunIdleHeaderSetO2T(false);
+  CipRunIdleHeaderSetT2O(false);
+#endif
+}
+'@
+    }
+
+    if ($cipSrc -notmatch 'Applying implicit run/idle header compensation') {
+        $cipSrc = $cipSrc -replace '(?s)(      diff_size \+= 2;\s*\r?\n    \}\s*\r?\n)\s*\r?\n    if\( s_consume_run_idle && \(data_size > 0\) && \(!is_heartbeat\) \) \{',
+@'
+$1
+#if defined(OPENER_MICRO800_RUN_IDLE_COMPAT) && OPENER_MICRO800_RUN_IDLE_COMPAT
+    {
+      EipInt16 length_gap =
+        (EipInt16)(data_size - (int)( (CipByteArray *) attribute->data )->length);
+      if( (length_gap == 4) && !s_consume_run_idle ) {
+        OPENER_TRACE_INFO(
+          "Applying implicit run/idle header compensation for consuming data\n");
+        data_size -= 4;
+        diff_size += 4;
+      }
+    }
+#endif
+
+    if( s_consume_run_idle && (data_size > 0) && (!is_heartbeat) ) {
+'@
+    }
+
+    if ($cipSrc -notmatch 'Micro800 forced Run/Idle header') {
+        $recvAnchor = @'
+    if(no_new_data) {
+      return kEipStatusOk;
+    }
+
+    if(NotifyAssemblyConnectedDataReceived(connection_object->consuming_instance,
+'@
+        $recvInsert = @'
+    if(no_new_data) {
+      return kEipStatusOk;
+    }
+
+#if defined(OPENER_MICRO800_RUN_IDLE_COMPAT) && OPENER_MICRO800_RUN_IDLE_COMPAT
+    {
+      CipByteArray *consuming_instance_attributes =
+        (CipByteArray *) connection_object->consuming_instance->attributes->data;
+
+      if( (0 == s_consume_run_idle) &&
+          (data_length == (consuming_instance_attributes->length + 4U)) ) {
+        const EipUint8 *run_idle_data = data;
+        EipUint32 nRunIdleBuf = GetUdintFromMessage(&run_idle_data);
+        OPENER_TRACE_INFO(
+          "Micro800 forced Run/Idle header: 0x%x\n",
+          nRunIdleBuf);
+        RunIdleChanged(nRunIdleBuf);
+        g_run_idle_state = nRunIdleBuf;
+        OPENER_TRACE_INFO(
+          "Discarding forced 4-byte run/idle header from originator\n");
+        data += 4;
+        data_length = (EipUint16)(data_length - 4U);
+      }
+    }
+#endif
+
+    if(NotifyAssemblyConnectedDataReceived(connection_object->consuming_instance,
+'@
+        if ($cipSrc -notmatch [regex]::Escape($recvAnchor.Trim())) {
+            throw 'cipioconnection.c receive-path anchor not found for Micro800 run-idle patch'
+        }
+        $cipSrc = $cipSrc.Replace($recvAnchor, $recvInsert)
+    }
+
+    Set-Content -Path $cipIo -Value $cipSrc -NoNewline
+
+    if (Test-Path $apiH) {
+        $apiSrc = Get-Content $apiH -Raw
+        if ($apiSrc -notmatch 'OpenerConfigureMicro800RunIdleCompat') {
+            $apiSrc = $apiSrc -replace '(bool CipRunIdleHeaderGetT2O\(void\);\s*\r?\n)',
+@'
+$1
+/** @ingroup CIP_API
+ * @brief Apply Rockwell Micro800/Logix run-idle defaults (O->T and T->O headers off).
+ *
+ * When OPENER_MICRO800_RUN_IDLE_COMPAT is enabled, also activates Forward Open
+ * size compensation and receive-path stripping for undeclared 4-byte headers.
+ */
+void OpenerConfigureMicro800RunIdleCompat(void);
+
+'@
+            Set-Content -Path $apiH -Value $apiSrc -NoNewline
+        }
+    }
+
+    if (Test-Path $cmakeLists) {
+        $cmake = Get-Content $cmakeLists -Raw
+        if ($cmake -notmatch 'OPENER_MICRO800_RUN_IDLE_COMPAT') {
+            $cmake = $cmake -replace '(option\(OPENER_CONSUMED_DATA_HAS_RUN_IDLE_HEADER[^\)]+\))',
+                "`$1`r`noption(OPENER_MICRO800_RUN_IDLE_COMPAT `"Rockwell Micro800/Logix run-idle header workarounds`" ON)"
+            $cmake = $cmake -replace '(if\(OPENER_CONSUMED_DATA_HAS_RUN_IDLE_HEADER\)\s*\r?\n\s*add_definitions\(-DOPENER_CONSUMED_DATA_HAS_RUN_IDLE_HEADER\)\s*\r?\n\s*endif\(\))',
+@'
+if(OPENER_CONSUMED_DATA_HAS_RUN_IDLE_HEADER)
+  add_definitions(-DOPENER_CONSUMED_DATA_HAS_RUN_IDLE_HEADER)
+endif()
+
+if(OPENER_MICRO800_RUN_IDLE_COMPAT)
+  add_definitions(-DOPENER_MICRO800_RUN_IDLE_COMPAT=1)
+endif()
+'@
+            Set-Content -Path $cmakeLists -Value $cmake -NoNewline
+        }
+    }
+}
+
+Ensure-Micro800RunIdleCompat -Root $StageDir
+
 Write-Host "Patched OpENer staged source for NETBURNER."

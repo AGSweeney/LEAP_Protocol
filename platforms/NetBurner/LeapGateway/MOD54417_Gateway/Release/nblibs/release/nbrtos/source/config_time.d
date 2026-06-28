@@ -3,7 +3,7 @@ nblibs/release/nbrtos/source/config_time.o: \
  C:/nburn/nbrtos/include/config_time.h \
  C:/nburn/nbrtos/include/config_obj.h C:/nburn/nbrtos/include/buffers.h \
  C:/nburn/nbrtos/include/constants.h C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
@@ -30,7 +30,7 @@ C:/nburn/nbrtos/include/constants.h:
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/constants-overload.h:
 

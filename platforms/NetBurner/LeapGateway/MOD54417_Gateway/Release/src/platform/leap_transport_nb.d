@@ -4,7 +4,7 @@ src/platform/leap_transport_nb.o: ../src/platform/leap_transport_nb.cpp \
  ../../../../../leap_core/inc/leap/leap_frame.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/ethervars.h \
  C:/nburn/nbrtos/include/netinterface.h C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/autoip.h C:/nburn/nbrtos/include/buffers.h \
  C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -69,7 +69,7 @@ C:/nburn/nbrtos/include/netinterface.h:
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/autoip.h:
 

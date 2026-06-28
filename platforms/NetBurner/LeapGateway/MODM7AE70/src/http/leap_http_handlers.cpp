@@ -221,41 +221,69 @@ static int HandleLeapDiscoverApi(int sock, HTTP_Request &req)
 static int HandleLeapPeersApi(int sock, HTTP_Request &req)
 {
     (void)req;
+    LeapControllerPeerTable peers;
+    bool discover_active = false;
+
+    leap_gateway_runtime_lock();
+    peers = g_gateway.peer_table;
+    discover_active = (g_gateway.discover_active != 0);
+    leap_gateway_runtime_unlock();
+
     fdprintf(sock, "HTTP/1.0 200 OK\r\nPragma: no-cache\r\nContent-Type: application/json\r\n\r\n");
     fdprintf(sock, "{\"peers\":[");
     int emitted = 0;
-    for (unsigned i = 0u; i < g_gateway.peer_table.count; ++i)
+    for (unsigned i = 0u; i < peers.count; ++i)
     {
-        const LeapControllerPeerEntry *peer = leap_controller_peer_table_get(&g_gateway.peer_table, i);
+        const LeapControllerPeerEntry *peer = leap_controller_peer_table_get(&peers, i);
+        uint8_t owner_mac[6] = {0};
+        uint16_t device_state = 0u;
+        int owned_by_gateway = 0;
+
         if (peer == nullptr)
         {
             continue;
         }
+        device_state = peer->device_state;
+        leap_gateway_runtime_lock();
+        const int slot = leap_controller_session_hub_find(&g_gateway.session_hub, peer->mac);
+        if (slot >= 0 && leap_controller_session_hub_is_op(&g_gateway.session_hub, slot))
+        {
+            memcpy(owner_mac, g_gateway.session_hub.config.default_peer.mgmt.controller_mac, sizeof(owner_mac));
+            device_state = static_cast<uint16_t>(LEAP_STATE_OP);
+            owned_by_gateway = 1;
+        }
+        else
+        {
+            memcpy(owner_mac, peer->active_owner_mac, sizeof(owner_mac));
+        }
+        leap_gateway_runtime_unlock();
+
         if (emitted != 0)
         {
             fdprintf(sock, ",");
         }
         emitted = 1;
-        if (http_mac_is_zero(peer->active_owner_mac))
+        if (http_mac_is_zero(owner_mac))
         {
             fdprintf(sock,
                      "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"none\"}",
                      peer->mac[0], peer->mac[1], peer->mac[2], peer->mac[3], peer->mac[4], peer->mac[5],
                      peer->active_profile_id,
-                     peer->device_state);
+                     device_state);
         }
         else
         {
             fdprintf(sock,
-                     "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"%02x:%02x:%02x:%02x:%02x:%02x\"}",
+                     "{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"profile\":\"0x%08X\",\"state\":\"0x%04X\",\"owner\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"owned_by_gateway\":%s}",
                      peer->mac[0], peer->mac[1], peer->mac[2], peer->mac[3], peer->mac[4], peer->mac[5],
                      peer->active_profile_id,
-                     peer->device_state,
-                     peer->active_owner_mac[0], peer->active_owner_mac[1], peer->active_owner_mac[2],
-                     peer->active_owner_mac[3], peer->active_owner_mac[4], peer->active_owner_mac[5]);
+                     device_state,
+                     owner_mac[0], owner_mac[1], owner_mac[2],
+                     owner_mac[3], owner_mac[4], owner_mac[5],
+                     owned_by_gateway ? "true" : "false");
         }
     }
-    fdprintf(sock, "],\"discover_active\":%s}", g_gateway.discover_active ? "true" : "false");
+    fdprintf(sock, "],\"discover_active\":%s}", discover_active ? "true" : "false");
     return 1;
 }
 

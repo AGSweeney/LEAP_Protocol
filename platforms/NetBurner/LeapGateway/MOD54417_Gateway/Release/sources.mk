@@ -28,10 +28,11 @@ S19FILE :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
-. \
 overload/nbrtos/source \
 src/core \
 src/http \
 src \
+src/opener \
 src/platform \
+. \
 

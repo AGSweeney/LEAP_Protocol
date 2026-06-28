@@ -1,8 +1,8 @@
 nblibs/release/arch/coldfire/source/nbrtoscfc.o: \
  C:/nburn/arch/coldfire/source/nbrtoscfc.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h C:/nburn/nbrtos/include/hal.h \
- C:/nburn/libraries/include/crypto/ssl.h \
+ ../overload/nbrtos/include/predef-overload.h \
+ C:/nburn/nbrtos/include/hal.h C:/nburn/libraries/include/crypto/ssl.h \
  C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
@@ -37,7 +37,7 @@ nblibs/release/arch/coldfire/source/nbrtoscfc.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/hal.h:
 

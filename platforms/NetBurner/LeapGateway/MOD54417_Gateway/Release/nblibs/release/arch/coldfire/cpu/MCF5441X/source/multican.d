@@ -1,7 +1,7 @@
 nblibs/release/arch/coldfire/cpu/MCF5441X/source/multican.o: \
  C:/nburn/arch/coldfire/cpu/MCF5441X/source/multican.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/intcdefs.h \
@@ -43,7 +43,7 @@ nblibs/release/arch/coldfire/cpu/MCF5441X/source/multican.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim.h:
 

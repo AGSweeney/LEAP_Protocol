@@ -40,7 +40,7 @@ $GwInc = @(
     "-I$(Join-Path $LeapCore 'inc')"
 ) -join ' '
 
-$Defines = '-DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DMOD5441X -DMCF5441X -DCOLDFIRE'
+$Defines = '-DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DLEAP_PD_LATENCY_HISTORY_MAX=64u -DMOD5441X -DMCF5441X -DCOLDFIRE'
 $Cflags = "-mcpu=54415 -O2 -Wall -std=gnu17 $Defines $NbInc $GwInc"
 $Cxxflags = "-mcpu=54415 -O2 -Wall -std=gnu++17 -fno-exceptions -fno-rtti $Defines $NbInc $GwInc"
 
@@ -70,8 +70,7 @@ $SharedSrc = @(
     'gateway_global.c',
     'gateway_leap_session.c',
     'gateway_rtems_io.c',
-    'gateway_pd_io.c',
-    'leap_gateway_opener.c'
+    'gateway_pd_io.c'
 ) | ForEach-Object { Join-Path $SharedGw $_ }
 
 $PlatformCpp = @(

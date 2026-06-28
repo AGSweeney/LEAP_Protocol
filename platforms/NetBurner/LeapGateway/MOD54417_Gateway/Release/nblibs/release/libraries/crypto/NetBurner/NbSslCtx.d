@@ -1,7 +1,7 @@
 nblibs/release/libraries/crypto/NetBurner/NbSslCtx.o: \
  C:/nburn/libraries/crypto/NetBurner/NbSslCtx.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/libraries/include/crypto/certgen.h \
  C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
@@ -86,7 +86,7 @@ nblibs/release/libraries/crypto/NetBurner/NbSslCtx.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/libraries/include/crypto/certgen.h:
 

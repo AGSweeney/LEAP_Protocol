@@ -1,7 +1,7 @@
 nblibs/release/libraries/crypto/NetBurner/WeakGetSessionTicketKey.o: \
  C:/nburn/libraries/crypto/NetBurner/WeakGetSessionTicketKey.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -77,7 +77,7 @@ nblibs/release/libraries/crypto/NetBurner/WeakGetSessionTicketKey.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 

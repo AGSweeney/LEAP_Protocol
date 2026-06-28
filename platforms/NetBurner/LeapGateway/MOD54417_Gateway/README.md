@@ -117,7 +117,7 @@ Output: `Release/MOD54417_Gateway.bin` (~497 KB compressed flash as of the lates
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `OPENER_ROOT` | `D:\OpENer-Enhanced` | OpENer-Enhanced checkout |
+| `OPENER_ROOT` | `D:\OpENer-Enhanced` | Base OpENer checkout staged for NetBurner build |
 | `NNDK_ROOT` | `C:\nburn` | NetBurner NNDK install |
 | `LEAP_OPENER_BUILD_DIR` | `%TEMP%\leap-opener-netburner` | OpENer cmake staging |
 | `LEAP_GW_BUILD_DIR` | `%TEMP%\leap-gateway-netburner` | Gateway lib object dir |
@@ -159,7 +159,7 @@ Open **`http://<gateway-ip>/`**.
 |------|------|---------|
 | 1 | Network (`/network.html`) | Set DHCP or static on Plant port; **MOD54417:** bridge or independent dual-port. Save; reboot if IP changed. |
 | 2 | Mappings (`/mapping.html`) | Add LEAP peer MAC -> EIP byte mappings and cyclic period. Save. Use Connect / Disconnect / Discover / live I/O status. |
-| 3 | EtherNet/IP | RSLinx / Studio 5000 - device `LEAP-Gateway`, assemblies 100/150/151. |
+| 3 | EtherNet/IP | RSLinx / Studio 5000 or **Micro800 CCW** — device `LEAP-Gateway`, assemblies 100/150/151 (64 B I/O). Re-import `eds/LEAP_Gateway.eds` after firmware update. |
 
 Config file format matches Alpine (`leap_gateway_config.c` key=value text). Example:
 
@@ -221,12 +221,14 @@ LEAP transport binds to Port 2 when present; OpENer listens on Port 1. The LEAP 
 
 Build library: `.\build-opener-netburner.ps1` -> `opener/build-work/libopener_netburner.a`
 
+Micro800 / CCW I/O connections use Rockwell's undeclared 4-byte Run/Idle header on O→T data. The build enables `OPENER_MICRO800_RUN_IDLE_COMPAT` (ported from `C:\nburn\libraries\OpENer_uC-NetBurner`) and `leapgateway.c` calls `OpenerConfigureMicro800RunIdleCompat()` at startup.
+
 Default assemblies:
 
 | Assembly | ID | Role |
 |----------|-----|------|
-| Input | 100 | Produced to PLC (32 B) |
-| Output | 150 | Consumed from PLC (32 B) |
+| Input | 100 | Produced to PLC (64 B) |
+| Output | 150 | Consumed from PLC (64 B) |
 | Config | 151 | Connection config (10 B) |
 
 See [`BACKPORT.md`](BACKPORT.md) for NetBurner-only CIP enhancements to merge into `LeapGateway-linux`.

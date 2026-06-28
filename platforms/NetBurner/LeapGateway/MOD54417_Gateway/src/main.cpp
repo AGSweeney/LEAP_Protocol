@@ -62,17 +62,13 @@
 
 extern "C" {
 
-#include "../opener/netburner_port/opener.h"
+typedef void *OpenerNetIfHandle;
+
+void opener_init(OpenerNetIfHandle netif);
+void opener_process(void);
+int opener_get_status(void);
 
 }
-
-#include "../opener/netburner_port/netburner_ifconfig.cpp"
-
-#include "../opener/netburner_port/nb_nvtcpip.cpp"
-
-#include "../opener/netburner_port/nb_reboot.cpp"
-
-#include "../opener/netburner_port/opener_nb_socket.cpp"
 
 
 
@@ -104,27 +100,25 @@ extern "C" {
 
 #include "leap/leap_protocol.h"
 
+#include "../opener/leap_gateway_eip.h"
+
 }
 
+#include "core/system_health.h"
 
-extern "C" void leap_gateway_eip_apply_output_assembly(const uint8_t* data, size_t length)
+
+extern "C" void nb_schedule_reboot(void);
+
+extern "C" void OpenerNbScheduleRebootNow(void)
 {
-    leap_gateway_runtime_lock();
-    (void)leap_eip_bridge_apply_output_assembly(&g_gateway.bridge, data, length);
-    leap_gateway_runtime_unlock();
+    nb_schedule_reboot();
 }
 
-
-extern "C" void leap_gateway_eip_pack_input_assembly(
-    uint8_t* data,
-    size_t   capacity,
-    size_t*  length)
+extern "C" void OpenerNbScheduleFactoryResetNow(void)
 {
-    leap_gateway_runtime_lock();
-    (void)leap_eip_bridge_pack_input_assembly(&g_gateway.bridge, data, capacity, length);
-    leap_gateway_runtime_unlock();
+    EraseWholeConfigRecord();
+    nb_schedule_reboot();
 }
-
 
 extern "C" void leap_gateway_runtime_lock(void)
 {
@@ -153,7 +147,7 @@ static void OpenerTask(void *pd)
 
         {
 
-            opener_cyclic();
+            opener_process();
 
         }
 
@@ -168,6 +162,8 @@ static void OpenerTask(void *pd)
 #define LEAPGATEWAY_MAIN_TU 1
 
 #include "core/core_state.cpp"
+
+#include "core/system_health.cpp"
 
 #include "core/mapping_state.cpp"
 
@@ -317,7 +313,9 @@ static void GatewayInitLeapStack()
 
     {
 
-        leap_eip_bridge_set_config(&g_gateway.bridge, &g_gateway.config.bridge);
+        GwMappingNormalizeStatusLayout(g_gateway.config);
+
+        leap_gateway_eip_force_assembly_sizes();
 
         iprintf("Gateway: loaded config from %s (%u mapping(s))\r\n",
 
@@ -330,6 +328,8 @@ static void GatewayInitLeapStack()
     else
 
     {
+
+        leap_gateway_eip_force_assembly_sizes();
 
         iprintf("Gateway: no config in %s - using defaults\r\n", leap_gateway_storage_mount_point());
 
@@ -427,29 +427,28 @@ void UserMain(void *pd)
 
 
 
-        char opener_ifname[16];
-
         const int plantIfNumber = GetFirstInterface();
 
-        snprintf(opener_ifname, sizeof(opener_ifname), "%d", plantIfNumber);
-
-        opener_init(opener_ifname);
+        opener_init((OpenerNetIfHandle)(intptr_t)plantIfNumber);
 
         if (!opener_get_status())
 
         {
 
-            iprintf("OpENer EtherNet/IP listening on Port 1 (interface %s, %hI, TCP/UDP port 44818)\r\n",
+            iprintf("OpENer EtherNet/IP listening on Port 1 (interface %d, %hI, TCP/UDP port 44818)\r\n",
 
-                    opener_ifname,
+                    plantIfNumber,
 
                     InterfaceIP(plantIfNumber));
 
-            iprintf("Assemblies: Input=100 (32B), Output=150 (32B), Config=151 (10B)\r\n");
+            iprintf("Assemblies: Input=100 (64B), Output=150 (64B), Config=151 (10B)\r\n");
 
             iprintf("LEAP Master on Port 2 (interface %s)\r\n", g_gateway.bound_ifname[0] ? g_gateway.bound_ifname : "2");
 
-            OSSimpleTaskCreatewName(OpenerTask, MAIN_PRIO - 2, "OpENer");
+            if (OSSimpleTaskCreatewName(OpenerTask, MAIN_PRIO - 2, "OpENer") == OS_NO_ERR)
+            {
+                GatewaySystemHealthRegisterOpenerTask(OSGetTaskBlock(MAIN_PRIO - 2));
+            }
 
         }
 
@@ -457,7 +456,7 @@ void UserMain(void *pd)
 
         {
 
-            iprintf("Warning: OpENer EtherNet/IP stack failed to start on interface %s\r\n", opener_ifname);
+            iprintf("Warning: OpENer EtherNet/IP stack failed to start on interface %d\r\n", plantIfNumber);
 
         }
 
@@ -476,6 +475,8 @@ void UserMain(void *pd)
     while (1)
 
     {
+
+        GatewaySystemHealthSample();
 
         OSTimeDly(TICKS_PER_SECOND);
 

@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/htmlwritefile.o: \
  C:/nburn/nbrtos/source/htmlwritefile.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/htmlfiles.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nettypes.h \
@@ -22,7 +22,7 @@ nblibs/release/nbrtos/source/htmlwritefile.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/htmlfiles.h:
 

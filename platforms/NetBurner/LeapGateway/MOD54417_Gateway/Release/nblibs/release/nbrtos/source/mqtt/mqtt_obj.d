@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/mqtt/mqtt_obj.o: \
  C:/nburn/nbrtos/source/mqtt/mqtt_obj.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nbstring.h C:/nburn/nbrtos/include/system.h \
  C:/nburn/nbrtos/include/nettypes.h \
@@ -71,7 +71,7 @@ nblibs/release/nbrtos/source/mqtt/mqtt_obj.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 

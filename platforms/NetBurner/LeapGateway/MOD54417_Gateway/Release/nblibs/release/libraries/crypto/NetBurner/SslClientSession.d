@@ -1,7 +1,7 @@
 nblibs/release/libraries/crypto/NetBurner/SslClientSession.o: \
  C:/nburn/libraries/crypto/NetBurner/SslClientSession.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/libraries/include/crypto/NetBurner/SslClientSession.h \
  C:/nburn/nbrtos/include/buffers.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -79,7 +79,7 @@ nblibs/release/libraries/crypto/NetBurner/SslClientSession.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/libraries/include/crypto/NetBurner/SslClientSession.h:
 

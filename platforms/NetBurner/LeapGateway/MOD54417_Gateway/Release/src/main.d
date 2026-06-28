@@ -1,6 +1,6 @@
 src/main.o: ../src/main.cpp C:/nburn/nbrtos/include/init.h \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
@@ -53,16 +53,6 @@ src/main.o: ../src/main.cpp C:/nburn/nbrtos/include/init.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/ethervars.h \
- ../src/../opener/netburner_port/opener.h \
- ../src/../opener/netburner_port/netburner_ifconfig.cpp \
- ../src/../opener/netburner_port/nb_ifconfig.h \
- ../src/../opener/netburner_port/nb_nvtcpip.cpp \
- ../src/../opener/netburner_port/nb_nvtcpip.h \
- ../src/../opener/netburner_port/nb_reboot.cpp \
- ../src/../opener/netburner_port/nb_reboot.h \
- ../src/../opener/netburner_port/opener_nb_socket.cpp \
- ../src/../opener/netburner_port/opener_bsd_compat.h \
- ../src/../opener/netburner_port/opener_nb_socket.h \
  ../src/platform/gateway_config.h \
  ../../../../../leap_core/inc/leap/leap_protocol.h \
  ../../../../x86-32/D945GSEJT/LeapGateway/src/gateway_global.h \
@@ -90,10 +80,12 @@ src/main.o: ../src/main.cpp C:/nburn/nbrtos/include/init.h \
  ../src/platform/gateway_storage.h ../src/platform/leap_time.h \
  ../../../../../leap_core/inc/leap/leap_build_info.h \
  ../src/platform/generated/leap_build_info_gen.h \
- ../../../../../leap_core/inc/leap/leap_log.h ../src/core/core_state.cpp \
- ../src/core/mapping_state.cpp ../src/http/http_handlers_core.cpp \
- ../src/http/leap_http_handlers.cpp \
- ../src/../opener/netburner_port/opener.h \
+ ../../../../../leap_core/inc/leap/leap_log.h \
+ ../src/opener/../opener/leap_gateway_eip.h ../src/core/system_health.h \
+ ../src/core/core_state.cpp ../src/core/system_health.cpp \
+ ../src/core/system_health.h ../src/core/mapping_state.cpp \
+ ../src/core/../opener/leap_gateway_eip_conf.h \
+ ../src/http/http_handlers_core.cpp ../src/http/leap_http_handlers.cpp \
  ../src/../opener/netburner_port/nb_reboot.h \
  ../src/http/http_register.cpp
 
@@ -101,7 +93,7 @@ C:/nburn/nbrtos/include/init.h:
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/constants.h:
 
@@ -231,26 +223,6 @@ C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h:
 
 C:/nburn/arch/coldfire/cpu/MCF5441X/include/ethervars.h:
 
-../src/../opener/netburner_port/opener.h:
-
-../src/../opener/netburner_port/netburner_ifconfig.cpp:
-
-../src/../opener/netburner_port/nb_ifconfig.h:
-
-../src/../opener/netburner_port/nb_nvtcpip.cpp:
-
-../src/../opener/netburner_port/nb_nvtcpip.h:
-
-../src/../opener/netburner_port/nb_reboot.cpp:
-
-../src/../opener/netburner_port/nb_reboot.h:
-
-../src/../opener/netburner_port/opener_nb_socket.cpp:
-
-../src/../opener/netburner_port/opener_bsd_compat.h:
-
-../src/../opener/netburner_port/opener_nb_socket.h:
-
 ../src/platform/gateway_config.h:
 
 ../../../../../leap_core/inc/leap/leap_protocol.h:
@@ -309,15 +281,23 @@ C:/nburn/arch/coldfire/cpu/MCF5441X/include/ethervars.h:
 
 ../../../../../leap_core/inc/leap/leap_log.h:
 
+../src/opener/../opener/leap_gateway_eip.h:
+
+../src/core/system_health.h:
+
 ../src/core/core_state.cpp:
 
+../src/core/system_health.cpp:
+
+../src/core/system_health.h:
+
 ../src/core/mapping_state.cpp:
+
+../src/core/../opener/leap_gateway_eip_conf.h:
 
 ../src/http/http_handlers_core.cpp:
 
 ../src/http/leap_http_handlers.cpp:
-
-../src/../opener/netburner_port/opener.h:
 
 ../src/../opener/netburner_port/nb_reboot.h:
 

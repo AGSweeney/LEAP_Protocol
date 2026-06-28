@@ -32,6 +32,8 @@ extern "C" {
 
 #include "leap/leap_gateway_config.h"
 
+#include "../opener/leap_gateway_eip_conf.h"
+
 }
 
 
@@ -40,11 +42,17 @@ extern "C" {
 
 #define GW_DEFAULT_PROFILE_ID    0x00010001u
 
-#define GW_INPUT_ASSEMBLY_ID     100u
+#define GW_INPUT_ASSEMBLY_ID     LEAP_GATEWAY_INPUT_ASSEMBLY_NUM
+#define GW_OUTPUT_ASSEMBLY_ID    LEAP_GATEWAY_OUTPUT_ASSEMBLY_NUM
+#define GW_ASSEMBLY_BYTES        LEAP_GATEWAY_IO_ASSEMBLY_BYTES
 
-#define GW_OUTPUT_ASSEMBLY_ID    150u
 
-#define GW_ASSEMBLY_BYTES        32u
+
+static uint16_t GwMappingDefaultStatusByte(unsigned index)
+{
+    const unsigned statusByte = (GW_ASSEMBLY_BYTES / 2u) + index;
+    return static_cast<uint16_t>(statusByte < GW_ASSEMBLY_BYTES ? statusByte : index);
+}
 
 
 
@@ -68,12 +76,38 @@ static void GwMappingResetSlot(LeapEipBridgeMapping &slot, unsigned index)
 
     slot.output.width_bits = 8u;
 
-    slot.status_assembly_byte = static_cast<uint16_t>(index + 4u);
+    slot.status_assembly_byte = GwMappingDefaultStatusByte(index);
 
     slot.status_width_bytes = 1u;
 
     slot.enabled = 0;
 
+}
+
+
+
+static void GwMappingNormalizeStatusLayout(LeapGatewayConfig &config)
+{
+    if (config.bridge.mapping_count > GW_MAX_MAPPINGS)
+    {
+        config.bridge.mapping_count = GW_MAX_MAPPINGS;
+    }
+
+    for (unsigned i = 0u; i < config.bridge.mapping_count; ++i)
+    {
+        LeapEipBridgeMapping &slot = config.bridge.mappings[i];
+        const uint16_t oldDefaultStatusByte = static_cast<uint16_t>(i + 4u);
+
+        if (slot.status_assembly_byte == oldDefaultStatusByte)
+        {
+            slot.status_assembly_byte = GwMappingDefaultStatusByte(i);
+        }
+
+        if (slot.status_width_bytes == 0u)
+        {
+            slot.status_width_bytes = 1u;
+        }
+    }
 }
 
 
@@ -619,6 +653,10 @@ static bool GwMappingApplySaveFromUrl(const char *url, const char **errorCode, u
         }
 
     }
+
+
+
+    GwMappingNormalizeStatusLayout(next);
 
 
 

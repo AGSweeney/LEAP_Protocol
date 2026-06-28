@@ -225,13 +225,29 @@ Default assemblies:
 
 | Assembly | ID | Role |
 |----------|-----|------|
-| Input | 100 | Produced to PLC (32 B) |
-| Output | 150 | Consumed from PLC (32 B) |
+| Input | 100 | Produced to PLC (64 B) |
+| Output | 150 | Consumed from PLC (64 B) |
 | Config | 151 | Connection config (10 B) |
 
 See [`BACKPORT.md`](BACKPORT.md) for NetBurner-only CIP enhancements to merge into `LeapGateway-linux`.
 
 The strong OpENer hook implementations are linked from `src/main.cpp` so the runtime assembly callbacks update and read the shared LEAP/EIP bridge rather than the weak NetBurner overlay stubs.
+
+### Run/Idle headers on MODM7AE70 (ARM little-endian)
+
+This project disables OpENer Run/Idle headers in both directions:
+
+- `CipRunIdleHeaderSetO2T(false);`
+- `CipRunIdleHeaderSetT2O(false);`
+
+Current implications:
+
+- Assemblies 100/150 remain fixed payload sizes (32 B each) with no 4-byte Run/Idle prefix.
+- `RunIdleChanged(EipUint32 run_idle_value)` is still used for identity state handling (`run_idle_value & 0x0001U`).
+- Because MODM7AE70 is ARM little-endian, there is no extra Run/Idle byte-swap path required for this value handling.
+- IPv4 endianness conversion is a separate concern and remains intentional in:
+  - `opener/netburner_port/netburner_ifconfig.cpp`
+  - `opener/netburner_port/nb_nvtcpip.cpp`
 
 ---
 

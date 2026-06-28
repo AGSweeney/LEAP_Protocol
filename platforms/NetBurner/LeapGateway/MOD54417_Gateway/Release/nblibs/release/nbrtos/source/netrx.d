@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/netrx.o: ../overload/nbrtos/source/netrx.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h C:/nburn/nbrtos/include/hal.h \
- C:/nburn/libraries/include/crypto/ssl.h \
+ ../overload/nbrtos/include/predef-overload.h \
+ C:/nburn/nbrtos/include/hal.h C:/nburn/libraries/include/crypto/ssl.h \
  C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
@@ -52,11 +52,14 @@ nblibs/release/nbrtos/source/netrx.o: ../overload/nbrtos/source/netrx.cpp \
  C:/nburn/nbrtos/include/randseed.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h \
- C:/nburn/nbrtos/include/snmp.h
+ C:/nburn/nbrtos/include/snmp.h C:/nburn/nbrtos/include/snmp/asn1.h \
+ C:/nburn/nbrtos/include/snmp/mibII_vars.h \
+ C:/nburn/nbrtos/include/snmp/snmp_table.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/hal.h:
 
@@ -185,3 +188,11 @@ C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim.h:
 C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h:
 
 C:/nburn/nbrtos/include/snmp.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
+
+C:/nburn/nbrtos/include/snmp/mibII_vars.h:
+
+C:/nburn/nbrtos/include/snmp/snmp_table.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:

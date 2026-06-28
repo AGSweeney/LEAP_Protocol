@@ -103,8 +103,8 @@
     <h2>EtherNet/IP assemblies (PLC connection)</h2>
     <p class="hint" style="margin-top:0">Use these in Studio 5000 / RSLinx exclusive-owner connection:</p>
     <ul class="hint" style="margin:0;padding-left:1.2rem">
-      <li>Input assembly <code>100</code> (32 bytes) - gateway -&gt; PLC</li>
-      <li>Output assembly <code>150</code> (32 bytes) - PLC -&gt; gateway</li>
+      <li>Input assembly <code>100</code> (64 bytes) - gateway -&gt; PLC</li>
+      <li>Output assembly <code>150</code> (64 bytes) - PLC -&gt; gateway</li>
       <li>Config assembly <code>151</code> (10 bytes)</li>
     </ul>
   </div>
@@ -213,7 +213,7 @@ const LEAP_STATES = {
   '0x0003': 'SAFE', '0x0004': 'OP', '0x0005': 'FAULT'
 };
 
-const MAX_MAPPINGS = 16;
+const MAX_MAPPINGS = 32;
 
 const defaults = {
   ipv4: '192.168.1.2',

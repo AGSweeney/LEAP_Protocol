@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/http_funcs.o: \
  C:/nburn/nbrtos/source/http_funcs.cpp C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h C:/nburn/nbrtos/include/hal.h \
- C:/nburn/libraries/include/crypto/ssl.h \
+ ../overload/nbrtos/include/predef-overload.h \
+ C:/nburn/nbrtos/include/hal.h C:/nburn/libraries/include/crypto/ssl.h \
  C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
@@ -51,7 +51,7 @@ nblibs/release/nbrtos/source/http_funcs.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/hal.h:
 

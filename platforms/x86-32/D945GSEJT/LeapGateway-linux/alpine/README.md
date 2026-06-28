@@ -79,7 +79,7 @@ GET  /api/v1/io              mappings + live I/O
 
 EtherNet/IP (OpENer) is **enabled** — the gateway listens on **TCP/UDP 44818**
 (encapsulation) and **UDP 2222** (implicit I/O when connected). Assembly mapping
-matches the RTEMS build: Input **100** (32 B), Output **150** (32 B), Config **151** (10 B).
+matches the RTEMS build: Input **100** (64 B), Output **150** (64 B), Config **151** (10 B).
 
 OpENer is built from your external `OpENer-Enhanced` checkout (same tree as the RTEMS
 gateway). Set `OPENER_ROOT` if it is not at `/mnt/d/OpENer-Enhanced`:

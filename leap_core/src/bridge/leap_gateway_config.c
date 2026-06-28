@@ -153,8 +153,8 @@ leap_gateway_config_defaults(LeapGatewayConfig* config)
 
     config->bridge.input_assembly_id = 100u;
     config->bridge.output_assembly_id = 150u;
-    config->bridge.input_assembly_size = 32u;
-    config->bridge.output_assembly_size = 32u;
+    config->bridge.input_assembly_size = 64u;
+    config->bridge.output_assembly_size = 64u;
     config->bridge.mapping_count = 0u;
 }
 

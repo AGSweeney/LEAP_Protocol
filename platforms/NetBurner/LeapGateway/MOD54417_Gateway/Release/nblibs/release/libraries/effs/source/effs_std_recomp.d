@@ -1,7 +1,7 @@
 nblibs/release/libraries/effs/source/effs_std_recomp.o: \
  C:/nburn/libraries/effs/source/effs_std_recomp.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
@@ -11,7 +11,7 @@ nblibs/release/libraries/effs/source/effs_std_recomp.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/nbrtos.h:
 

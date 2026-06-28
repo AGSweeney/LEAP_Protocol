@@ -1,8 +1,8 @@
 nblibs/release/nbrtos/source/servlets/tftp_server.o: \
  C:/nburn/nbrtos/source/servlets/tftp_server.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h C:/nburn/nbrtos/include/dns.h \
- C:/nburn/nbrtos/include/nettypes.h \
+ ../overload/nbrtos/include/predef-overload.h \
+ C:/nburn/nbrtos/include/dns.h C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
  C:/nburn/nbrtos/include/nbprintfinternal.h \
@@ -25,7 +25,7 @@ nblibs/release/nbrtos/source/servlets/tftp_server.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/dns.h:
 

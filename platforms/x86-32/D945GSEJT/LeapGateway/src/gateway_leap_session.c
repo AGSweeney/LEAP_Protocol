@@ -1481,6 +1481,8 @@ gateway_run_pending_discover(void)
 
 {
 
+    LeapControllerPeerTable discovered;
+
     int scan_ms;
 
 
@@ -1519,13 +1521,21 @@ gateway_run_pending_discover(void)
 
     g_gateway.discover_active = 1;
 
+    leap_controller_peer_table_init(&discovered);
+
     (void)leap_controller_peer_table_discover(
 
-        &g_gateway.peer_table,
+        &discovered,
 
         &g_gateway.controller_io,
 
         scan_ms);
+
+    leap_gateway_runtime_lock();
+
+    g_gateway.peer_table = discovered;
+
+    leap_gateway_runtime_unlock();
 
     printf(
 
@@ -1535,7 +1545,7 @@ gateway_run_pending_discover(void)
 
         leap_rtems_uptime_str(),
 
-        g_gateway.peer_table.count);
+        discovered.count);
 #if defined(NETBURNER_GATEWAY)
     {
         LeapRtemsTransportStats stats;

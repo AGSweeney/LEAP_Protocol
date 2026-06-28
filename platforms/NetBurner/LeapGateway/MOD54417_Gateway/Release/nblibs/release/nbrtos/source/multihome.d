@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/multihome.o: \
  C:/nburn/nbrtos/source/multihome.cpp C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/netinterface.h C:/nburn/nbrtos/include/autoip.h \
  C:/nburn/nbrtos/include/buffers.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -28,7 +28,7 @@ nblibs/release/nbrtos/source/multihome.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/netinterface.h:
 

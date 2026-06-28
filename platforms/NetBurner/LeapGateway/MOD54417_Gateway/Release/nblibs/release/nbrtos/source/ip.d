@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/ip.o: C:/nburn/nbrtos/source/ip.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/includes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
@@ -29,11 +29,15 @@ nblibs/release/nbrtos/source/ip.o: C:/nburn/nbrtos/source/ip.cpp \
  C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/tcp.h \
  C:/nburn/nbrtos/include/tcp_private.h \
  C:/nburn/nbrtos/include/multicast.h C:/nburn/nbrtos/include/snmp.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h \
+ C:/nburn/nbrtos/include/snmp/mibII_vars.h \
+ C:/nburn/nbrtos/include/snmp/snmp_table.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_intf.h
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/includes.h:
 
@@ -112,5 +116,13 @@ C:/nburn/nbrtos/include/tcp_private.h:
 C:/nburn/nbrtos/include/multicast.h:
 
 C:/nburn/nbrtos/include/snmp.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
+
+C:/nburn/nbrtos/include/snmp/mibII_vars.h:
+
+C:/nburn/nbrtos/include/snmp/snmp_table.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
 
 C:/nburn/nbrtos/include/ipv6/ipv6_intf.h:

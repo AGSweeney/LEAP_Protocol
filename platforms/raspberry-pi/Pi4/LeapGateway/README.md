@@ -31,7 +31,7 @@ See [../README.md](../README.md) for flash and serial console details.
 
 ## Configuration
 
-Default path `/cf/config.txt` — same schema as the x86 gateway. Up to **16** mapping
+Default path `/cf/config.txt` — same schema as the x86 gateway. Up to **32** mapping
 slots when the full bridge binary lands.
 
 ## Source layout (planned native build)

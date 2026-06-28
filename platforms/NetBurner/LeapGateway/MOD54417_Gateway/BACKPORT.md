@@ -9,7 +9,7 @@ When stabilised on hardware, backport these to the Alpine `leap-gateway` binary.
 | Feature | Location | Notes |
 |---------|----------|-------|
 | Identity lifecycle (Self-Testing / Standby / fault flags) | `opener/netburner_port/leap_gateway/leapgateway.c` | FusionCore-style `IdentityEnter`, I/O activity on assemblies 100/150 |
-| Run/Idle headers disabled (O2T + T2O) | `leapgateway.c` | `CipRunIdleHeaderSetO2T/T2O(false)` |
+| Micro800 run-idle compat (O2T/T2O headers + Forward Open/receive strip) | `patch-opener-netburner.ps1`, `build-opener-netburner.ps1`, `leapgateway.c` | Patched into staged OpENer-Enhanced; `OpenerConfigureMicro800RunIdleCompat()` at init |
 | TCP/IP attr 5 live gateway + DNS read | `netburner_port/networkconfig.c`, `nb_ifconfig.cpp` | Reads `InterfaceGate`, `InterfaceDNS` from NNDK |
 | Settable TCP/IP + NVRAM persist | `nb_nvtcpip.cpp`, `OPENER_TCPIP_IFACE_CFG_SETTABLE` | Molex workflow: Static -> attr 5 -> reset |
 | Connection Manager statistics (attr 8) | `cipconnectionmanager_stats.c` + patch script | Real counters vs stub |

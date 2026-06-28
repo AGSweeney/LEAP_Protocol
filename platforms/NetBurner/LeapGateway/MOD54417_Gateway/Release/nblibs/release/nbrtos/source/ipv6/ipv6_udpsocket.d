@@ -1,8 +1,8 @@
 nblibs/release/nbrtos/source/ipv6/ipv6_udpsocket.o: \
  C:/nburn/nbrtos/source/ipv6/ipv6_udpsocket.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h C:/nburn/nbrtos/include/hal.h \
- C:/nburn/libraries/include/crypto/ssl.h \
+ ../overload/nbrtos/include/predef-overload.h \
+ C:/nburn/nbrtos/include/hal.h C:/nburn/libraries/include/crypto/ssl.h \
  C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
@@ -57,11 +57,15 @@ nblibs/release/nbrtos/source/ipv6/ipv6_udpsocket.o: \
  C:/nburn/nbrtos/include/webclient/http_funcs.h \
  C:/nburn/nbrtos/include/dns.h \
  C:/nburn/nbrtos/include/webclient/web_buffers.h \
- C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/snmp.h
+ C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/snmp.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h \
+ C:/nburn/nbrtos/include/snmp/mibII_vars.h \
+ C:/nburn/nbrtos/include/snmp/snmp_table.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/hal.h:
 
@@ -194,3 +198,11 @@ C:/nburn/nbrtos/include/webclient/web_buffers.h:
 C:/nburn/nbrtos/include/mDNS.h:
 
 C:/nburn/nbrtos/include/snmp.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
+
+C:/nburn/nbrtos/include/snmp/mibII_vars.h:
+
+C:/nburn/nbrtos/include/snmp/snmp_table.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:

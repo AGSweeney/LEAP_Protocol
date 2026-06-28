@@ -41,8 +41,8 @@ var GW_HELP = {
       "<p>Configure how each LEAP device is exposed to a PLC through the gateway EtherNet/IP assemblies.</p>" +
       "<h3>EtherNet/IP assemblies</h3>" +
       "<ul>" +
-      "<li><b>Input assembly 100</b> (32 bytes)  - Gateway to PLC: LEAP inputs and status bytes.</li>" +
-      "<li><b>Output assembly 150</b> (32 bytes)  - PLC to gateway: LEAP output commands.</li>" +
+      "<li><b>Input assembly 100</b> (64 bytes)  - Gateway to PLC: LEAP inputs and status bytes.</li>" +
+      "<li><b>Output assembly 150</b> (64 bytes)  - PLC to gateway: LEAP output commands.</li>" +
       "<li><b>Config assembly 151</b> (10 bytes)  - Connection configuration.</li>" +
       "</ul>" +
       "<h3>Mapping fields</h3>" +

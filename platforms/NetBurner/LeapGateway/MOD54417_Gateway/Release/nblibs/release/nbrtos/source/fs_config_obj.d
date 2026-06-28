@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/fs_config_obj.o: \
  C:/nburn/nbrtos/source/fs_config_obj.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/config_obj.h C:/nburn/nbrtos/include/buffers.h \
  C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -25,7 +25,7 @@ nblibs/release/nbrtos/source/fs_config_obj.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/config_obj.h:
 

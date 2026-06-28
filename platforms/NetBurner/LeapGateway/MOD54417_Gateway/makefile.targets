@@ -16,16 +16,17 @@ endif
 	$(RM) $@
 	$(call max_args,$(AR) cr $@ ,10,$^)
 
-.PHONY: clean-nblibs load-nbimage app-s19
+.PHONY: clean-nblibs load-nbimage app-s19 opener-clean-deps
 
-clean-nblibs:
+opener-clean-deps:
+	-$(RM) ./src/opener/leap_gateway_eip.d ./src/opener/leapgateway.d ./src/opener/networkconfig.d ./src/opener/opener.d
+
+clean: opener-clean-deps
+
+clean-nblibs: opener-clean-deps
 	$(RM) $(OBJDIR)
 
-$(OPENER_LIB): ../build-opener-netburner.ps1
-	@echo 'Building OpENer NetBurner static library: $@'
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-opener-netburner.ps1
-
-$(LEAP_GW_LIB): ../build-leap-gateway-netburner.ps1
+$(LEAP_GW_LIB): $(LEAP_GW_LIB_INPUTS)
 	@echo 'Building LEAP Gateway NetBurner static library: $@'
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-leap-gateway-netburner.ps1
 
@@ -100,3 +101,45 @@ GW_APP_CFLAGS := $(filter-out $(GW_ARM_ONLY_FLAGS),$(CFLAGS))
 	m68k-unknown-elf-gcc $(GW_APP_C_BASE) $(GW_APP_CFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
+
+./src/opener/opener.o: ../src/opener/opener.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: GNU C Compiler'
+	@mkdir -p $(dir $@)
+	m68k-unknown-elf-gcc $(GW_APP_C_BASE) $(GW_APP_CFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACFLAGS) $(OPENER_CPPFLAGS) -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+./src/opener/networkconfig.o: ../src/opener/networkconfig.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: GNU C Compiler'
+	@mkdir -p $(dir $@)
+	m68k-unknown-elf-gcc $(GW_APP_C_BASE) $(GW_APP_CFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACFLAGS) $(OPENER_CPPFLAGS) -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+./src/opener/leapgateway.o: ../src/opener/leapgateway.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: GNU C Compiler'
+	@mkdir -p $(dir $@)
+	m68k-unknown-elf-gcc $(GW_APP_C_BASE) $(GW_APP_CFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACFLAGS) $(OPENER_CPPFLAGS) -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+./src/opener/leap_gateway_eip.o: ../src/opener/leap_gateway_eip.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: GNU C Compiler'
+	@mkdir -p $(dir $@)
+	m68k-unknown-elf-gcc $(GW_APP_C_BASE) $(GW_APP_CFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACFLAGS) $(OPENER_CPPFLAGS) -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+./src/opener/nb_reboot.o: ../opener/netburner_port/nb_reboot.cpp
+	@echo 'Building file: $<'
+	@echo 'Invoking: GNU C++ Compiler'
+	@mkdir -p $(dir $@)
+	m68k-unknown-elf-g++ $(GW_APP_CXX_BASE) $(GW_APP_CXXFLAGS) $(GW_APP_CPPFLAGS) $(EXTRACPPFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+include ../opener/netburner_port/nbeclipse-link.mk

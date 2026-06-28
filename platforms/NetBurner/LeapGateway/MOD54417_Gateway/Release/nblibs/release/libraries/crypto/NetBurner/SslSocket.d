@@ -1,7 +1,7 @@
 nblibs/release/libraries/crypto/NetBurner/SslSocket.o: \
  C:/nburn/libraries/crypto/NetBurner/SslSocket.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/iointernal.h C:/nburn/nbrtos/include/tcp.h \
  C:/nburn/nbrtos/include/ip.h C:/nburn/nbrtos/include/nettypes.h \
@@ -84,7 +84,7 @@ nblibs/release/libraries/crypto/NetBurner/SslSocket.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 

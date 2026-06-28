@@ -1,7 +1,7 @@
 nblibs/release/arch/coldfire/cpu/MCF5441X/source/Wire.o: \
  C:/nburn/arch/coldfire/cpu/MCF5441X/source/Wire.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
@@ -19,7 +19,7 @@ nblibs/release/arch/coldfire/cpu/MCF5441X/source/Wire.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim.h:
 

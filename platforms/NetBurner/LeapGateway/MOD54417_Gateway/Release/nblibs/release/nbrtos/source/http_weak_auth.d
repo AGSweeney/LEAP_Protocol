@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/http_weak_auth.o: \
  C:/nburn/nbrtos/source/http_weak_auth.cpp C:/nburn/nbrtos/include/http.h \
  C:/nburn/nbrtos/include/nettypes.h C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
  C:/nburn/nbrtos/include/nbprintfinternal.h \
@@ -22,7 +22,7 @@ C:/nburn/nbrtos/include/nettypes.h:
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 

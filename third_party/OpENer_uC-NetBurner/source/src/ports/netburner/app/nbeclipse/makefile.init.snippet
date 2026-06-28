@@ -1,0 +1,32 @@
+# Append to NBEclipse makefile.init.
+#
+# Extended tier: symlink or copy nndk_overload/nbrtos → overload/nbrtos in your
+# firmware project, then Clean NetBurner Archive. Do NOT link netrx.o or lldp.o
+# in USER_OBJS (both belong in libnetburner.a / libOPENER_HAL.a).
+
+OPENER_ROOT := $(NNDK_ROOT)/libraries/OpENer_uC-NetBurner
+OPENER_LIB  := $(OPENER_ROOT)/build-nb-$(PLATFORM)/lib
+OPENER_APP  := $(OPENER_ROOT)/source/src/ports/netburner/app
+OPENER_NB   := $(OPENER_ROOT)/source/src/ports/netburner
+OPENER_PREDEF := $(OPENER_NB)/nndk_overload/predef-overload.h
+OPENER_NETRX := $(OPENER_NB)/nndk_overload/nbrtos/source/netrx.cpp
+
+OPENER_NB_CPPFLAGS := -I"$(OPENER_APP)" -DOPENER_LLDP=1 -DOPENER_NB_LLDP=1 -DOPENER_NB_ACD=1
+CPPFLAGS += $(OPENER_NB_CPPFLAGS)
+
+# Rebuild NetBurner archive when overload sources change.
+$(OBJDIR)/libnetburner.a: $(OPENER_PREDEF) $(OPENER_NETRX)
+	@touch $(OBJDIR)/.stale
+
+USER_OBJS += \
+  $(OPENER_APP)/opener.o \
+  $(OPENER_APP)/networkconfig.o \
+  $(OPENER_APP)/sample_application/sampleapplication.o \
+  $(OPENER_APP)/nbeclipse/main.o
+
+USER_LIBS += \
+  $(OPENER_LIB)/libCIP.a \
+  $(OPENER_LIB)/libENET_ENCAP.a \
+  $(OPENER_LIB)/libUtils.a \
+  $(OPENER_LIB)/libPLATFORM_GENERIC.a \
+  $(OPENER_LIB)/libOPENER_HAL.a

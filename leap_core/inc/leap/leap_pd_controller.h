@@ -21,7 +21,9 @@
 extern "C" {
 #endif
 
+#ifndef LEAP_PD_LATENCY_HISTORY_MAX
 #define LEAP_PD_LATENCY_HISTORY_MAX 1000u
+#endif
 #define LEAP_PD_NETWORK_RTT_HIST_BUCKETS 10u
 
 typedef struct LeapPdLatencyHistory

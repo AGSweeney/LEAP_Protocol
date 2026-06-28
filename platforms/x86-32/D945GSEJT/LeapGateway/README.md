@@ -51,7 +51,7 @@ mapping.output.byte=10
 mapping.status.byte=12
 ```
 
-Up to **16** mapping slots (`mapping.begin=0` … `15`). **Connect LEAP** bootstraps every enabled slot to OP and runs cyclic PD for each peer (round-robin per gateway tick). Each slot has its own E/IP byte offsets in the assembly image.
+Up to **32** mapping slots (`mapping.begin=0` … `31`). **Connect LEAP** bootstraps every enabled slot to OP and runs cyclic PD for each peer (round-robin per gateway tick). Each slot has its own E/IP byte offsets in the assembly image.
 
 ## REST API
 

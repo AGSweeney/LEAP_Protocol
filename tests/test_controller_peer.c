@@ -17,7 +17,7 @@
 #include <string.h>
 
 #define PEER_TEST_FRAME_BUF 512u
-#define PEER_TEST_MAX_RECV  16u
+#define PEER_TEST_MAX_RECV  (LEAP_CTRL_MAX_PEERS + 1u)
 
 static const uint8_t k_peer_a[6] = { 0x02, 0x10, 0x20, 0x30, 0x40, 0x01 };
 static const uint8_t k_peer_b[6] = { 0x02, 0x10, 0x20, 0x30, 0x40, 0x02 };

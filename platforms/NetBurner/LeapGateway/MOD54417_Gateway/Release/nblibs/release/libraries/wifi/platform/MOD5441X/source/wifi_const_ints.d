@@ -1,7 +1,7 @@
 nblibs/release/libraries/wifi/platform/MOD5441X/source/wifi_const_ints.o: \
  C:/nburn/libraries/wifi/platform/MOD5441X/source/wifi_const_ints.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/system.h C:/nburn/nbrtos/include/nettypes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/ipv6/ipv6_addr.h \
@@ -48,7 +48,7 @@ nblibs/release/libraries/wifi/platform/MOD5441X/source/wifi_const_ints.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/system.h:
 

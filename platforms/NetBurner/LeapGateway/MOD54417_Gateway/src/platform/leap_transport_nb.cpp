@@ -33,7 +33,7 @@ struct LeapNbRxFrame
     uint8_t  payload[LEAP_MAX_FRAME_BYTES];
 };
 
-static constexpr uint8_t kRxQueueDepth = 8U;
+static constexpr uint8_t kRxQueueDepth = 64U;
 static LeapNbRxFrame g_rx_queue[kRxQueueDepth];
 static volatile uint8_t g_rx_head = 0U;
 static volatile uint8_t g_rx_tail = 0U;

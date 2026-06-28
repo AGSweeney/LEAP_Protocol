@@ -1,0 +1,2 @@
+# LEAP Gateway — force correct NNDK platform and link known-good OpENer libraries.
+PLATFORM := MOD5441X

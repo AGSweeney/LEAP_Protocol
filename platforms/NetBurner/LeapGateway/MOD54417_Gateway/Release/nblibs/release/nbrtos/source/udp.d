@@ -1,6 +1,6 @@
 nblibs/release/nbrtos/source/udp.o: C:/nburn/nbrtos/source/udp.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -49,7 +49,10 @@ nblibs/release/nbrtos/source/udp.o: C:/nburn/nbrtos/source/udp.cpp \
  C:/nburn/nbrtos/include/webclient/web_buffers.h \
  C:/nburn/nbrtos/include/mDNS.h C:/nburn/nbrtos/include/arp.h \
  C:/nburn/nbrtos/include/ethernet.h C:/nburn/nbrtos/include/netbios.h \
- C:/nburn/nbrtos/include/snmp.h \
+ C:/nburn/nbrtos/include/snmp.h C:/nburn/nbrtos/include/snmp/asn1.h \
+ C:/nburn/nbrtos/include/snmp/mibII_vars.h \
+ C:/nburn/nbrtos/include/snmp/snmp_table.h \
+ C:/nburn/nbrtos/include/snmp/asn1.h \
  C:/nburn/nbrtos/include/ipv6/dhcpv6_const.h \
  C:/nburn/nbrtos/include/ipv6/dhcpv6_internal.h \
  C:/nburn/nbrtos/include/ipv6/dhcpv6_msg.h \
@@ -57,7 +60,7 @@ nblibs/release/nbrtos/source/udp.o: C:/nburn/nbrtos/source/udp.cpp \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 
@@ -180,6 +183,14 @@ C:/nburn/nbrtos/include/ethernet.h:
 C:/nburn/nbrtos/include/netbios.h:
 
 C:/nburn/nbrtos/include/snmp.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
+
+C:/nburn/nbrtos/include/snmp/mibII_vars.h:
+
+C:/nburn/nbrtos/include/snmp/snmp_table.h:
+
+C:/nburn/nbrtos/include/snmp/asn1.h:
 
 C:/nburn/nbrtos/include/ipv6/dhcpv6_const.h:
 

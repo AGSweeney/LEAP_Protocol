@@ -44,7 +44,7 @@ extern "C" {
 
 #define GW_OUTPUT_ASSEMBLY_ID    150u
 
-#define GW_ASSEMBLY_BYTES        32u
+#define GW_ASSEMBLY_BYTES        64u
 
 
 

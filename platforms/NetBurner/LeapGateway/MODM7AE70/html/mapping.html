@@ -43,7 +43,7 @@
     <h2>LEAP peer mappings</h2>
     <p class="hint">
       Map each LEAP device MAC to byte offsets in the EtherNet/IP assemblies above.
-      Up to <span id="maxMappingsLabel">16</span> mappings are supported.
+      Up to <span id="maxMappingsLabel">32</span> mappings are supported.
     </p>
     <div class="actions" style="margin-top:12px">
       <button class="button" type="button" onclick="addMapping()">+ Add mapping</button>
@@ -166,8 +166,8 @@
 </div>
 
 <script>
-var MAX_MAPPINGS = 16;
-var ASM_BYTES = 32;
+var MAX_MAPPINGS = 32;
+var ASM_BYTES = 64;
 var mappingDefaults = {
   profile: "0x00010001",
   width: 8,
@@ -512,6 +512,9 @@ async function clearAllMappings() {
 loadMappingConfig();
 refreshLeapStatus();
 refreshLeapPeers();
+refreshLeapIo();
+setInterval(refreshLeapStatus, 1000);
+setInterval(refreshLeapIo, 500);
 
 async function refreshLeapStatus() {
   try {

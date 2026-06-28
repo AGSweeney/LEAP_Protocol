@@ -1,7 +1,7 @@
 nblibs/release/nbrtos/source/ipv6/ipv6_utils.o: \
  C:/nburn/nbrtos/source/ipv6/ipv6_utils.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/iosys.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
  C:/nburn/nbrtos/include/constants-overload-undefs.h \
@@ -28,7 +28,7 @@ nblibs/release/nbrtos/source/ipv6/ipv6_utils.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/iosys.h:
 

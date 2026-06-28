@@ -52,6 +52,10 @@ CallBackFunctionPageHandler gConfigPersistHandler("api/config/persist", HandleCo
 
 CallBackFunctionPageHandler gConfigPersistV1Handler("api/v1/config/apply", HandleConfigPersistApi, MatchConfigPersistV1Api, tGet, 0, true);
 
+CallBackFunctionPageHandler gSystemHealthHandler("api/system/health", HandleSystemHealthApi, MatchSystemHealthApi, tGet, 0, true);
+
+CallBackFunctionPageHandler gSystemHealthV1Handler("api/v1/system/health", HandleSystemHealthApi, MatchSystemHealthV1Api, tGet, 0, true);
+
 CallBackFunctionPageHandler gSystemRebootHandler("api/system/reboot", HandleSystemRebootApi, MatchSystemRebootApi, tGet, 0, true);
 
 CallBackFunctionPageHandler gSystemRebootV1Handler("api/v1/system/reboot", HandleSystemRebootApi, MatchSystemRebootV1Api, tGet, 0, true);

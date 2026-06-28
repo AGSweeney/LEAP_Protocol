@@ -1,7 +1,7 @@
 nblibs/release/platform/MOD5441X/source/ioboard.o: \
  C:/nburn/platform/MOD5441X/source/ioboard.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim.h \
  C:/nburn/arch/coldfire/cpu/MCF5441X/include/sim5441x.h \
@@ -12,7 +12,7 @@ nblibs/release/platform/MOD5441X/source/ioboard.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 

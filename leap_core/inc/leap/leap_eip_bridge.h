@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 #define LEAP_EIP_BRIDGE_MAX_ASSEMBLY_BYTES 64u
-#define LEAP_EIP_BRIDGE_MAX_MAPPINGS       16u
+#define LEAP_EIP_BRIDGE_MAX_MAPPINGS       32u
 
 typedef struct LeapEipBridgeFieldMap
 {

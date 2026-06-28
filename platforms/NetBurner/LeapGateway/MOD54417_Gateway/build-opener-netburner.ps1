@@ -1,6 +1,6 @@
 # Build OpENer as a static m68k library for LEAP Gateway on NetBurner MOD5441X.
-# Stages OpENer-Enhanced, injects the NETBURNER port overlay, and merges libs
-# into opener/build-work/libopener_netburner.a
+# Stages OpENer (default: OpENer_uC-NetBurner with Micro800 run-idle compat),
+# injects the NETBURNER port overlay, and merges libs into opener/build-work/libopener_netburner.a
 #
 # Usage: .\build-opener-netburner.ps1
 # Env:   OPENER_ROOT, NNDK_ROOT, LEAP_OPENER_BUILD_DIR (optional)
@@ -8,7 +8,9 @@
 $ErrorActionPreference = 'Stop'
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$OpenerRoot = if ($env:OPENER_ROOT) { $env:OPENER_ROOT } else { 'D:\OpENer-Enhanced' }
+$RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..\..\..')).Path
+$DefaultOpenerRoot = Join-Path $RepoRoot 'third_party\OpENer_uC-NetBurner'
+$OpenerRoot = if ($env:OPENER_ROOT) { $env:OPENER_ROOT } else { $DefaultOpenerRoot }
 $NndkRoot = if ($env:NNDK_ROOT) { $env:NNDK_ROOT } else { 'C:\nburn' }
 $BuildDir = if ($env:LEAP_OPENER_BUILD_DIR) { $env:LEAP_OPENER_BUILD_DIR } else { Join-Path $env:TEMP 'leap-opener-netburner' }
 $StageDir = Join-Path $BuildDir 'opener-src'
@@ -21,7 +23,7 @@ $Ar = Join-Path $ToolchainBin 'm68k-unknown-elf-ar.exe'
 $Ranlib = Join-Path $ToolchainBin 'm68k-unknown-elf-ranlib.exe'
 
 if (-not (Test-Path (Join-Path $OpenerRoot 'source'))) {
-    throw "OpENer source not found at $OpenerRoot. Set OPENER_ROOT to your OpENer-Enhanced checkout."
+    throw "OpENer source not found at $OpenerRoot. Set OPENER_ROOT (default: $DefaultOpenerRoot)."
 }
 
 if (-not (Test-Path $Gcc)) {
@@ -109,6 +111,7 @@ $buildsupport = (Join-Path $StageDir 'buildsupport') -replace '\\', '/'
     -DCIP_SECURITY_OBJECTS=OFF `
     -DOPENER_IS_DLR_DEVICE=OFF `
     -DOPENER_LLDP=OFF `
+    -DOPENER_MICRO800_RUN_IDLE_COMPAT=ON `
     -DCMAKE_C_COMPILER="$Gcc" `
     -DCMAKE_CXX_COMPILER="$Gxx" `
     -DCMAKE_AR="$Ar" `

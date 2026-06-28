@@ -110,8 +110,8 @@ leap_eip_bridge_init(LeapEipBridgeState* state)
     memset(state, 0, sizeof(*state));
     state->config.input_assembly_id = 100u;
     state->config.output_assembly_id = 150u;
-    state->config.input_assembly_size = 32u;
-    state->config.output_assembly_size = 32u;
+    state->config.input_assembly_size = 64u;
+    state->config.output_assembly_size = 64u;
 }
 
 void

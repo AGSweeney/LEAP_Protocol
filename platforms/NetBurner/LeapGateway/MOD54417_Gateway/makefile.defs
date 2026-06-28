@@ -6,16 +6,51 @@ LOCAL_OVERLOAD_DIR = ../overload
 NBALL = nball
 NBCLEAN = nbclean
 
-OPENER_LIB = ../opener/build-work/libopener_netburner.a
+OPENER_ROOT := $(abspath ../../../../../third_party/OpENer_uC-NetBurner)
+OPENER_SRC  := $(OPENER_ROOT)/source/src
+OPENER_APP  := ../src/opener
 LEAP_GW_LIB = ../leap/build-work/libleap_gateway_netburner.a
-LIBS += $(OPENER_LIB) $(LEAP_GW_LIB)
+LIBS += $(LEAP_GW_LIB)
 
 GW_PLATFORM = ../src/platform
 GW_SHARED = ../../../../x86-32/D945GSEJT/LeapGateway/src
 LEAP_CORE = ../../../../../leap_core
 
-EXTRACPPFLAGS += -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../opener/netburner_port -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1
-EXTRACFLAGS += -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../opener/netburner_port -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1
+LEAP_GW_LIB_INPUTS := \
+	../build-leap-gateway-netburner.ps1 \
+	$(LEAP_CORE)/inc/leap/leap_eip_bridge.h \
+	$(LEAP_CORE)/inc/leap/leap_gateway_config.h \
+	$(LEAP_CORE)/src/bridge/leap_eip_bridge.c \
+	$(LEAP_CORE)/src/bridge/leap_gateway_config.c \
+	$(GW_SHARED)/gateway_global.c \
+	$(GW_SHARED)/gateway_leap_session.c \
+	$(GW_SHARED)/gateway_rtems_io.c \
+	$(GW_SHARED)/gateway_pd_io.c \
+	$(GW_PLATFORM)/leap_time_nb.cpp \
+	$(GW_PLATFORM)/gateway_net_nb.cpp \
+	$(GW_PLATFORM)/gateway_storage_nb.cpp \
+	$(GW_PLATFORM)/gateway_leap_session_nb.cpp
+
+OPENER_CPPFLAGS := \
+	-I"$(OPENER_APP)" \
+	-I"$(OPENER_SRC)" \
+	-I"$(OPENER_SRC)/config" \
+	-I"$(OPENER_SRC)/cip" \
+	-I"$(OPENER_SRC)/utils" \
+	-I"$(OPENER_SRC)/hal" \
+	-I"$(OPENER_SRC)/enet_encap" \
+	-I"$(OPENER_SRC)/ports" \
+	-I"$(OPENER_SRC)/ports/netburner" \
+	-I"$(OPENER_ROOT)/build-nb-$(PLATFORM)/src/ports" \
+	-include opener_app_preinclude.h \
+	-DPC_OPENER_ETHERNET_BUFFER_SIZE=512 \
+	-DOPENER_EMBEDDED \
+	-DOPENER_MICRO800_RUN_IDLE_COMPAT=1 \
+	-DOPENER_CONSUMED_DATA_HAS_RUN_IDLE_HEADER \
+	-DRESTRICT=restrict
+
+EXTRACPPFLAGS += -I$(OPENER_APP) -I$(OPENER_ROOT)/source/src/ports/netburner/app -I$(OPENER_SRC)/ports/netburner -I$(OPENER_SRC)/hal -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DLEAP_PD_LATENCY_HISTORY_MAX=64u
+EXTRACFLAGS += -I$(OPENER_APP) -I$(OPENER_ROOT)/source/src/ports/netburner/app -I$(OPENER_SRC)/ports/netburner -I$(OPENER_SRC)/hal -I$(GW_PLATFORM) -I$(GW_PLATFORM)/generated -I$(GW_SHARED) -I$(LEAP_CORE)/inc -I../src -DNETBURNER_GATEWAY=1 -DLEAP_GATEWAY_OPENER_ENABLE=1 -DLEAP_PD_LATENCY_HISTORY_MAX=64u
 
 nbfind = $(foreach x,$(wildcard $1*),$(call nbfind,$x/,$2)$(filter $(subst *,%,$2),$x))
 COMPHTML_SRCS := $(call nbfind,$(HTMLDIR)/,*.htm *.html *.HTM *.HTML *.Htm *.Html *.js *.Js *.JS *.css *.CSS *.Css *.jpg *.jpeg *.gif *.png)
@@ -25,12 +60,6 @@ ifneq ($(COMPHTML_SRCS),)
 endif
 
 include $(NNDK_ROOT)/make/boilerplate.mk
-
-# leap_gateway_opener.c was removed from src/; it is linked via libleap_gateway_netburner.a.
-# Eclipse may still emit it in auto-generated subdir.mk until the project is refreshed.
-C_SRCS := $(filter-out ../src/leap_gateway_opener.c,$(C_SRCS))
-OBJS := $(filter-out ./src/leap_gateway_opener.o,$(OBJS))
-C_DEPS := $(filter-out ./src/leap_gateway_opener.d,$(C_DEPS))
 
 # LEAP L2 transport must be a firmware object (CustomNetDoRX), not only in the static lib.
 GW_TRANSPORT_CPP := ../src/platform/leap_transport_nb.cpp
@@ -42,9 +71,7 @@ ifneq ($(filter $(GW_TRANSPORT_OBJ),$(OBJS)),$(GW_TRANSPORT_OBJ))
 OBJS += $(GW_TRANSPORT_OBJ)
 endif
 
-# Keep the shared session state machine in the firmware build proper. The same
-# object also exists in libleap_gateway_netburner.a, but linking this object
-# first prevents stale archive members from masking source changes.
+# Keep the shared session state machine in the firmware build proper.
 GW_SESSION_C := $(GW_SHARED)/gateway_leap_session.c
 GW_SESSION_OBJ := ./src/gateway_leap_session.o
 ifneq ($(filter $(GW_SESSION_C),$(C_SRCS)),$(GW_SESSION_C))
@@ -53,3 +80,21 @@ endif
 ifneq ($(filter $(GW_SESSION_OBJ),$(OBJS)),$(GW_SESSION_OBJ))
 OBJS += $(GW_SESSION_OBJ)
 endif
+
+GW_REBOOT_CPP := ../opener/netburner_port/nb_reboot.cpp
+GW_REBOOT_OBJ := ./src/opener/nb_reboot.o
+
+ifneq ($(filter $(GW_REBOOT_CPP),$(CPP_SRCS)),$(GW_REBOOT_CPP))
+CPP_SRCS += $(GW_REBOOT_CPP)
+endif
+ifneq ($(filter $(GW_REBOOT_OBJ),$(OBJS)),$(GW_REBOOT_OBJ))
+OBJS += $(GW_REBOOT_OBJ)
+endif
+
+# GCC -MMD output for OpENer objects uses absolute C:/ paths; GNU make treats the
+# drive colon as a target separator and fails with "multiple target patterns".
+C_DEPS := $(filter-out \
+	./src/opener/leap_gateway_eip.d \
+	./src/opener/leapgateway.d \
+	./src/opener/networkconfig.d \
+	./src/opener/opener.d,$(C_DEPS))

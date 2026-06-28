@@ -295,7 +295,7 @@ int NetDoRX(PoolPtr pp, uint16_t ocount, int if_num)
 
         frames_rx_discard++;
         FreeBuffer(pp);
-        SNMPCOUNT(EthifInUnknownProtos);   // Rx valid packet but unknown protocol (R.A)
+        SNMPCOUNT(snmp_var_ipInUnknownProtos);   // Rx valid packet but unknown protocol (R.A)
     }
     // pp was null
     // iprintf("Process events 7\r\n");

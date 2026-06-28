@@ -1,7 +1,7 @@
 nblibs/release/libraries/wifi/source/nbwifi/nbWifiSerial.o: \
  C:/nburn/libraries/wifi/source/nbwifi/nbWifiSerial.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/libraries/include/wifi/nbwifi/nbWifiDriver.h \
  C:/nburn/nbrtos/include/buffers.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -66,7 +66,7 @@ nblibs/release/libraries/wifi/source/nbwifi/nbWifiSerial.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/libraries/include/wifi/nbwifi/nbWifiDriver.h:
 

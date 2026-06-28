@@ -1,7 +1,7 @@
 nblibs/release/arch/coldfire/cpu/MCF5441X/source/emulticast.o: \
  C:/nburn/arch/coldfire/cpu/MCF5441X/source/emulticast.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/nbrtos/include/includes.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/nbrtos.h C:/nburn/nbrtos/include/constants.h \
@@ -59,7 +59,7 @@ nblibs/release/arch/coldfire/cpu/MCF5441X/source/emulticast.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/nbrtos/include/includes.h:
 

@@ -21,8 +21,8 @@
 #define LEAP_GATEWAY_OUTPUT_ASSEMBLY_NUM 150U
 #define LEAP_GATEWAY_CONFIG_ASSEMBLY_NUM 151U
 
-EipUint8 g_assembly_data064[32];
-EipUint8 g_assembly_data096[32];
+EipUint8 g_assembly_data064[64];
+EipUint8 g_assembly_data096[64];
 EipUint8 g_assembly_data097[10];
 
 __attribute__((weak)) void

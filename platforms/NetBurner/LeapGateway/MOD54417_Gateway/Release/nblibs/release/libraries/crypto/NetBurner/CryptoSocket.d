@@ -1,7 +1,7 @@
 nblibs/release/libraries/crypto/NetBurner/CryptoSocket.o: \
  C:/nburn/libraries/crypto/NetBurner/CryptoSocket.cpp \
  C:/nburn/nbrtos/include/predef.h \
- C:/nburn/nbrtos/include/predef-overload.h \
+ ../overload/nbrtos/include/predef-overload.h \
  C:/nburn/arch/coldfire/include/basictypes.h \
  C:/nburn/nbrtos/include/iosys.h C:/nburn/nbrtos/include/constants.h \
  C:/nburn/nbrtos/include/constants-overload.h \
@@ -59,7 +59,7 @@ nblibs/release/libraries/crypto/NetBurner/CryptoSocket.o: \
 
 C:/nburn/nbrtos/include/predef.h:
 
-C:/nburn/nbrtos/include/predef-overload.h:
+../overload/nbrtos/include/predef-overload.h:
 
 C:/nburn/arch/coldfire/include/basictypes.h:
 
